@@ -17,4 +17,5 @@ func UserRegister(r *gin.Engine, u *controller.UserController) {
 	})
 
 	v1.POST("/login", u.Login)
+	v1.POST("/register", u.Register)
 }
