@@ -18,6 +18,13 @@ const (
 	keyLen  uint32 = 32
 )
 
+// DummyVerify performs the same Argon2id work as VerifyPassword and discards
+// the result, so logins for unknown users take just as long.
+func DummyVerify(password string) {
+	var salt [16]byte
+	_ = argon2.IDKey([]byte(password), salt[:], time, memory, threads, keyLen)
+}
+
 func HashPassword(password string) (string, error) {
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)

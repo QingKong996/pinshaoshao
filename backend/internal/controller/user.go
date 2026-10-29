@@ -29,15 +29,20 @@ func (c *UserController) Login(ctx *gin.Context) {
 
 	token, err := c.userService.Login(ctx.Request.Context(), &req)
 	if err != nil {
-		if errors.Is(err, apperr.ErrInvalidCredentials) {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+		switch {
+		case errors.Is(err, apperr.ErrInvalidCredentials):
+			ctx.JSON(http.StatusUnauthorized, gin.H{
 				"error": apperr.ErrInvalidCredentials.Error(),
 			})
-			return
+		case errors.Is(err, apperr.ErrUserBanned):
+			ctx.JSON(http.StatusForbidden, gin.H{
+				"error": apperr.ErrUserBanned.Error(),
+			})
+		default:
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": apperr.ErrInternalServer.Error(),
+			})
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": apperr.ErrInternalServer.Error(),
-		})
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{

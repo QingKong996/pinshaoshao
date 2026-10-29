@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
@@ -21,6 +22,10 @@ func NewUserService(userRepository *repository.UserRepository) *UserService {
 func (s *UserService) Login(ctx context.Context, req *dto.LoginRequest) (string, error) {
 	user, err := s.userRepository.GetUserByUsername(ctx, req.Username)
 	if err != nil {
+		if errors.Is(err, apperr.ErrUserNotFound) {
+			security.DummyVerify(req.Password)
+			return "", fmt.Errorf("service.Login: %w", apperr.ErrInvalidCredentials)
+		}
 		return "", fmt.Errorf("service.Login: get user by username: %w", err)
 	}
 
@@ -29,7 +34,11 @@ func (s *UserService) Login(ctx context.Context, req *dto.LoginRequest) (string,
 		return "", fmt.Errorf("service.Login: verify password: %w: %w", apperr.ErrInvalidCredentials, err)
 	}
 	if !res {
-		return "", fmt.Errorf("service.Login: verify password:%w", apperr.ErrInvalidCredentials)
+		return "", fmt.Errorf("service.Login: verify password: %w", apperr.ErrInvalidCredentials)
+	}
+
+	if user.Status != model.UserStatusActive {
+		return "", fmt.Errorf("service.Login: %w", apperr.ErrUserBanned)
 	}
 
 	token, tokenHash, err := security.GenerateSessionToken()
