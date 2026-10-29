@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
+	"pinshaoshao/internal/model"
 	"pinshaoshao/internal/repository"
 	"pinshaoshao/internal/security"
 )
@@ -45,5 +46,31 @@ func (s *UserService) Login(ctx context.Context, req *dto.LoginRequest) (string,
 }
 
 func (s *UserService) Register(ctx context.Context, req *dto.RegisterRequest) (string, error) {
-	return "", nil
+	passwordHash, err := security.HashPassword(req.Password)
+	if err != nil {
+		return "", fmt.Errorf("service.Register: hash password: %w", err)
+	}
+
+	user := &model.User{
+		Username:     req.Username,
+		PasswordHash: passwordHash,
+		Email:        req.Email,
+	}
+
+	err = s.userRepository.CreateUser(ctx, user)
+	if err != nil {
+		return "", fmt.Errorf("service.Register: create user: %w", err)
+	}
+
+	token, tokenHash, err := security.GenerateSessionToken()
+	if err != nil {
+		return "", fmt.Errorf("service.Register: generate session token: %w", err)
+	}
+
+	err = s.userRepository.CreateSession(ctx, user, tokenHash)
+	if err != nil {
+		return "", fmt.Errorf("service.Register: create session: %w", err)
+	}
+
+	return token, nil
 }

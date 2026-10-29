@@ -46,4 +46,34 @@ func (c *UserController) Login(ctx *gin.Context) {
 }
 
 func (c *UserController) Register(ctx *gin.Context) {
+	var req dto.RegisterRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": apperr.ErrInvalidJsonFormat.Error(),
+		})
+		return
+	}
+
+	token, err := c.userService.Register(ctx.Request.Context(), &req)
+	if err != nil {
+		if errors.Is(err, apperr.ErrUsernameTaken) {
+			ctx.JSON(http.StatusConflict, gin.H{
+				"error": apperr.ErrUsernameTaken.Error(),
+			})
+			return
+		}
+		if errors.Is(err, apperr.ErrEmailTaken) {
+			ctx.JSON(http.StatusConflict, gin.H{
+				"error": apperr.ErrEmailTaken.Error(),
+			})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": apperr.ErrInternalServer.Error(),
+		})
+		return
+	}
+	ctx.JSON(http.StatusCreated, gin.H{
+		"token": token,
+	})
 }
