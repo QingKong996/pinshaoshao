@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"pinshaoshao/internal/controller"
+	"pinshaoshao/internal/middleware"
 	"pinshaoshao/internal/repository"
 	"pinshaoshao/internal/router"
 	"pinshaoshao/internal/service"
@@ -22,7 +23,9 @@ func main() {
 	)
 	defer cancel()
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
 
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
@@ -42,8 +45,9 @@ func main() {
 	userRepository := repository.NewUserRepository(pool)
 	userService := service.NewUserService(userRepository)
 	userController := controller.NewUserController(userService)
+	authMiddleware := middleware.Auth(userService)
 
-	router.UserRegister(r, userController)
+	router.UserRegister(r, userController, authMiddleware)
 
 	err = r.Run(":8080")
 	if err != nil {

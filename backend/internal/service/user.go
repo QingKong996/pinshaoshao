@@ -7,15 +7,23 @@ import (
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/model"
-	"pinshaoshao/internal/repository"
 	"pinshaoshao/internal/security"
 )
 
-type UserService struct {
-	userRepository *repository.UserRepository
+// UserRepository is the persistence the user service depends on.
+type UserRepository interface {
+	GetUserByUsername(ctx context.Context, username string) (*model.User, error)
+	CreateUser(ctx context.Context, user *model.User) error
+	CreateSession(ctx context.Context, user *model.User, tokenHash []byte) error
+	GetUserBySessionTokenHash(ctx context.Context, tokenHash []byte) (*model.User, error)
+	DeleteSessionByTokenHash(ctx context.Context, tokenHash []byte) error
 }
 
-func NewUserService(userRepository *repository.UserRepository) *UserService {
+type UserService struct {
+	userRepository UserRepository
+}
+
+func NewUserService(userRepository UserRepository) *UserService {
 	return &UserService{userRepository: userRepository}
 }
 
@@ -82,4 +90,36 @@ func (s *UserService) Register(ctx context.Context, req *dto.RegisterRequest) (s
 	}
 
 	return token, nil
+}
+
+// Authenticate resolves a session token to an active user.
+func (s *UserService) Authenticate(ctx context.Context, token string) (*model.User, error) {
+	if token == "" {
+		return nil, fmt.Errorf("service.Authenticate: %w", apperr.ErrUnauthorized)
+	}
+
+	user, err := s.userRepository.GetUserBySessionTokenHash(ctx, security.HashSessionToken(token))
+	if err != nil {
+		return nil, fmt.Errorf("service.Authenticate: %w", err)
+	}
+
+	if user.Status != model.UserStatusActive {
+		return nil, fmt.Errorf("service.Authenticate: %w", apperr.ErrUserBanned)
+	}
+
+	return user, nil
+}
+
+// Logout revokes the session identified by token.
+func (s *UserService) Logout(ctx context.Context, token string) error {
+	if token == "" {
+		return fmt.Errorf("service.Logout: %w", apperr.ErrUnauthorized)
+	}
+
+	err := s.userRepository.DeleteSessionByTokenHash(ctx, security.HashSessionToken(token))
+	if err != nil {
+		return fmt.Errorf("service.Logout: delete session: %w", err)
+	}
+
+	return nil
 }
