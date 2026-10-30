@@ -2,9 +2,11 @@ package controller
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
+	"pinshaoshao/internal/middleware"
 	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -81,4 +83,19 @@ func (c *UserController) Register(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, gin.H{
 		"token": token,
 	})
+}
+
+func (c *UserController) Logout(ctx *gin.Context) {
+	token := middleware.MustSessionToken(ctx)
+
+	err := c.userService.Logout(ctx.Request.Context(), token)
+	if err != nil {
+		log.Printf("controller.Logout: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": apperr.ErrInternalServer.Error(),
+		})
+		return
+	}
+
+	ctx.Status(http.StatusNoContent)
 }

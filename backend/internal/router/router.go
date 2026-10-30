@@ -6,7 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func UserRegister(r *gin.Engine, u *controller.UserController) {
+// UserRegister wires the user endpoints.
+func UserRegister(r *gin.Engine, u *controller.UserController, authMiddleware gin.HandlerFunc) {
 	api := r.Group("/api")
 	v1 := api.Group("/v1")
 
@@ -18,4 +19,8 @@ func UserRegister(r *gin.Engine, u *controller.UserController) {
 
 	v1.POST("/login", u.Login)
 	v1.POST("/register", u.Register)
+
+	protected := v1.Group("")
+	protected.Use(authMiddleware)
+	protected.POST("/logout", u.Logout)
 }
