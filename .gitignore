@@ -1,4 +1,5 @@
 /backend/.env
-
 # IDE
 /.idea/
+# Generated OpenAPI document
+/docs/swagger.json
