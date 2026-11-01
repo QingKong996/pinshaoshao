@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"pinshaoshao/internal/apperr"
+	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/model"
 	"strings"
 
@@ -108,7 +109,7 @@ func abortWithError(c *gin.Context, status int, err error) {
 	if status == http.StatusUnauthorized {
 		c.Header("WWW-Authenticate", "Bearer")
 	}
-	c.AbortWithStatusJSON(status, gin.H{
-		"error": err.Error(),
+	c.AbortWithStatusJSON(status, dto.ErrorResponse{
+		Error: err.Error(),
 	})
 }

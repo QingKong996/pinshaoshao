@@ -16,6 +16,16 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// @title                      pinshaoshao API
+// @version                    0.1.0
+// @description                E-commerce backend API.
+// @BasePath                   /api/v1
+// @schemes                    http
+// @host                       localhost:8080
+// @securityDefinitions.apikey BearerAuth
+// @in                         header
+// @name                       Authorization
+// @description                Session token in the form "Bearer <token>".
 func main() {
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
@@ -30,6 +40,12 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
 	}
+
+	corsOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if corsOrigins == "" {
+		corsOrigins = "*"
+	}
+	r.Use(middleware.CORS(corsOrigins))
 
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
