@@ -1,0 +1,102 @@
+{
+  "documentTitle": "{{brand}} · 拼着买，少花钱",
+  "hero": {
+    "badge": "拼团电商 · 学习实验项目",
+    "title": {
+      "lead": "拼着买，",
+      "highlight": "少花钱"
+    },
+    "description": "把想买的好物拼到一起：发起拼团、邀请好友，成团即享专属低价，让每一次购物都更划算。",
+    "actions": {
+      "signUp": "免费注册",
+      "signIn": "已有账号？立即登录"
+    },
+    "welcome": "欢迎回来，",
+    "trustPoints": {
+      "authentic": "正品保障",
+      "fastShipping": "极速发货",
+      "afterSales": "售后无忧"
+    }
+  },
+  "features": {
+    "eyebrow": "平台特色",
+    "title": "为拼团而生的购物体验",
+    "description": "从选品、物流到售后，每个环节都为拼团优化，让你拼得省心、买得放心。",
+    "items": {
+      "groupPrice": {
+        "title": "拼团低价",
+        "description": "和好友一起拼单，成团即享专属价格，拼的人越多，价格越低。"
+      },
+      "authentic": {
+        "title": "正品保障",
+        "description": "平台严选供应链，每件商品支持来源溯源，假一赔十。"
+      },
+      "fastShipping": {
+        "title": "极速发货",
+        "description": "现货商品 24 小时内出库，物流进度实时可查，不让你久等。"
+      },
+      "afterSales": {
+        "title": "售后无忧",
+        "description": "支持 7 天无理由退换，专属客服在线响应，售后问题快速处理。"
+      }
+    }
+  },
+  "howItWorks": {
+    "eyebrow": "拼团玩法",
+    "title": "三步拼出心仪好物",
+    "description": "不用凑单、不用砍价，邀请好友即可成团，流程简单到一次就会。",
+    "steps": {
+      "start": {
+        "title": "发起拼团",
+        "description": "挑中心仪好物，一键开团，先以拼团价下单。"
+      },
+      "invite": {
+        "title": "邀请好友",
+        "description": "把拼团链接分享给好友，凑齐人数即可等待成团。"
+      },
+      "receive": {
+        "title": "成团收好物",
+        "description": "拼团成功商家立即发货，物流进度实时可查。"
+      }
+    },
+    "cta": "免费注册，立即发起拼团"
+  },
+  "closingCta": {
+    "badge": "现在就开团",
+    "title": {
+      "lead": "和好友一起拼，",
+      "highlight": "把好价拼到手"
+    },
+    "description": "注册{{brand}}，挑选心仪好物发起拼团，成团即享专属低价。",
+    "actions": {
+      "signUp": "免费注册",
+      "signIn": "登录已有账号"
+    },
+    "assurances": {
+      "noInviteCode": "免费注册，无需邀请码",
+      "progressVisible": "拼团进度实时可见",
+      "fastShipping": "成团后 24 小时内发货"
+    }
+  },
+  "groupBuyPreview": {
+    "category": "数码好物 · 本周热拼",
+    "productName": "轻云降噪耳机",
+    "productMeta": "头戴式 · 48 小时续航",
+    "status": "拼团中",
+    "priceLabel": "拼团价",
+    "groupSize": "{{count}} 人成团",
+    "singlePriceLabel": "单独购买",
+    "saved": "立省 {{amount}}",
+    "remaining": "还差 {{count}} 人成团",
+    "progress": "{{joined}} / {{total}}",
+    "joined": "{{count}} 人已拼",
+    "cta": "立即拼团 · {{price}}",
+    "shipping": "成团成功后 24 小时内发货",
+    "toast": {
+      "formed": "刚刚成团",
+      "saved": "已省 {{amount}}",
+      "inviteLabel": "好友邀请",
+      "invited": "{{count}} 人已加入"
+    }
+  }
+}

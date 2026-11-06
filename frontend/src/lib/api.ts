@@ -1,0 +1,87 @@
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1"
+
+export type LoginRequest = {
+  username: string
+  password: string
+}
+
+export type RegisterRequest = {
+  username: string
+  password: string
+  email?: string
+}
+
+export type TokenResponse = {
+  token: string
+}
+
+type ErrorResponse = {
+  error: string
+}
+
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = "ApiError"
+    this.status = status
+  }
+}
+
+async function requestJson<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  } catch {
+    throw new ApiError(0, "network error")
+  }
+
+  if (!response.ok) {
+    let message = `request failed with status ${response.status}`
+    try {
+      const body = (await response.json()) as Partial<ErrorResponse>
+      if (typeof body.error === "string" && body.error) {
+        message = body.error
+      }
+    } catch {
+      // keep the status based message
+    }
+    throw new ApiError(response.status, message)
+  }
+
+  if (response.status === 204) {
+    return undefined as T
+  }
+  return (await response.json()) as T
+}
+
+export function login(body: LoginRequest) {
+  return requestJson<TokenResponse>("/login", {
+    method: "POST",
+    body: JSON.stringify(body),
+  })
+}
+
+export function register(body: RegisterRequest) {
+  return requestJson<TokenResponse>("/register", {
+    method: "POST",
+    body: JSON.stringify(body),
+  })
+}
+
+export function logout(token: string) {
+  return requestJson<void>("/logout", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}

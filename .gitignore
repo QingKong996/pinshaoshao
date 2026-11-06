@@ -3,3 +3,5 @@
 /.idea/
 # Generated OpenAPI document
 /docs/swagger.json
+# Local scratch
+/.tmp/

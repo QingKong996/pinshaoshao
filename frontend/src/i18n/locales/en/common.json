@@ -1,0 +1,45 @@
+{
+  "nav": {
+    "features": "Features",
+    "howItWorks": "How it works",
+    "search": "Search products"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Sign up free",
+    "signInOrSignUp": "Sign in / Sign up",
+    "signOut": "Sign out",
+    "accountMenu": "Account menu"
+  },
+  "language": {
+    "label": "Language",
+    "switchLabel": "Switch language",
+    "options": {
+      "zh-CN": "中文",
+      "en": "EN"
+    }
+  },
+  "footer": {
+    "tagline": "The more you pool, the less you pay",
+    "disclaimer": "Disclaimer: {{brand}} is a fictional name and is not affiliated with any real company, product, or organization.",
+    "exploreTitle": "Explore",
+    "joinTitle": "Join us",
+    "join": {
+      "merchants": "Sell with us",
+      "partnership": "Partnerships",
+      "contact": "Contact us"
+    },
+    "helpTitle": "Help center",
+    "help": {
+      "faq": "FAQ",
+      "shipping": "Shipping",
+      "afterSales": "After-sales"
+    },
+    "copyright": "© {{year}} {{brand}} · Learning project"
+  },
+  "notFound": {
+    "documentTitle": "Page not found · {{brand}}",
+    "description": "This page wandered off. Head back home and keep exploring.",
+    "backHome": "Back home"
+  }
+}

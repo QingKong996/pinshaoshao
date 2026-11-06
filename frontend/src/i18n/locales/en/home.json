@@ -1,0 +1,102 @@
+{
+  "documentTitle": "{{brand}} · Buy together, pay less",
+  "hero": {
+    "badge": "Group-buy e-commerce · Learning project",
+    "title": {
+      "lead": "Buy together, ",
+      "highlight": "pay less"
+    },
+    "description": "Pool the good stuff you want into one group buy: start it, invite friends, and enjoy an exclusive low price once the group forms — making every purchase a better deal.",
+    "actions": {
+      "signUp": "Sign up free",
+      "signIn": "Already have an account? Sign in"
+    },
+    "welcome": "Welcome back, ",
+    "trustPoints": {
+      "authentic": "Authentic products",
+      "fastShipping": "Fast shipping",
+      "afterSales": "Worry-free after-sales"
+    }
+  },
+  "features": {
+    "eyebrow": "Platform features",
+    "title": "A shopping experience built for group buys",
+    "description": "From product selection and logistics to after-sales, every step is optimized for group buys, so you can pool with ease and shop with confidence.",
+    "items": {
+      "groupPrice": {
+        "title": "Lower group prices",
+        "description": "Pool orders with friends and unlock an exclusive price once the group forms. The more people join, the lower the price."
+      },
+      "authentic": {
+        "title": "Authentic products",
+        "description": "Our supply chain is carefully vetted, every item is traceable to its source, and counterfeits are compensated tenfold."
+      },
+      "fastShipping": {
+        "title": "Fast shipping",
+        "description": "In-stock items leave the warehouse within 24 hours, with real-time tracking so you never wait long."
+      },
+      "afterSales": {
+        "title": "Worry-free after-sales",
+        "description": "7-day no-questions-asked returns and exchanges, with dedicated support online to resolve issues fast."
+      }
+    }
+  },
+  "howItWorks": {
+    "eyebrow": "How group buys work",
+    "title": "Three steps to the things you love",
+    "description": "No order-pooling math, no haggling — invite friends and the group can form. It's simple enough to get right the first time.",
+    "steps": {
+      "start": {
+        "title": "Start a group buy",
+        "description": "Pick something you love, start a group with one tap, and check out at the group price."
+      },
+      "invite": {
+        "title": "Invite friends",
+        "description": "Share the group-buy link with friends and wait for the group to fill."
+      },
+      "receive": {
+        "title": "Get your item",
+        "description": "Once the group forms, the seller ships right away and you can track delivery in real time."
+      }
+    },
+    "cta": "Sign up free and start a group buy"
+  },
+  "closingCta": {
+    "badge": "Start a group now",
+    "title": {
+      "lead": "Team up with friends, ",
+      "highlight": "and bring home a great price"
+    },
+    "description": "Join {{brand}}, pick something you love, and start a group buy — enjoy an exclusive low price once the group forms.",
+    "actions": {
+      "signUp": "Sign up free",
+      "signIn": "Sign in to your account"
+    },
+    "assurances": {
+      "noInviteCode": "Sign up free, no invite code needed",
+      "progressVisible": "Track your group's progress in real time",
+      "fastShipping": "Ships within 24 hours after the group forms"
+    }
+  },
+  "groupBuyPreview": {
+    "category": "Tech picks · Hot group buys this week",
+    "productName": "Lightcloud Noise-Cancelling Headphones",
+    "productMeta": "Over-ear · 48-hour battery life",
+    "status": "Group forming",
+    "priceLabel": "Group price",
+    "groupSize": "Group of {{count}}",
+    "singlePriceLabel": "Buy separately",
+    "saved": "Save {{amount}}",
+    "remaining": "{{count}} more to form the group",
+    "progress": "{{joined}} / {{total}}",
+    "joined": "{{count}} joined",
+    "cta": "Join the group buy · {{price}}",
+    "shipping": "Ships within 24 hours after the group forms",
+    "toast": {
+      "formed": "Just formed",
+      "saved": "Saved {{amount}}",
+      "inviteLabel": "Friend invite",
+      "invited": "{{count}} friends joined"
+    }
+  }
+}

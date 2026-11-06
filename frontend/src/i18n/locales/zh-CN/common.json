@@ -1,0 +1,45 @@
+{
+  "nav": {
+    "features": "平台特色",
+    "howItWorks": "拼团玩法",
+    "search": "搜索商品"
+  },
+  "auth": {
+    "signIn": "登录",
+    "signUp": "免费注册",
+    "signInOrSignUp": "登录/注册",
+    "signOut": "退出登录",
+    "accountMenu": "账户菜单"
+  },
+  "language": {
+    "label": "语言",
+    "switchLabel": "切换语言",
+    "options": {
+      "zh-CN": "中文",
+      "en": "EN"
+    }
+  },
+  "footer": {
+    "tagline": "拼的越多花的越少",
+    "disclaimer": "免责声明：{{brand}}为虚构名称，与任何真实公司、产品或组织无关。",
+    "exploreTitle": "了解平台",
+    "joinTitle": "加入我们",
+    "join": {
+      "merchants": "商家入驻",
+      "partnership": "商务合作",
+      "contact": "联系我们"
+    },
+    "helpTitle": "帮助中心",
+    "help": {
+      "faq": "常见问题",
+      "shipping": "配送说明",
+      "afterSales": "售后服务"
+    },
+    "copyright": "© {{year}} {{brand}} · 学习实验项目"
+  },
+  "notFound": {
+    "documentTitle": "页面未找到 · {{brand}}",
+    "description": "页面走丢了，回首页继续逛逛吧。",
+    "backHome": "回到首页"
+  }
+}
