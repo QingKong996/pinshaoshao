@@ -5,8 +5,10 @@ import {
   createBrowserRouter,
 } from "react-router"
 import { GridOverlay } from "@/components/grid-overlay"
-import { AuthProvider } from "@/lib/auth"
+import { AuthProvider, MerchantAuthProvider } from "@/lib/auth"
 import HomePage from "@/pages/home"
+import MerchantSignInPage from "@/pages/merchant-sign-in"
+import MerchantSignUpPage from "@/pages/merchant-sign-up"
 import NotFoundPage from "@/pages/not-found"
 import SignInPage from "@/pages/sign-in"
 import SignUpPage from "@/pages/sign-up"
@@ -28,6 +30,8 @@ const router = createBrowserRouter([
       { path: "/", element: <HomePage /> },
       { path: "/signin", element: <SignInPage /> },
       { path: "/signup", element: <SignUpPage /> },
+      { path: "/merchant/signin", element: <MerchantSignInPage /> },
+      { path: "/merchant/signup", element: <MerchantSignUpPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
@@ -36,7 +40,9 @@ const router = createBrowserRouter([
 function App() {
   return (
     <AuthProvider>
-      <RouterProvider router={router} />
+      <MerchantAuthProvider>
+        <RouterProvider router={router} />
+      </MerchantAuthProvider>
     </AuthProvider>
   )
 }

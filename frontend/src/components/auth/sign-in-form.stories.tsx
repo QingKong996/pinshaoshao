@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { SignInForm } from "@/components/auth/sign-in-form"
+import {
+  MerchantSignInForm,
+  SignInForm,
+} from "@/components/auth/sign-in-form"
 
 const meta = {
   title: "Components/Auth/SignInForm",
@@ -19,3 +22,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
+
+export const Merchant: Story = {
+  render: () => <MerchantSignInForm />,
+}
