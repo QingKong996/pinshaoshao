@@ -12,11 +12,13 @@
 <div id="app"></div>
 
 <script type="module">
-    import { createApiReference } from 'https://cdn.jsdelivr.net/npm/@scalar/api-reference/esm.js'
+    import { createApiReference } from 'https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.77.0/esm.js'
 
     createApiReference('#app', {
         url: './swagger.json',
         persistAuth: false,
+        hideTestRequestButton: true,
+        hideClientButton: true,
     })
 </script>
 </body>
