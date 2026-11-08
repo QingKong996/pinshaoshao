@@ -32,7 +32,15 @@ func NewProductSKUService(productRepository ProductReader, skuRepository Product
 	}
 }
 
-func (s *ProductSKUService) Create(ctx context.Context, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error) {
+func (s *ProductSKUService) Create(ctx context.Context, shopID int, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error) {
+	product, err := s.productRepository.GetProductByID(ctx, productID)
+	if err != nil {
+		return nil, fmt.Errorf("service.CreateProductSKU: get product: %w", err)
+	}
+	if product.ShopID != shopID {
+		return nil, fmt.Errorf("service.CreateProductSKU: %w", apperr.ErrProductAccessDenied)
+	}
+
 	specs := make(map[string]string, len(req.Specs))
 	for name, value := range req.Specs {
 		specs[name] = value

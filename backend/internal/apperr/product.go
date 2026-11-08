@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	ErrProductNotFound         = errors.New(`product not found`)
+	ErrProductAccessDenied     = errors.New(`product access denied`)
 	ErrInvalidProductID        = errors.New(`invalid product id`)
 	ErrProductSKUAlreadyExists = errors.New(`product sku with the same specs already exists`)
 	ErrProductSKUSpecsMismatch = errors.New(`product sku specs must have the same keys as the product's existing skus`)
