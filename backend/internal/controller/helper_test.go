@@ -10,7 +10,6 @@ import (
 
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/model"
-	"pinshaoshao/internal/security"
 
 	"github.com/gin-gonic/gin"
 )
@@ -58,16 +57,6 @@ func doRequest(r http.Handler, method, path, authorization, body string) *httpte
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 	return rec
-}
-
-func mustHashPassword(t *testing.T, password string) string {
-	t.Helper()
-
-	hash, err := security.HashPassword(password)
-	if err != nil {
-		t.Fatalf("hash password: %v", err)
-	}
-	return hash
 }
 
 func requireStatus(t *testing.T, rec *httptest.ResponseRecorder, want int) {
