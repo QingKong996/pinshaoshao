@@ -1,28 +1,32 @@
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router"
 import { BrandMark } from "@/components/brand-mark"
 
 const FOOTER_SECTIONS = [
   {
     titleKey: "common:footer.exploreTitle",
     className: "md:col-span-1 md:col-start-8",
-    linkKeys: ["common:nav.features", "common:nav.howItWorks"],
+    links: [
+      { labelKey: "common:nav.features" },
+      { labelKey: "common:nav.howItWorks" },
+    ],
   },
   {
     titleKey: "common:footer.joinTitle",
     className: "md:col-span-1 md:col-start-10",
-    linkKeys: [
-      "common:footer.join.merchants",
-      "common:footer.join.partnership",
-      "common:footer.join.contact",
+    links: [
+      { labelKey: "common:footer.join.merchants", to: "/merchant/signup" },
+      { labelKey: "common:footer.join.partnership" },
+      { labelKey: "common:footer.join.contact" },
     ],
   },
   {
     titleKey: "common:footer.helpTitle",
     className: "md:col-span-1 md:col-start-12",
-    linkKeys: [
-      "common:footer.help.faq",
-      "common:footer.help.shipping",
-      "common:footer.help.afterSales",
+    links: [
+      { labelKey: "common:footer.help.faq" },
+      { labelKey: "common:footer.help.shipping" },
+      { labelKey: "common:footer.help.afterSales" },
     ],
   },
 ] as const
@@ -49,14 +53,23 @@ export function SiteFooter() {
           <div key={section.titleKey} className={section.className}>
             <h3 className="mb-3 text-sm font-medium">{t(section.titleKey)}</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              {section.linkKeys.map((labelKey) => (
-                <li key={labelKey}>
-                  <button
-                    type="button"
-                    className="cursor-pointer transition-colors hover:text-foreground"
-                  >
-                    {t(labelKey)}
-                  </button>
+              {section.links.map((link) => (
+                <li key={link.labelKey}>
+                  {"to" in link ? (
+                    <Link
+                      to={link.to}
+                      className="transition-colors hover:text-foreground"
+                    >
+                      {t(link.labelKey)}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      className="cursor-pointer transition-colors hover:text-foreground"
+                    >
+                      {t(link.labelKey)}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
