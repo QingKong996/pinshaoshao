@@ -1,21 +1,28 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/middleware"
-	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-type UserController struct {
-	userService *service.UserService
+// UserService is the user service surface the controller depends on.
+type UserService interface {
+	Login(ctx context.Context, req *dto.LoginRequest) (string, error)
+	Register(ctx context.Context, req *dto.RegisterRequest) (string, error)
+	Logout(ctx context.Context, token string) error
 }
 
-func NewUserController(userService *service.UserService) *UserController {
+type UserController struct {
+	userService UserService
+}
+
+func NewUserController(userService UserService) *UserController {
 	return &UserController{userService: userService}
 }
 

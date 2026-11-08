@@ -1,23 +1,29 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/model"
-	"pinshaoshao/internal/service"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-type ProductSKUController struct {
-	skuService *service.ProductSKUService
+// ProductSKUService is the SKU service surface the controller depends on.
+type ProductSKUService interface {
+	Create(ctx context.Context, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error)
+	List(ctx context.Context, productID int) ([]model.ProductSKU, error)
 }
 
-func NewProductSKUController(skuService *service.ProductSKUService) *ProductSKUController {
+type ProductSKUController struct {
+	skuService ProductSKUService
+}
+
+func NewProductSKUController(skuService ProductSKUService) *ProductSKUController {
 	return &ProductSKUController{skuService: skuService}
 }
 
