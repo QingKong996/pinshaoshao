@@ -76,15 +76,12 @@ func TestShopRoutes(t *testing.T) {
 
 	t.Run("register issues a session token", func(t *testing.T) {
 		shopRepository.EXPECT().
-			CreateShop(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, shop *model.Shop) error {
+			CreateShopWithSession(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, shop *model.Shop, _ []byte) error {
 				shop.ID = 1
 				shop.Status = model.ShopStatusActive
 				return nil
 			})
-		shopRepository.EXPECT().
-			CreateSession(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil)
 
 		rec := doRequest(r, http.MethodPost, "/api/v1/merchant/register", "", registration)
 		requireStatus(t, rec, http.StatusCreated)
@@ -93,7 +90,7 @@ func TestShopRoutes(t *testing.T) {
 
 	t.Run("register rejects a duplicate username", func(t *testing.T) {
 		shopRepository.EXPECT().
-			CreateShop(gomock.Any(), gomock.Any()).
+			CreateShopWithSession(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(fmt.Errorf("repository.CreateShop: %w", apperr.ErrShopUsernameTaken))
 
 		rec := doRequest(r, http.MethodPost, "/api/v1/merchant/register", "", registration)
@@ -105,7 +102,7 @@ func TestShopRoutes(t *testing.T) {
 
 	t.Run("register rejects a duplicate email", func(t *testing.T) {
 		shopRepository.EXPECT().
-			CreateShop(gomock.Any(), gomock.Any()).
+			CreateShopWithSession(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(fmt.Errorf("repository.CreateShop: %w", apperr.ErrShopEmailTaken))
 
 		body := `{"username":"shop02","password":"` + testShopPassword + `","email":"` + testShopEmail + `"}`
@@ -231,15 +228,12 @@ func TestMerchantAndUserTokensAreNotInterchangeable(t *testing.T) {
 	ShopRegister(r, shopController, middleware.ShopAuth(shopService))
 
 	userRepository.EXPECT().
-		CreateUser(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, user *model.User) error {
+		CreateUserWithSession(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, user *model.User, _ []byte) error {
 			user.ID = 1
 			user.Status = model.UserStatusActive
 			return nil
 		})
-	userRepository.EXPECT().
-		CreateSession(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(nil)
 
 	rec := doRequest(r, http.MethodPost, "/api/v1/register", "", `{"username":"alice01","password":"Password123"}`)
 	requireStatus(t, rec, http.StatusCreated)
@@ -256,15 +250,12 @@ func TestMerchantAndUserTokensAreNotInterchangeable(t *testing.T) {
 	}
 
 	shopRepository.EXPECT().
-		CreateShop(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, shop *model.Shop) error {
+		CreateShopWithSession(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, shop *model.Shop, _ []byte) error {
 			shop.ID = 1
 			shop.Status = model.ShopStatusActive
 			return nil
 		})
-	shopRepository.EXPECT().
-		CreateSession(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(nil)
 
 	rec = doRequest(r, http.MethodPost, "/api/v1/merchant/register", "", `{"username":"shop02","password":"Password123","email":"shop02@example.com"}`)
 	requireStatus(t, rec, http.StatusCreated)
