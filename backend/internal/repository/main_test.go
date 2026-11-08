@@ -96,6 +96,11 @@ func requireErrorIs(t *testing.T, err, target error) {
 	}
 }
 
+// testTokenHash returns a deterministic fixture token hash, unique per subject.
+func testTokenHash(subject string) []byte {
+	return []byte("test-session-" + subject)
+}
+
 func insertUser(t *testing.T) *model.User {
 	t.Helper()
 
@@ -104,7 +109,7 @@ func insertUser(t *testing.T) *model.User {
 		PasswordHash: testUserPassword,
 		Email:        testUserEmail,
 	}
-	if err := repository.NewUserRepository(testPool).CreateUser(context.Background(), user); err != nil {
+	if err := repository.NewUserRepository(testPool).CreateUserWithSession(context.Background(), user, testTokenHash(user.Username)); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 	return user
@@ -118,7 +123,7 @@ func insertShop(t *testing.T) *model.Shop {
 		PasswordHash: testShopPassword,
 		Email:        testShopEmail,
 	}
-	if err := repository.NewShopRepository(testPool).CreateShop(context.Background(), shop); err != nil {
+	if err := repository.NewShopRepository(testPool).CreateShopWithSession(context.Background(), shop, testTokenHash(shop.Username)); err != nil {
 		t.Fatalf("create shop: %v", err)
 	}
 	return shop

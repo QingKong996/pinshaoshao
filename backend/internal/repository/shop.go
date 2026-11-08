@@ -55,33 +55,51 @@ WHERE ss.token_hash = $1 AND ss.expires_at > now()`
 	return shop, nil
 }
 
-func (r *ShopRepository) CreateShop(ctx context.Context, shop *model.Shop) error {
-	const query = `INSERT INTO shops (username, password_hash, email) VALUES ($1, $2, $3) RETURNING id`
-
-	err := r.pool.QueryRow(ctx, query, shop.Username, shop.PasswordHash, shop.Email).Scan(&shop.ID)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode {
-			switch pgErr.ConstraintName {
-			case "shops_username_key":
-				return fmt.Errorf("repository.CreateShop: %w", apperr.ErrShopUsernameTaken)
-			case "shops_email_key":
-				return fmt.Errorf("repository.CreateShop: %w", apperr.ErrShopEmailTaken)
-			}
+// CreateShopWithSession creates the shop and its first session atomically.
+func (r *ShopRepository) CreateShopWithSession(ctx context.Context, shop *model.Shop, tokenHash []byte) error {
+	err := pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
+		if err := createShop(ctx, tx, shop); err != nil {
+			return err
 		}
-		return fmt.Errorf("repository.CreateShop: %w", err)
+		return createShopSession(ctx, tx, shop, tokenHash)
+	})
+	if err != nil {
+		return fmt.Errorf("repository.CreateShopWithSession: %w", err)
 	}
 	return nil
 }
 
 func (r *ShopRepository) CreateSession(ctx context.Context, shop *model.Shop, tokenHash []byte) error {
-	const query = `INSERT INTO shop_sessions (token_hash, shop_id) VALUES ($1, $2)`
-
-	_, err := r.pool.Exec(ctx, query, hex.EncodeToString(tokenHash), shop.ID)
-	if err != nil {
+	if err := createShopSession(ctx, r.pool, shop, tokenHash); err != nil {
 		return fmt.Errorf("repository.CreateSession: %w", err)
 	}
 	return nil
+}
+
+func createShop(ctx context.Context, db dbtx, shop *model.Shop) error {
+	const query = `INSERT INTO shops (username, password_hash, email) VALUES ($1, $2, $3) RETURNING id`
+
+	err := db.QueryRow(ctx, query, shop.Username, shop.PasswordHash, shop.Email).Scan(&shop.ID)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode {
+			switch pgErr.ConstraintName {
+			case "shops_username_key":
+				return apperr.ErrShopUsernameTaken
+			case "shops_email_key":
+				return apperr.ErrShopEmailTaken
+			}
+		}
+		return err
+	}
+	return nil
+}
+
+func createShopSession(ctx context.Context, db dbtx, shop *model.Shop, tokenHash []byte) error {
+	const query = `INSERT INTO shop_sessions (token_hash, shop_id) VALUES ($1, $2)`
+
+	_, err := db.Exec(ctx, query, hex.EncodeToString(tokenHash), shop.ID)
+	return err
 }
 
 func (r *ShopRepository) DeleteSessionByTokenHash(ctx context.Context, tokenHash []byte) error {

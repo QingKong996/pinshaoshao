@@ -13,7 +13,7 @@ import (
 // UserRepository is the persistence the user service depends on.
 type UserRepository interface {
 	GetUserByUsername(ctx context.Context, username string) (*model.User, error)
-	CreateUser(ctx context.Context, user *model.User) error
+	CreateUserWithSession(ctx context.Context, user *model.User, tokenHash []byte) error
 	CreateSession(ctx context.Context, user *model.User, tokenHash []byte) error
 	GetUserBySessionTokenHash(ctx context.Context, tokenHash []byte) (*model.User, error)
 	DeleteSessionByTokenHash(ctx context.Context, tokenHash []byte) error
@@ -74,19 +74,13 @@ func (s *UserService) Register(ctx context.Context, req *dto.RegisterRequest) (s
 		Email:        req.Email,
 	}
 
-	err = s.userRepository.CreateUser(ctx, user)
-	if err != nil {
-		return "", fmt.Errorf("service.Register: create user: %w", err)
-	}
-
 	token, tokenHash, err := security.GenerateSessionToken()
 	if err != nil {
 		return "", fmt.Errorf("service.Register: generate session token: %w", err)
 	}
 
-	err = s.userRepository.CreateSession(ctx, user, tokenHash)
-	if err != nil {
-		return "", fmt.Errorf("service.Register: create session: %w", err)
+	if err := s.userRepository.CreateUserWithSession(ctx, user, tokenHash); err != nil {
+		return "", fmt.Errorf("service.Register: create user with session: %w", err)
 	}
 
 	return token, nil

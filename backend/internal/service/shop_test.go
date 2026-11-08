@@ -221,7 +221,7 @@ func TestShopRegister(t *testing.T) {
 		shopService, shopRepository := newTestShopService(t)
 
 		shopRepository.EXPECT().
-			CreateShop(ctx, gomock.Any()).
+			CreateShopWithSession(ctx, gomock.Any(), gomock.Any()).
 			Return(fmt.Errorf("shop repository: %w", apperr.ErrShopUsernameTaken))
 
 		_, err := shopService.Register(ctx, &dto.ShopRegisterRequest{
@@ -236,7 +236,7 @@ func TestShopRegister(t *testing.T) {
 		shopService, shopRepository := newTestShopService(t)
 
 		shopRepository.EXPECT().
-			CreateShop(ctx, gomock.Any()).
+			CreateShopWithSession(ctx, gomock.Any(), gomock.Any()).
 			Return(fmt.Errorf("shop repository: %w", apperr.ErrShopEmailTaken))
 
 		_, err := shopService.Register(ctx, &dto.ShopRegisterRequest{

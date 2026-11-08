@@ -55,18 +55,18 @@ func (mr *MockUserRepositoryMockRecorder) CreateSession(ctx, user, tokenHash any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSession", reflect.TypeOf((*MockUserRepository)(nil).CreateSession), ctx, user, tokenHash)
 }
 
-// CreateUser mocks base method.
-func (m *MockUserRepository) CreateUser(ctx context.Context, user *model.User) error {
+// CreateUserWithSession mocks base method.
+func (m *MockUserRepository) CreateUserWithSession(ctx context.Context, user *model.User, tokenHash []byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateUser", ctx, user)
+	ret := m.ctrl.Call(m, "CreateUserWithSession", ctx, user, tokenHash)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// CreateUser indicates an expected call of CreateUser.
-func (mr *MockUserRepositoryMockRecorder) CreateUser(ctx, user any) *gomock.Call {
+// CreateUserWithSession indicates an expected call of CreateUserWithSession.
+func (mr *MockUserRepositoryMockRecorder) CreateUserWithSession(ctx, user, tokenHash any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockUserRepository)(nil).CreateUser), ctx, user)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUserWithSession", reflect.TypeOf((*MockUserRepository)(nil).CreateUserWithSession), ctx, user, tokenHash)
 }
 
 // DeleteSessionByTokenHash mocks base method.

@@ -55,18 +55,18 @@ func (mr *MockShopRepositoryMockRecorder) CreateSession(ctx, shop, tokenHash any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSession", reflect.TypeOf((*MockShopRepository)(nil).CreateSession), ctx, shop, tokenHash)
 }
 
-// CreateShop mocks base method.
-func (m *MockShopRepository) CreateShop(ctx context.Context, shop *model.Shop) error {
+// CreateShopWithSession mocks base method.
+func (m *MockShopRepository) CreateShopWithSession(ctx context.Context, shop *model.Shop, tokenHash []byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateShop", ctx, shop)
+	ret := m.ctrl.Call(m, "CreateShopWithSession", ctx, shop, tokenHash)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// CreateShop indicates an expected call of CreateShop.
-func (mr *MockShopRepositoryMockRecorder) CreateShop(ctx, shop any) *gomock.Call {
+// CreateShopWithSession indicates an expected call of CreateShopWithSession.
+func (mr *MockShopRepositoryMockRecorder) CreateShopWithSession(ctx, shop, tokenHash any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateShop", reflect.TypeOf((*MockShopRepository)(nil).CreateShop), ctx, shop)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateShopWithSession", reflect.TypeOf((*MockShopRepository)(nil).CreateShopWithSession), ctx, shop, tokenHash)
 }
 
 // DeleteSessionByTokenHash mocks base method.
