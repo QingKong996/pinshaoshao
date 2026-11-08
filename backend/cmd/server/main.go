@@ -77,7 +77,7 @@ func main() {
 
 	router.UserRegister(r, userController, userAuthMiddleware)
 	router.ShopRegister(r, shopController, shopAuthMiddleware)
-	router.ProductSKURegister(r, productSKUController, userAuthMiddleware)
+	router.ProductSKURegister(r, productSKUController, shopAuthMiddleware)
 
 	if err := r.Run(":8080"); err != nil {
 		fatal("run server", "error", err)

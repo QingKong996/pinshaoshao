@@ -12,6 +12,7 @@ import (
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/controller"
 	"pinshaoshao/internal/dto"
+	"pinshaoshao/internal/middleware"
 	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
 
@@ -28,6 +29,16 @@ func newTestProductSKUController(t *testing.T) (*controller.ProductSKUController
 	return controller.NewProductSKUController(skuService), skuService
 }
 
+func newSKUCreateRouter(t *testing.T, skuController *controller.ProductSKUController, shop *model.Shop) *gin.Engine {
+	t.Helper()
+
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.POST("/products/:productID/skus", middleware.ShopAuth(stubShopAuthenticator{shop: shop}), skuController.Create)
+	return r
+}
+
 func newSKUContext(t *testing.T, method, productID, body string) (*gin.Context, *httptest.ResponseRecorder) {
 	t.Helper()
 
@@ -37,6 +48,8 @@ func newSKUContext(t *testing.T, method, productID, body string) (*gin.Context, 
 }
 
 func TestProductSKUCreate(t *testing.T) {
+	activeSKUShop := &model.Shop{ID: 7, Username: testShopUsername, Status: model.ShopStatusActive}
+
 	t.Run("returns the created sku", func(t *testing.T) {
 		skuController, skuService := newTestProductSKUController(t)
 		sku := &model.ProductSKU{
@@ -48,11 +61,10 @@ func TestProductSKUCreate(t *testing.T) {
 			IsEnabled:  true,
 		}
 		skuService.EXPECT().
-			Create(gomock.Any(), 1, gomock.Any()).
+			Create(gomock.Any(), activeSKUShop.ID, 1, gomock.Any()).
 			Return(sku, nil)
 
-		ctx, rec := newSKUContext(t, http.MethodPost, "1", skuBody)
-		skuController.Create(ctx)
+		rec := doRequest(newSKUCreateRouter(t, skuController, activeSKUShop), http.MethodPost, "/products/1/skus", "Bearer session-token", skuBody)
 
 		requireStatus(t, rec, http.StatusCreated)
 
@@ -84,9 +96,9 @@ func TestProductSKUCreate(t *testing.T) {
 		for _, productID := range []string{"abc", "0", "-1"} {
 			t.Run(productID, func(t *testing.T) {
 				skuController, _ := newTestProductSKUController(t)
+				router := newSKUCreateRouter(t, skuController, activeSKUShop)
 
-				ctx, rec := newSKUContext(t, http.MethodPost, productID, skuBody)
-				skuController.Create(ctx)
+				rec := doRequest(router, http.MethodPost, "/products/"+productID+"/skus", "Bearer session-token", skuBody)
 
 				requireStatus(t, rec, http.StatusBadRequest)
 				requireError(t, rec, apperr.ErrInvalidProductID)
@@ -97,8 +109,7 @@ func TestProductSKUCreate(t *testing.T) {
 	t.Run("rejects malformed json", func(t *testing.T) {
 		skuController, _ := newTestProductSKUController(t)
 
-		ctx, rec := newSKUContext(t, http.MethodPost, "1", `{bad`)
-		skuController.Create(ctx)
+		rec := doRequest(newSKUCreateRouter(t, skuController, activeSKUShop), http.MethodPost, "/products/1/skus", "Bearer session-token", `{bad`)
 
 		requireStatus(t, rec, http.StatusBadRequest)
 		requireError(t, rec, apperr.ErrInvalidJsonFormat)
@@ -114,8 +125,7 @@ func TestProductSKUCreate(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				skuController, _ := newTestProductSKUController(t)
 
-				ctx, rec := newSKUContext(t, http.MethodPost, "1", payload)
-				skuController.Create(ctx)
+				rec := doRequest(newSKUCreateRouter(t, skuController, activeSKUShop), http.MethodPost, "/products/1/skus", "Bearer session-token", payload)
 
 				requireStatus(t, rec, http.StatusBadRequest)
 				requireError(t, rec, apperr.ErrInvalidJsonFormat)
@@ -131,6 +141,7 @@ func TestProductSKUCreate(t *testing.T) {
 			wantError    error
 		}{
 			{"unknown product", apperr.ErrProductNotFound, http.StatusNotFound, apperr.ErrProductNotFound},
+			{"product owned by another shop", apperr.ErrProductAccessDenied, http.StatusForbidden, apperr.ErrProductAccessDenied},
 			{"specs mismatch", apperr.ErrProductSKUSpecsMismatch, http.StatusBadRequest, apperr.ErrProductSKUSpecsMismatch},
 			{"duplicate specs", apperr.ErrProductSKUAlreadyExists, http.StatusConflict, apperr.ErrProductSKUAlreadyExists},
 			{"service failure", errors.New("database is down"), http.StatusInternalServerError, apperr.ErrInternalServer},
@@ -139,11 +150,10 @@ func TestProductSKUCreate(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				skuController, skuService := newTestProductSKUController(t)
 				skuService.EXPECT().
-					Create(gomock.Any(), 1, gomock.Any()).
+					Create(gomock.Any(), activeSKUShop.ID, 1, gomock.Any()).
 					Return(nil, fmt.Errorf("service: %w", tt.serviceError))
 
-				ctx, rec := newSKUContext(t, http.MethodPost, "1", skuBody)
-				skuController.Create(ctx)
+				rec := doRequest(newSKUCreateRouter(t, skuController, activeSKUShop), http.MethodPost, "/products/1/skus", "Bearer session-token", skuBody)
 
 				requireStatus(t, rec, tt.wantStatus)
 				requireError(t, rec, tt.wantError)
