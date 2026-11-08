@@ -63,7 +63,7 @@ func TestProductRepository(t *testing.T) {
 			PasswordHash: testShopPassword,
 			Email:        "shop02@example.com",
 		}
-		if err := shopRepository.CreateShop(ctx, otherShop); err != nil {
+		if err := shopRepository.CreateShopWithSession(ctx, otherShop, testTokenHash(otherShop.Username)); err != nil {
 			t.Fatalf("create other shop: %v", err)
 		}
 

@@ -71,13 +71,6 @@ func (r *UserRepository) CreateUserWithSession(ctx context.Context, user *model.
 	return nil
 }
 
-func (r *UserRepository) CreateUser(ctx context.Context, user *model.User) error {
-	if err := createUser(ctx, r.pool, user); err != nil {
-		return fmt.Errorf("repository.CreateUser: %w", err)
-	}
-	return nil
-}
-
 func (r *UserRepository) CreateSession(ctx context.Context, user *model.User, tokenHash []byte) error {
 	if err := createSession(ctx, r.pool, user, tokenHash); err != nil {
 		return fmt.Errorf("repository.CreateSession: %w", err)

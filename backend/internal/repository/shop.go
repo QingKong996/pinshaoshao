@@ -69,13 +69,6 @@ func (r *ShopRepository) CreateShopWithSession(ctx context.Context, shop *model.
 	return nil
 }
 
-func (r *ShopRepository) CreateShop(ctx context.Context, shop *model.Shop) error {
-	if err := createShop(ctx, r.pool, shop); err != nil {
-		return fmt.Errorf("repository.CreateShop: %w", err)
-	}
-	return nil
-}
-
 func (r *ShopRepository) CreateSession(ctx context.Context, shop *model.Shop, tokenHash []byte) error {
 	if err := createShopSession(ctx, r.pool, shop, tokenHash); err != nil {
 		return fmt.Errorf("repository.CreateSession: %w", err)
