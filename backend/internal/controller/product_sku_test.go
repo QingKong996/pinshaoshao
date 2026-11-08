@@ -1,7 +1,6 @@
 package controller_test
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +14,6 @@ import (
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
-	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/mock/gomock"
@@ -23,12 +21,11 @@ import (
 
 const skuBody = `{"specs":{"color":"black","size":"M"},"price_cents":1999,"stock":100}`
 
-func newTestProductSKUController(t *testing.T) (*controller.ProductSKUController, *mocks.MockProductReader, *mocks.MockProductSKURepository) {
+func newTestProductSKUController(t *testing.T) (*controller.ProductSKUController, *mocks.MockProductSKUService) {
 	t.Helper()
 
-	productReader := mocks.NewMockProductReader(gomock.NewController(t))
-	skuRepository := mocks.NewMockProductSKURepository(gomock.NewController(t))
-	return controller.NewProductSKUController(service.NewProductSKUService(productReader, skuRepository)), productReader, skuRepository
+	skuService := mocks.NewMockProductSKUService(gomock.NewController(t))
+	return controller.NewProductSKUController(skuService), skuService
 }
 
 func newSKUContext(t *testing.T, method, productID, body string) (*gin.Context, *httptest.ResponseRecorder) {
@@ -41,13 +38,18 @@ func newSKUContext(t *testing.T, method, productID, body string) (*gin.Context, 
 
 func TestProductSKUCreate(t *testing.T) {
 	t.Run("returns the created sku", func(t *testing.T) {
-		skuController, _, skuRepository := newTestProductSKUController(t)
-		skuRepository.EXPECT().
-			CreateProductSKU(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, sku *model.ProductSKU) error {
-				sku.ID = 1
-				return nil
-			})
+		skuController, skuService := newTestProductSKUController(t)
+		sku := &model.ProductSKU{
+			ID:         1,
+			ProductID:  1,
+			Specs:      map[string]string{"color": "black", "size": "M"},
+			PriceCents: 1999,
+			Stock:      100,
+			IsEnabled:  true,
+		}
+		skuService.EXPECT().
+			Create(gomock.Any(), 1, gomock.Any()).
+			Return(sku, nil)
 
 		ctx, rec := newSKUContext(t, http.MethodPost, "1", skuBody)
 		skuController.Create(ctx)
@@ -81,7 +83,7 @@ func TestProductSKUCreate(t *testing.T) {
 	t.Run("rejects a malformed product id", func(t *testing.T) {
 		for _, productID := range []string{"abc", "0", "-1"} {
 			t.Run(productID, func(t *testing.T) {
-				skuController, _, _ := newTestProductSKUController(t)
+				skuController, _ := newTestProductSKUController(t)
 
 				ctx, rec := newSKUContext(t, http.MethodPost, productID, skuBody)
 				skuController.Create(ctx)
@@ -93,7 +95,7 @@ func TestProductSKUCreate(t *testing.T) {
 	})
 
 	t.Run("rejects malformed json", func(t *testing.T) {
-		skuController, _, _ := newTestProductSKUController(t)
+		skuController, _ := newTestProductSKUController(t)
 
 		ctx, rec := newSKUContext(t, http.MethodPost, "1", `{bad`)
 		skuController.Create(ctx)
@@ -110,7 +112,7 @@ func TestProductSKUCreate(t *testing.T) {
 		}
 		for name, payload := range payloads {
 			t.Run(name, func(t *testing.T) {
-				skuController, _, _ := newTestProductSKUController(t)
+				skuController, _ := newTestProductSKUController(t)
 
 				ctx, rec := newSKUContext(t, http.MethodPost, "1", payload)
 				skuController.Create(ctx)
@@ -121,24 +123,24 @@ func TestProductSKUCreate(t *testing.T) {
 		}
 	})
 
-	t.Run("maps repository errors", func(t *testing.T) {
+	t.Run("maps service errors", func(t *testing.T) {
 		tests := []struct {
-			name            string
-			repositoryError error
-			wantStatus      int
-			wantError       error
+			name         string
+			serviceError error
+			wantStatus   int
+			wantError    error
 		}{
 			{"unknown product", apperr.ErrProductNotFound, http.StatusNotFound, apperr.ErrProductNotFound},
 			{"specs mismatch", apperr.ErrProductSKUSpecsMismatch, http.StatusBadRequest, apperr.ErrProductSKUSpecsMismatch},
 			{"duplicate specs", apperr.ErrProductSKUAlreadyExists, http.StatusConflict, apperr.ErrProductSKUAlreadyExists},
-			{"repository failure", errors.New("database is down"), http.StatusInternalServerError, apperr.ErrInternalServer},
+			{"service failure", errors.New("database is down"), http.StatusInternalServerError, apperr.ErrInternalServer},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				skuController, _, skuRepository := newTestProductSKUController(t)
-				skuRepository.EXPECT().
-					CreateProductSKU(gomock.Any(), gomock.Any()).
-					Return(fmt.Errorf("repository: %w", tt.repositoryError))
+				skuController, skuService := newTestProductSKUController(t)
+				skuService.EXPECT().
+					Create(gomock.Any(), 1, gomock.Any()).
+					Return(nil, fmt.Errorf("service: %w", tt.serviceError))
 
 				ctx, rec := newSKUContext(t, http.MethodPost, "1", skuBody)
 				skuController.Create(ctx)
@@ -151,15 +153,10 @@ func TestProductSKUCreate(t *testing.T) {
 }
 
 func TestProductSKUList(t *testing.T) {
-	product := &model.Product{ID: 1, Name: "T-shirt"}
-
 	t.Run("returns the product skus", func(t *testing.T) {
-		skuController, productReader, skuRepository := newTestProductSKUController(t)
-		productReader.EXPECT().
-			GetProductByID(gomock.Any(), 1).
-			Return(product, nil)
-		skuRepository.EXPECT().
-			ListProductSKUsByProductID(gomock.Any(), 1).
+		skuController, skuService := newTestProductSKUController(t)
+		skuService.EXPECT().
+			List(gomock.Any(), 1).
 			Return([]model.ProductSKU{{
 				ID:         1,
 				ProductID:  1,
@@ -190,12 +187,9 @@ func TestProductSKUList(t *testing.T) {
 	})
 
 	t.Run("returns an empty array", func(t *testing.T) {
-		skuController, productReader, skuRepository := newTestProductSKUController(t)
-		productReader.EXPECT().
-			GetProductByID(gomock.Any(), 1).
-			Return(product, nil)
-		skuRepository.EXPECT().
-			ListProductSKUsByProductID(gomock.Any(), 1).
+		skuController, skuService := newTestProductSKUController(t)
+		skuService.EXPECT().
+			List(gomock.Any(), 1).
 			Return([]model.ProductSKU{}, nil)
 
 		ctx, rec := newSKUContext(t, http.MethodGet, "1", "")
@@ -210,7 +204,7 @@ func TestProductSKUList(t *testing.T) {
 	t.Run("rejects a malformed product id", func(t *testing.T) {
 		for _, productID := range []string{"abc", "0", "-1"} {
 			t.Run(productID, func(t *testing.T) {
-				skuController, _, _ := newTestProductSKUController(t)
+				skuController, _ := newTestProductSKUController(t)
 
 				ctx, rec := newSKUContext(t, http.MethodGet, productID, "")
 				skuController.List(ctx)
@@ -221,47 +215,29 @@ func TestProductSKUList(t *testing.T) {
 		}
 	})
 
-	t.Run("maps repository errors", func(t *testing.T) {
-		t.Run("unknown product", func(t *testing.T) {
-			skuController, productReader, _ := newTestProductSKUController(t)
-			productReader.EXPECT().
-				GetProductByID(gomock.Any(), 1).
-				Return(nil, fmt.Errorf("repository: %w", apperr.ErrProductNotFound))
+	t.Run("maps service errors", func(t *testing.T) {
+		tests := []struct {
+			name         string
+			serviceError error
+			wantStatus   int
+			wantError    error
+		}{
+			{"unknown product", apperr.ErrProductNotFound, http.StatusNotFound, apperr.ErrProductNotFound},
+			{"service failure", errors.New("database is down"), http.StatusInternalServerError, apperr.ErrInternalServer},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				skuController, skuService := newTestProductSKUController(t)
+				skuService.EXPECT().
+					List(gomock.Any(), 1).
+					Return(nil, fmt.Errorf("service: %w", tt.serviceError))
 
-			ctx, rec := newSKUContext(t, http.MethodGet, "1", "")
-			skuController.List(ctx)
+				ctx, rec := newSKUContext(t, http.MethodGet, "1", "")
+				skuController.List(ctx)
 
-			requireStatus(t, rec, http.StatusNotFound)
-			requireError(t, rec, apperr.ErrProductNotFound)
-		})
-
-		t.Run("product lookup failure", func(t *testing.T) {
-			skuController, productReader, _ := newTestProductSKUController(t)
-			productReader.EXPECT().
-				GetProductByID(gomock.Any(), 1).
-				Return(nil, errors.New("database is down"))
-
-			ctx, rec := newSKUContext(t, http.MethodGet, "1", "")
-			skuController.List(ctx)
-
-			requireStatus(t, rec, http.StatusInternalServerError)
-			requireError(t, rec, apperr.ErrInternalServer)
-		})
-
-		t.Run("sku lookup failure", func(t *testing.T) {
-			skuController, productReader, skuRepository := newTestProductSKUController(t)
-			productReader.EXPECT().
-				GetProductByID(gomock.Any(), 1).
-				Return(product, nil)
-			skuRepository.EXPECT().
-				ListProductSKUsByProductID(gomock.Any(), 1).
-				Return(nil, errors.New("database is down"))
-
-			ctx, rec := newSKUContext(t, http.MethodGet, "1", "")
-			skuController.List(ctx)
-
-			requireStatus(t, rec, http.StatusInternalServerError)
-			requireError(t, rec, apperr.ErrInternalServer)
-		})
+				requireStatus(t, rec, tt.wantStatus)
+				requireError(t, rec, tt.wantError)
+			})
+		}
 	})
 }

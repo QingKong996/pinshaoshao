@@ -1,21 +1,28 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/middleware"
-	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-type ShopController struct {
-	shopService *service.ShopService
+// ShopService is the shop service surface the controller depends on.
+type ShopService interface {
+	Login(ctx context.Context, req *dto.LoginRequest) (string, error)
+	Register(ctx context.Context, req *dto.ShopRegisterRequest) (string, error)
+	Logout(ctx context.Context, token string) error
 }
 
-func NewShopController(shopService *service.ShopService) *ShopController {
+type ShopController struct {
+	shopService ShopService
+}
+
+func NewShopController(shopService ShopService) *ShopController {
 	return &ShopController{shopService: shopService}
 }
 
