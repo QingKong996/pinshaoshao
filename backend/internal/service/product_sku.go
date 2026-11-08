@@ -33,17 +33,9 @@ func NewProductSKUService(productRepository ProductReader, skuRepository Product
 }
 
 func (s *ProductSKUService) Create(ctx context.Context, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error) {
-	if err := s.ensureProductExists(ctx, productID); err != nil {
-		return nil, fmt.Errorf("service.CreateProductSKU: %w", err)
-	}
-
 	specs := make(map[string]string, len(req.Specs))
 	for name, value := range req.Specs {
 		specs[name] = value
-	}
-
-	if err := s.ensureSpecKeysMatchExistingSKUs(ctx, productID, specs); err != nil {
-		return nil, fmt.Errorf("service.CreateProductSKU: %w", err)
 	}
 
 	isEnabled := true
@@ -86,30 +78,4 @@ func (s *ProductSKUService) ensureProductExists(ctx context.Context, productID i
 		return fmt.Errorf("get product: %w", err)
 	}
 	return nil
-}
-
-func (s *ProductSKUService) ensureSpecKeysMatchExistingSKUs(ctx context.Context, productID int, specs map[string]string) error {
-	skus, err := s.skuRepository.ListProductSKUsByProductID(ctx, productID)
-	if err != nil {
-		return fmt.Errorf("list product skus: %w", err)
-	}
-
-	for i := range skus {
-		if !hasSameSpecKeys(skus[i].Specs, specs) {
-			return apperr.ErrProductSKUSpecsMismatch
-		}
-	}
-	return nil
-}
-
-func hasSameSpecKeys(a, b map[string]string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for name := range a {
-		if _, ok := b[name]; !ok {
-			return false
-		}
-	}
-	return true
 }

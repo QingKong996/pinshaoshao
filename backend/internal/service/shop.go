@@ -13,7 +13,7 @@ import (
 // ShopRepository is the persistence the shop service depends on.
 type ShopRepository interface {
 	GetShopByUsername(ctx context.Context, username string) (*model.Shop, error)
-	CreateShop(ctx context.Context, shop *model.Shop) error
+	CreateShopWithSession(ctx context.Context, shop *model.Shop, tokenHash []byte) error
 	CreateSession(ctx context.Context, shop *model.Shop, tokenHash []byte) error
 	GetShopBySessionTokenHash(ctx context.Context, tokenHash []byte) (*model.Shop, error)
 	DeleteSessionByTokenHash(ctx context.Context, tokenHash []byte) error
@@ -74,19 +74,13 @@ func (s *ShopService) Register(ctx context.Context, req *dto.ShopRegisterRequest
 		Email:        req.Email,
 	}
 
-	err = s.shopRepository.CreateShop(ctx, shop)
-	if err != nil {
-		return "", fmt.Errorf("service.ShopRegister: create shop: %w", err)
-	}
-
 	token, tokenHash, err := security.GenerateSessionToken()
 	if err != nil {
 		return "", fmt.Errorf("service.ShopRegister: generate session token: %w", err)
 	}
 
-	err = s.shopRepository.CreateSession(ctx, shop, tokenHash)
-	if err != nil {
-		return "", fmt.Errorf("service.ShopRegister: create session: %w", err)
+	if err := s.shopRepository.CreateShopWithSession(ctx, shop, tokenHash); err != nil {
+		return "", fmt.Errorf("service.ShopRegister: create shop with session: %w", err)
 	}
 
 	return token, nil

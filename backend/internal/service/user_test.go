@@ -239,7 +239,7 @@ func TestRegister(t *testing.T) {
 		userService, userRepository := newTestUserService(t)
 
 		userRepository.EXPECT().
-			CreateUser(ctx, gomock.Any()).
+			CreateUserWithSession(ctx, gomock.Any(), gomock.Any()).
 			Return(fmt.Errorf("user repository: %w", apperr.ErrUsernameTaken))
 
 		_, err := userService.Register(ctx, &dto.RegisterRequest{

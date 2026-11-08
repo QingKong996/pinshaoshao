@@ -57,33 +57,51 @@ WHERE s.token_hash = $1 AND s.expires_at > now()`
 	return user, nil
 }
 
-func (r *UserRepository) CreateUser(ctx context.Context, user *model.User) error {
-	const query = `INSERT INTO users (username, password_hash, email) VALUES ($1, $2, NULLIF($3, '')) RETURNING id`
-
-	err := r.pool.QueryRow(ctx, query, user.Username, user.PasswordHash, user.Email).Scan(&user.ID)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode {
-			switch pgErr.ConstraintName {
-			case "users_username_key":
-				return fmt.Errorf("repository.CreateUser: %w", apperr.ErrUsernameTaken)
-			case "users_email_key":
-				return fmt.Errorf("repository.CreateUser: %w", apperr.ErrEmailTaken)
-			}
+// CreateUserWithSession creates the user and its first session atomically.
+func (r *UserRepository) CreateUserWithSession(ctx context.Context, user *model.User, tokenHash []byte) error {
+	err := pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
+		if err := createUser(ctx, tx, user); err != nil {
+			return err
 		}
-		return fmt.Errorf("repository.CreateUser: %w", err)
+		return createSession(ctx, tx, user, tokenHash)
+	})
+	if err != nil {
+		return fmt.Errorf("repository.CreateUserWithSession: %w", err)
 	}
 	return nil
 }
 
 func (r *UserRepository) CreateSession(ctx context.Context, user *model.User, tokenHash []byte) error {
-	const query = `INSERT INTO sessions (token_hash, user_id) VALUES ($1, $2)`
-
-	_, err := r.pool.Exec(ctx, query, hex.EncodeToString(tokenHash), user.ID)
-	if err != nil {
+	if err := createSession(ctx, r.pool, user, tokenHash); err != nil {
 		return fmt.Errorf("repository.CreateSession: %w", err)
 	}
 	return nil
+}
+
+func createUser(ctx context.Context, db dbtx, user *model.User) error {
+	const query = `INSERT INTO users (username, password_hash, email) VALUES ($1, $2, NULLIF($3, '')) RETURNING id`
+
+	err := db.QueryRow(ctx, query, user.Username, user.PasswordHash, user.Email).Scan(&user.ID)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode {
+			switch pgErr.ConstraintName {
+			case "users_username_key":
+				return apperr.ErrUsernameTaken
+			case "users_email_key":
+				return apperr.ErrEmailTaken
+			}
+		}
+		return err
+	}
+	return nil
+}
+
+func createSession(ctx context.Context, db dbtx, user *model.User, tokenHash []byte) error {
+	const query = `INSERT INTO sessions (token_hash, user_id) VALUES ($1, $2)`
+
+	_, err := db.Exec(ctx, query, hex.EncodeToString(tokenHash), user.ID)
+	return err
 }
 
 func (r *UserRepository) DeleteSessionByTokenHash(ctx context.Context, tokenHash []byte) error {
