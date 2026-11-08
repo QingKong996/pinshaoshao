@@ -43,18 +43,18 @@ func (m *MockProductSKUService) EXPECT() *MockProductSKUServiceMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockProductSKUService) Create(ctx context.Context, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error) {
+func (m *MockProductSKUService) Create(ctx context.Context, shopID, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, productID, req)
+	ret := m.ctrl.Call(m, "Create", ctx, shopID, productID, req)
 	ret0, _ := ret[0].(*model.ProductSKU)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockProductSKUServiceMockRecorder) Create(ctx, productID, req any) *gomock.Call {
+func (mr *MockProductSKUServiceMockRecorder) Create(ctx, shopID, productID, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockProductSKUService)(nil).Create), ctx, productID, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockProductSKUService)(nil).Create), ctx, shopID, productID, req)
 }
 
 // List mocks base method.

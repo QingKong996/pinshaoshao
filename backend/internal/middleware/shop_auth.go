@@ -35,6 +35,16 @@ func CurrentShop(c *gin.Context) (*model.Shop, bool) {
 	return currentSubject[model.Shop](c, contextKeyShop)
 }
 
+// MustCurrentShop returns the shop set by ShopAuth. It panics when the route is
+// not protected by ShopAuth, which is a routing bug.
+func MustCurrentShop(c *gin.Context) *model.Shop {
+	shop, ok := CurrentShop(c)
+	if !ok {
+		panic("middleware.MustCurrentShop: route is not protected by ShopAuth")
+	}
+	return shop
+}
+
 // ShopSessionToken returns the raw session token set by ShopAuth.
 func ShopSessionToken(c *gin.Context) (string, bool) {
 	return sessionToken(c, contextKeyShopToken)

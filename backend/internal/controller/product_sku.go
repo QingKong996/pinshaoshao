@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
+	"pinshaoshao/internal/middleware"
 	"pinshaoshao/internal/model"
 	"strconv"
 
@@ -15,7 +16,7 @@ import (
 
 // ProductSKUService is the SKU service surface the controller depends on.
 type ProductSKUService interface {
-	Create(ctx context.Context, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error)
+	Create(ctx context.Context, shopID int, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error)
 	List(ctx context.Context, productID int) ([]model.ProductSKU, error)
 }
 
@@ -30,7 +31,7 @@ func NewProductSKUController(skuService ProductSKUService) *ProductSKUController
 // Create adds a purchasable SKU to a product.
 //
 // @Summary     Create a product SKU
-// @Description Add a purchasable SKU to a product. All SKUs of a product must share the same spec keys.
+// @Description Add a purchasable SKU to a product. Only the shop that owns the product may add SKUs, and all SKUs of a product must share the same spec keys.
 // @Tags        Product SKUs
 // @Accept      json
 // @Produce     json
@@ -39,8 +40,8 @@ func NewProductSKUController(skuService ProductSKUService) *ProductSKUController
 // @Success     201 {object} dto.ProductSKUResponse
 // @Failure     400 {object} dto.ErrorResponse "Invalid payload or spec keys that differ from the product's existing SKUs"
 // @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
+// @Failure     403 {object} dto.ErrorResponse "Product belongs to another shop"
+// @Failure     404 {object} dto.ErrorResponse "Product not found"
 // @Failure     409 {object} dto.ErrorResponse "Product already has a SKU with the same specs"
 // @Failure     500 {object} dto.ErrorResponse
 // @Security    BearerAuth
@@ -62,12 +63,16 @@ func (c *ProductSKUController) Create(ctx *gin.Context) {
 		return
 	}
 
-	sku, err := c.skuService.Create(ctx.Request.Context(), productID, &req)
+	sku, err := c.skuService.Create(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, productID, &req)
 	if err != nil {
 		switch {
 		case errors.Is(err, apperr.ErrProductNotFound):
 			ctx.JSON(http.StatusNotFound, dto.ErrorResponse{
 				Error: apperr.ErrProductNotFound.Error(),
+			})
+		case errors.Is(err, apperr.ErrProductAccessDenied):
+			ctx.JSON(http.StatusForbidden, dto.ErrorResponse{
+				Error: apperr.ErrProductAccessDenied.Error(),
 			})
 		case errors.Is(err, apperr.ErrProductSKUSpecsMismatch):
 			ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
