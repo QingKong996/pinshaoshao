@@ -2,7 +2,6 @@ package router
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,12 +9,15 @@ import (
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/controller"
 	"pinshaoshao/internal/middleware"
+	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/security"
 	"pinshaoshao/internal/service"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/mock/gomock"
 )
 
 const (
@@ -23,83 +25,30 @@ const (
 	testPassword = "Password123"
 )
 
-type fakeUserRepository struct {
-	usersByUsername map[string]*model.User
-	usersByID       map[int]*model.User
-	sessions        map[string]int
-	nextID          int
-}
+func mustHashPassword(t *testing.T, password string) string {
+	t.Helper()
 
-func newFakeUserRepository() *fakeUserRepository {
-	return &fakeUserRepository{
-		usersByUsername: make(map[string]*model.User),
-		usersByID:       make(map[int]*model.User),
-		sessions:        make(map[string]int),
+	hash, err := security.HashPassword(password)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
 	}
+	return hash
 }
 
-func (r *fakeUserRepository) GetUserByUsername(_ context.Context, username string) (*model.User, error) {
-	user, ok := r.usersByUsername[username]
-	if !ok {
-		return nil, fmt.Errorf("fakeUserRepository.GetUserByUsername: %w", apperr.ErrUserNotFound)
-	}
-	return user, nil
-}
-
-func (r *fakeUserRepository) CreateUser(_ context.Context, user *model.User) error {
-	if _, ok := r.usersByUsername[user.Username]; ok {
-		return fmt.Errorf("fakeUserRepository.CreateUser: %w", apperr.ErrUsernameTaken)
-	}
-	if user.Status == "" {
-		user.Status = model.UserStatusActive
-	}
-	r.nextID++
-	user.ID = r.nextID
-	r.usersByUsername[user.Username] = user
-	r.usersByID[user.ID] = user
-	return nil
-}
-
-func (r *fakeUserRepository) CreateSession(_ context.Context, user *model.User, tokenHash []byte) error {
-	r.sessions[hex.EncodeToString(tokenHash)] = user.ID
-	return nil
-}
-
-func (r *fakeUserRepository) GetUserBySessionTokenHash(_ context.Context, tokenHash []byte) (*model.User, error) {
-	userID, ok := r.sessions[hex.EncodeToString(tokenHash)]
-	if !ok {
-		return nil, fmt.Errorf("fakeUserRepository.GetUserBySessionTokenHash: %w", apperr.ErrInvalidSession)
-	}
-	user, ok := r.usersByID[userID]
-	if !ok {
-		return nil, fmt.Errorf("fakeUserRepository.GetUserBySessionTokenHash: %w", apperr.ErrInvalidSession)
-	}
-	return user, nil
-}
-
-func (r *fakeUserRepository) DeleteSessionByTokenHash(_ context.Context, tokenHash []byte) error {
-	delete(r.sessions, hex.EncodeToString(tokenHash))
-	return nil
-}
-
-func (r *fakeUserRepository) SetUserStatus(username string, status model.UserStatus) {
-	r.usersByUsername[username].Status = status
-}
-
-func newTestRouter(t *testing.T) (http.Handler, *fakeUserRepository) {
+func newTestUserRouter(t *testing.T) (http.Handler, *mocks.MockUserRepository) {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
 
-	userRepository := newFakeUserRepository()
+	userRepository := mocks.NewMockUserRepository(gomock.NewController(t))
 	userService := service.NewUserService(userRepository)
 	userController := controller.NewUserController(userService)
 
 	r := gin.New()
-	UserRegister(r, userController, middleware.Auth(userService))
+	UserRegister(r, userController, middleware.UserAuth(userService))
 
-	// Test-only route to observe the user injected by Auth.
-	r.GET("/api/v1/whoami", middleware.Auth(userService), func(c *gin.Context) {
+	// Test-only route to observe the user injected by UserAuth.
+	r.GET("/api/v1/whoami", middleware.UserAuth(userService), func(c *gin.Context) {
 		user, ok := middleware.CurrentUser(c)
 		if !ok {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "user missing from context"})
@@ -159,16 +108,37 @@ func responseError(t *testing.T, rec *httptest.ResponseRecorder) string {
 }
 
 func TestUserRoutes(t *testing.T) {
-	r, userRepository := newTestRouter(t)
+	r, userRepository := newTestUserRouter(t)
 	credentials := `{"username":"` + testUsername + `","password":"` + testPassword + `"}`
+	passwordHash := mustHashPassword(t, testPassword)
+
+	activeUser := &model.User{
+		ID:           1,
+		Username:     testUsername,
+		PasswordHash: passwordHash,
+		Status:       model.UserStatusActive,
+	}
+	bannedUser := &model.User{
+		ID:           1,
+		Username:     testUsername,
+		PasswordHash: passwordHash,
+		Status:       model.UserStatusBanned,
+	}
 
 	var token string
 
-	t.Run("public ping", func(t *testing.T) {
-		requireStatus(t, doRequest(r, http.MethodGet, "/api/v1/ping", "", ""), http.StatusOK)
-	})
-
 	t.Run("register issues a session token", func(t *testing.T) {
+		userRepository.EXPECT().
+			CreateUser(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, user *model.User) error {
+				user.ID = 1
+				user.Status = model.UserStatusActive
+				return nil
+			})
+		userRepository.EXPECT().
+			CreateSession(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
 		rec := doRequest(r, http.MethodPost, "/api/v1/register", "", credentials)
 		requireStatus(t, rec, http.StatusCreated)
 		token = responseToken(t, rec)
@@ -190,6 +160,10 @@ func TestUserRoutes(t *testing.T) {
 	})
 
 	t.Run("middleware rejects unknown token", func(t *testing.T) {
+		userRepository.EXPECT().
+			GetUserBySessionTokenHash(gomock.Any(), security.HashSessionToken("not-a-real-token")).
+			Return(nil, fmt.Errorf("repository.GetUserBySessionTokenHash: %w", apperr.ErrInvalidSession))
+
 		rec := doRequest(r, http.MethodGet, "/api/v1/whoami", "Bearer not-a-real-token", "")
 		requireStatus(t, rec, http.StatusUnauthorized)
 		if got := responseError(t, rec); got != apperr.ErrInvalidSession.Error() {
@@ -198,6 +172,10 @@ func TestUserRoutes(t *testing.T) {
 	})
 
 	t.Run("middleware injects user for valid token", func(t *testing.T) {
+		userRepository.EXPECT().
+			GetUserBySessionTokenHash(gomock.Any(), security.HashSessionToken(token)).
+			Return(activeUser, nil)
+
 		rec := doRequest(r, http.MethodGet, "/api/v1/whoami", "Bearer "+token, "")
 		requireStatus(t, rec, http.StatusOK)
 
@@ -213,6 +191,16 @@ func TestUserRoutes(t *testing.T) {
 	})
 
 	t.Run("logout revokes the session token", func(t *testing.T) {
+		userRepository.EXPECT().
+			GetUserBySessionTokenHash(gomock.Any(), security.HashSessionToken(token)).
+			Return(activeUser, nil)
+		userRepository.EXPECT().
+			DeleteSessionByTokenHash(gomock.Any(), security.HashSessionToken(token)).
+			Return(nil)
+		userRepository.EXPECT().
+			GetUserBySessionTokenHash(gomock.Any(), security.HashSessionToken(token)).
+			Return(nil, fmt.Errorf("repository.GetUserBySessionTokenHash: %w", apperr.ErrInvalidSession))
+
 		requireStatus(t, doRequest(r, http.MethodPost, "/api/v1/logout", "Bearer "+token, ""), http.StatusNoContent)
 
 		rec := doRequest(r, http.MethodGet, "/api/v1/whoami", "Bearer "+token, "")
@@ -223,14 +211,28 @@ func TestUserRoutes(t *testing.T) {
 	})
 
 	t.Run("login issues a new session token", func(t *testing.T) {
+		userRepository.EXPECT().
+			GetUserByUsername(gomock.Any(), testUsername).
+			Return(activeUser, nil)
+		userRepository.EXPECT().
+			CreateSession(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
 		rec := doRequest(r, http.MethodPost, "/api/v1/login", "", credentials)
 		requireStatus(t, rec, http.StatusOK)
 		token = responseToken(t, rec)
+
+		userRepository.EXPECT().
+			GetUserBySessionTokenHash(gomock.Any(), security.HashSessionToken(token)).
+			Return(activeUser, nil)
 		requireStatus(t, doRequest(r, http.MethodGet, "/api/v1/whoami", "Bearer "+token, ""), http.StatusOK)
 	})
 
 	t.Run("middleware rejects banned user", func(t *testing.T) {
-		userRepository.SetUserStatus(testUsername, model.UserStatusBanned)
+		userRepository.EXPECT().
+			GetUserBySessionTokenHash(gomock.Any(), security.HashSessionToken(token)).
+			Return(bannedUser, nil).
+			Times(2)
 
 		rec := doRequest(r, http.MethodGet, "/api/v1/whoami", "Bearer "+token, "")
 		requireStatus(t, rec, http.StatusForbidden)

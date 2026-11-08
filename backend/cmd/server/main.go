@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"pinshaoshao/internal/controller"
 	"pinshaoshao/internal/middleware"
@@ -27,6 +27,8 @@ import (
 // @name                       Authorization
 // @description                Session token in the form "Bearer <token>".
 func main() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
+
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
 		5*time.Second,
@@ -38,7 +40,7 @@ func main() {
 	r.Use(gin.Recovery())
 
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+		fatal("load .env file", "error", err)
 	}
 
 	corsOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
@@ -49,25 +51,40 @@ func main() {
 
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		log.Fatalf("DATABASE_URL is not set")
+		fatal("DATABASE_URL is not set")
 	}
 
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		log.Fatalf("Failed to create pool: %v", err)
+		fatal("create database pool", "error", err)
 	}
 	defer pool.Close()
 
 	userRepository := repository.NewUserRepository(pool)
 	userService := service.NewUserService(userRepository)
 	userController := controller.NewUserController(userService)
-	authMiddleware := middleware.Auth(userService)
+	userAuthMiddleware := middleware.UserAuth(userService)
 
-	router.UserRegister(r, userController, authMiddleware)
+	shopRepository := repository.NewShopRepository(pool)
+	shopService := service.NewShopService(shopRepository)
+	shopController := controller.NewShopController(shopService)
+	shopAuthMiddleware := middleware.ShopAuth(shopService)
 
-	err = r.Run(":8080")
-	if err != nil {
-		log.Fatalf("Failed to run server: %v", err)
+	productRepository := repository.NewProductRepository(pool)
+	productSKURepository := repository.NewProductSKURepository(pool)
+	productSKUService := service.NewProductSKUService(productRepository, productSKURepository)
+	productSKUController := controller.NewProductSKUController(productSKUService)
+
+	router.UserRegister(r, userController, userAuthMiddleware)
+	router.ShopRegister(r, shopController, shopAuthMiddleware)
+	router.ProductSKURegister(r, productSKUController, userAuthMiddleware)
+
+	if err := r.Run(":8080"); err != nil {
+		fatal("run server", "error", err)
 	}
+}
 
+func fatal(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
 }

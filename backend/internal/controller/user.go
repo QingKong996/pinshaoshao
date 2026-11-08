@@ -2,7 +2,6 @@ package controller
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
@@ -35,35 +34,7 @@ func NewUserController(userService *service.UserService) *UserController {
 // @Failure     500 {object} dto.ErrorResponse
 // @Router      /login [post]
 func (c *UserController) Login(ctx *gin.Context) {
-	var req dto.LoginRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error: apperr.ErrInvalidJsonFormat.Error(),
-		})
-		return
-	}
-
-	token, err := c.userService.Login(ctx.Request.Context(), &req)
-	if err != nil {
-		switch {
-		case errors.Is(err, apperr.ErrInvalidCredentials):
-			ctx.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-				Error: apperr.ErrInvalidCredentials.Error(),
-			})
-		case errors.Is(err, apperr.ErrUserBanned):
-			ctx.JSON(http.StatusForbidden, dto.ErrorResponse{
-				Error: apperr.ErrUserBanned.Error(),
-			})
-		default:
-			ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-				Error: apperr.ErrInternalServer.Error(),
-			})
-		}
-		return
-	}
-	ctx.JSON(http.StatusOK, dto.TokenResponse{
-		Token: token,
-	})
+	login(ctx, c.userService.Login, apperr.ErrUserBanned)
 }
 
 // Register creates a user and returns a session token.
@@ -124,16 +95,6 @@ func (c *UserController) Register(ctx *gin.Context) {
 // @Failure     500 {object} dto.ErrorResponse
 // @Router      /logout [post]
 func (c *UserController) Logout(ctx *gin.Context) {
-	token := middleware.MustSessionToken(ctx)
-
-	err := c.userService.Logout(ctx.Request.Context(), token)
-	if err != nil {
-		log.Printf("controller.Logout: %v", err)
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Error: apperr.ErrInternalServer.Error(),
-		})
-		return
-	}
-
-	ctx.Status(http.StatusNoContent)
+	token := middleware.MustUserSessionToken(ctx)
+	logout(ctx, token, c.userService.Logout)
 }

@@ -1,16 +1,20 @@
 package service_test
 
 import (
+	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"testing"
 
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
+	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/security"
 	"pinshaoshao/internal/service"
+
+	"go.uber.org/mock/gomock"
 )
 
 const (
@@ -18,89 +22,21 @@ const (
 	testPassword = "Password123"
 )
 
-type fakeUserRepository struct {
-	usersByUsername map[string]*model.User
-	usersByID       map[int]*model.User
-	sessions        map[string]int
-	nextID          int
-}
-
-func newFakeUserRepository() *fakeUserRepository {
-	return &fakeUserRepository{
-		usersByUsername: make(map[string]*model.User),
-		usersByID:       make(map[int]*model.User),
-		sessions:        make(map[string]int),
-	}
-}
-
-func (r *fakeUserRepository) GetUserByUsername(_ context.Context, username string) (*model.User, error) {
-	user, ok := r.usersByUsername[username]
-	if !ok {
-		return nil, fmt.Errorf("fakeUserRepository.GetUserByUsername: %w", apperr.ErrUserNotFound)
-	}
-	return user, nil
-}
-
-func (r *fakeUserRepository) CreateUser(_ context.Context, user *model.User) error {
-	if _, ok := r.usersByUsername[user.Username]; ok {
-		return fmt.Errorf("fakeUserRepository.CreateUser: %w", apperr.ErrUsernameTaken)
-	}
-	if user.Status == "" {
-		user.Status = model.UserStatusActive
-	}
-	r.nextID++
-	user.ID = r.nextID
-	r.usersByUsername[user.Username] = user
-	r.usersByID[user.ID] = user
-	return nil
-}
-
-func (r *fakeUserRepository) CreateSession(_ context.Context, user *model.User, tokenHash []byte) error {
-	r.sessions[hex.EncodeToString(tokenHash)] = user.ID
-	return nil
-}
-
-func (r *fakeUserRepository) GetUserBySessionTokenHash(_ context.Context, tokenHash []byte) (*model.User, error) {
-	userID, ok := r.sessions[hex.EncodeToString(tokenHash)]
-	if !ok {
-		return nil, fmt.Errorf("fakeUserRepository.GetUserBySessionTokenHash: %w", apperr.ErrInvalidSession)
-	}
-	user, ok := r.usersByID[userID]
-	if !ok {
-		return nil, fmt.Errorf("fakeUserRepository.GetUserBySessionTokenHash: %w", apperr.ErrInvalidSession)
-	}
-	return user, nil
-}
-
-func (r *fakeUserRepository) DeleteSessionByTokenHash(_ context.Context, tokenHash []byte) error {
-	delete(r.sessions, hex.EncodeToString(tokenHash))
-	return nil
-}
-
-func (r *fakeUserRepository) SetUserStatus(username string, status model.UserStatus) {
-	r.usersByUsername[username].Status = status
-}
-
-func (r *fakeUserRepository) SessionCount() int {
-	return len(r.sessions)
-}
-
-func newTestUserService() (*service.UserService, *fakeUserRepository) {
-	userRepository := newFakeUserRepository()
-	return service.NewUserService(userRepository), userRepository
-}
-
-func register(t *testing.T, userService *service.UserService) string {
+func mustHashPassword(t *testing.T, password string) string {
 	t.Helper()
 
-	token, err := userService.Register(context.Background(), &dto.RegisterRequest{
-		Username: testUsername,
-		Password: testPassword,
-	})
+	hash, err := security.HashPassword(password)
 	if err != nil {
-		t.Fatalf("register: %v", err)
+		t.Fatalf("hash password: %v", err)
 	}
-	return token
+	return hash
+}
+
+func newTestUserService(t *testing.T) (*service.UserService, *mocks.MockUserRepository) {
+	t.Helper()
+
+	userRepository := mocks.NewMockUserRepository(gomock.NewController(t))
+	return service.NewUserService(userRepository), userRepository
 }
 
 func requireErrorIs(t *testing.T, err, target error) {
@@ -115,37 +51,50 @@ func TestAuthenticate(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("valid session", func(t *testing.T) {
-		userService, _ := newTestUserService()
-		token := register(t, userService)
+		userService, userRepository := newTestUserService(t)
+		token := "session-token"
+		user := &model.User{ID: 1, Username: testUsername, Status: model.UserStatusActive}
 
-		user, err := userService.Authenticate(ctx, token)
+		userRepository.EXPECT().
+			GetUserBySessionTokenHash(ctx, security.HashSessionToken(token)).
+			Return(user, nil)
+
+		got, err := userService.Authenticate(ctx, token)
 		if err != nil {
 			t.Fatalf("authenticate: %v", err)
 		}
-		if user.Username != testUsername {
-			t.Fatalf("username = %q, want %q", user.Username, testUsername)
+		if got.Username != testUsername {
+			t.Fatalf("username = %q, want %q", got.Username, testUsername)
 		}
 	})
 
 	t.Run("unknown token", func(t *testing.T) {
-		userService, _ := newTestUserService()
+		userService, userRepository := newTestUserService(t)
+		token := "not-a-real-token"
 
-		_, err := userService.Authenticate(ctx, "not-a-real-token")
+		userRepository.EXPECT().
+			GetUserBySessionTokenHash(ctx, security.HashSessionToken(token)).
+			Return(nil, fmt.Errorf("user repository: %w", apperr.ErrInvalidSession))
+
+		_, err := userService.Authenticate(ctx, token)
 		requireErrorIs(t, err, apperr.ErrInvalidSession)
 	})
 
 	t.Run("empty token", func(t *testing.T) {
-		userService, _ := newTestUserService()
+		userService, _ := newTestUserService(t)
 
 		_, err := userService.Authenticate(ctx, "")
 		requireErrorIs(t, err, apperr.ErrUnauthorized)
 	})
 
 	t.Run("banned user", func(t *testing.T) {
-		userService, userRepository := newTestUserService()
-		token := register(t, userService)
+		userService, userRepository := newTestUserService(t)
+		token := "session-token"
+		user := &model.User{ID: 1, Username: testUsername, Status: model.UserStatusBanned}
 
-		userRepository.SetUserStatus(testUsername, model.UserStatusBanned)
+		userRepository.EXPECT().
+			GetUserBySessionTokenHash(ctx, security.HashSessionToken(token)).
+			Return(user, nil)
 
 		_, err := userService.Authenticate(ctx, token)
 		requireErrorIs(t, err, apperr.ErrUserBanned)
@@ -156,23 +105,26 @@ func TestLogout(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("revokes session", func(t *testing.T) {
-		userService, userRepository := newTestUserService()
-		token := register(t, userService)
+		userService, userRepository := newTestUserService(t)
+		token := "session-token"
+
+		userRepository.EXPECT().
+			DeleteSessionByTokenHash(ctx, security.HashSessionToken(token)).
+			Return(nil)
 
 		if err := userService.Logout(ctx, token); err != nil {
 			t.Fatalf("logout: %v", err)
 		}
-		if got := userRepository.SessionCount(); got != 0 {
-			t.Fatalf("session count = %d, want 0", got)
-		}
-
-		_, err := userService.Authenticate(ctx, token)
-		requireErrorIs(t, err, apperr.ErrInvalidSession)
 	})
 
 	t.Run("is idempotent", func(t *testing.T) {
-		userService, _ := newTestUserService()
-		token := register(t, userService)
+		userService, userRepository := newTestUserService(t)
+		token := "session-token"
+
+		userRepository.EXPECT().
+			DeleteSessionByTokenHash(ctx, security.HashSessionToken(token)).
+			Return(nil).
+			Times(2)
 
 		if err := userService.Logout(ctx, token); err != nil {
 			t.Fatalf("first logout: %v", err)
@@ -183,7 +135,7 @@ func TestLogout(t *testing.T) {
 	})
 
 	t.Run("empty token", func(t *testing.T) {
-		userService, _ := newTestUserService()
+		userService, _ := newTestUserService(t)
 
 		requireErrorIs(t, userService.Logout(ctx, ""), apperr.ErrUnauthorized)
 	})
@@ -193,8 +145,25 @@ func TestLogin(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("valid credentials", func(t *testing.T) {
-		userService, _ := newTestUserService()
-		register(t, userService)
+		userService, userRepository := newTestUserService(t)
+		user := &model.User{
+			ID:           1,
+			Username:     testUsername,
+			PasswordHash: mustHashPassword(t, testPassword),
+			Status:       model.UserStatusActive,
+		}
+
+		userRepository.EXPECT().
+			GetUserByUsername(ctx, testUsername).
+			Return(user, nil)
+
+		var sessionTokenHash []byte
+		userRepository.EXPECT().
+			CreateSession(ctx, user, gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ *model.User, tokenHash []byte) error {
+				sessionTokenHash = tokenHash
+				return nil
+			})
 
 		token, err := userService.Login(ctx, &dto.LoginRequest{
 			Username: testUsername,
@@ -203,19 +172,23 @@ func TestLogin(t *testing.T) {
 		if err != nil {
 			t.Fatalf("login: %v", err)
 		}
-
-		user, err := userService.Authenticate(ctx, token)
-		if err != nil {
-			t.Fatalf("authenticate: %v", err)
-		}
-		if user.Username != testUsername {
-			t.Fatalf("username = %q, want %q", user.Username, testUsername)
+		if !bytes.Equal(sessionTokenHash, security.HashSessionToken(token)) {
+			t.Fatal("stored session token hash does not match the issued token")
 		}
 	})
 
 	t.Run("wrong password", func(t *testing.T) {
-		userService, _ := newTestUserService()
-		register(t, userService)
+		userService, userRepository := newTestUserService(t)
+		user := &model.User{
+			ID:           1,
+			Username:     testUsername,
+			PasswordHash: mustHashPassword(t, testPassword),
+			Status:       model.UserStatusActive,
+		}
+
+		userRepository.EXPECT().
+			GetUserByUsername(ctx, testUsername).
+			Return(user, nil)
 
 		_, err := userService.Login(ctx, &dto.LoginRequest{
 			Username: testUsername,
@@ -225,7 +198,11 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("unknown user", func(t *testing.T) {
-		userService, _ := newTestUserService()
+		userService, userRepository := newTestUserService(t)
+
+		userRepository.EXPECT().
+			GetUserByUsername(ctx, testUsername).
+			Return(nil, fmt.Errorf("user repository: %w", apperr.ErrUserNotFound))
 
 		_, err := userService.Login(ctx, &dto.LoginRequest{
 			Username: testUsername,
@@ -235,10 +212,17 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("banned user", func(t *testing.T) {
-		userService, userRepository := newTestUserService()
-		register(t, userService)
+		userService, userRepository := newTestUserService(t)
+		user := &model.User{
+			ID:           1,
+			Username:     testUsername,
+			PasswordHash: mustHashPassword(t, testPassword),
+			Status:       model.UserStatusBanned,
+		}
 
-		userRepository.SetUserStatus(testUsername, model.UserStatusBanned)
+		userRepository.EXPECT().
+			GetUserByUsername(ctx, testUsername).
+			Return(user, nil)
 
 		_, err := userService.Login(ctx, &dto.LoginRequest{
 			Username: testUsername,
@@ -252,8 +236,11 @@ func TestRegister(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("duplicate username", func(t *testing.T) {
-		userService, _ := newTestUserService()
-		register(t, userService)
+		userService, userRepository := newTestUserService(t)
+
+		userRepository.EXPECT().
+			CreateUser(ctx, gomock.Any()).
+			Return(fmt.Errorf("user repository: %w", apperr.ErrUsernameTaken))
 
 		_, err := userService.Register(ctx, &dto.RegisterRequest{
 			Username: testUsername,
