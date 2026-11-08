@@ -29,10 +29,8 @@ func TestCreateProductSKU(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("creates an enabled SKU by default", func(t *testing.T) {
-		skuService, productReader, skuRepository := newTestProductSKUService(t)
+		skuService, _, skuRepository := newTestProductSKUService(t)
 
-		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
-		skuRepository.EXPECT().ListProductSKUsByProductID(ctx, 1).Return([]model.ProductSKU{}, nil)
 		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, sku *model.ProductSKU) error {
 			sku.ID = 1
 			return nil
@@ -61,11 +59,9 @@ func TestCreateProductSKU(t *testing.T) {
 	})
 
 	t.Run("accepts an explicit disabled flag", func(t *testing.T) {
-		skuService, productReader, skuRepository := newTestProductSKUService(t)
+		skuService, _, skuRepository := newTestProductSKUService(t)
 		disabled := false
 
-		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
-		skuRepository.EXPECT().ListProductSKUsByProductID(ctx, 1).Return([]model.ProductSKU{}, nil)
 		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).Return(nil)
 
 		sku, err := skuService.Create(ctx, 1, &dto.CreateProductSKURequest{
@@ -81,10 +77,8 @@ func TestCreateProductSKU(t *testing.T) {
 	})
 
 	t.Run("normalizes missing specs to an empty object", func(t *testing.T) {
-		skuService, productReader, skuRepository := newTestProductSKUService(t)
+		skuService, _, skuRepository := newTestProductSKUService(t)
 
-		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
-		skuRepository.EXPECT().ListProductSKUsByProductID(ctx, 1).Return([]model.ProductSKU{}, nil)
 		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).Return(nil)
 
 		sku, err := skuService.Create(ctx, 1, &dto.CreateProductSKURequest{})
@@ -100,11 +94,11 @@ func TestCreateProductSKU(t *testing.T) {
 	})
 
 	t.Run("unknown product", func(t *testing.T) {
-		skuService, productReader, _ := newTestProductSKUService(t)
+		skuService, _, skuRepository := newTestProductSKUService(t)
 
-		productReader.EXPECT().
-			GetProductByID(ctx, 99).
-			Return(nil, fmt.Errorf("product repository: %w", apperr.ErrProductNotFound))
+		skuRepository.EXPECT().
+			CreateProductSKU(ctx, gomock.Any()).
+			Return(fmt.Errorf("product repository: %w", apperr.ErrProductNotFound))
 
 		_, err := skuService.Create(ctx, 99, &dto.CreateProductSKURequest{
 			Specs: map[string]string{"color": "black"},
@@ -113,74 +107,30 @@ func TestCreateProductSKU(t *testing.T) {
 	})
 
 	t.Run("duplicate specs", func(t *testing.T) {
-		skuService, productReader, skuRepository := newTestProductSKUService(t)
-		existingSKU := model.ProductSKU{
-			ID:         1,
-			ProductID:  1,
-			Specs:      map[string]string{"color": "black", "size": "M"},
-			PriceCents: 1999,
-		}
+		skuService, _, skuRepository := newTestProductSKUService(t)
 
-		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil).Times(2)
-		skuRepository.EXPECT().ListProductSKUsByProductID(ctx, 1).Return([]model.ProductSKU{}, nil)
-		skuRepository.EXPECT().ListProductSKUsByProductID(ctx, 1).Return([]model.ProductSKU{existingSKU}, nil)
-		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).Return(nil)
 		skuRepository.EXPECT().
 			CreateProductSKU(ctx, gomock.Any()).
 			Return(fmt.Errorf("sku repository: %w", apperr.ErrProductSKUAlreadyExists))
 
-		req := &dto.CreateProductSKURequest{
+		_, err := skuService.Create(ctx, 1, &dto.CreateProductSKURequest{
 			Specs:      map[string]string{"color": "black", "size": "M"},
 			PriceCents: 1999,
-		}
-		if _, err := skuService.Create(ctx, 1, req); err != nil {
-			t.Fatalf("create sku: %v", err)
-		}
-
-		_, err := skuService.Create(ctx, 1, req)
+		})
 		requireErrorIs(t, err, apperr.ErrProductSKUAlreadyExists)
 	})
 
-	t.Run("requires the same spec keys as existing skus", func(t *testing.T) {
-		existingSKUs := []model.ProductSKU{{
-			ID:        1,
-			ProductID: 1,
-			Specs:     map[string]string{"color": "black", "size": "M"},
-		}}
+	t.Run("rejects spec keys that differ from existing skus", func(t *testing.T) {
+		skuService, _, skuRepository := newTestProductSKUService(t)
 
-		t.Run("matching keys", func(t *testing.T) {
-			skuService, productReader, skuRepository := newTestProductSKUService(t)
+		skuRepository.EXPECT().
+			CreateProductSKU(ctx, gomock.Any()).
+			Return(fmt.Errorf("sku repository: %w", apperr.ErrProductSKUSpecsMismatch))
 
-			productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
-			skuRepository.EXPECT().ListProductSKUsByProductID(ctx, 1).Return(existingSKUs, nil)
-			skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).Return(nil)
-
-			if _, err := skuService.Create(ctx, 1, &dto.CreateProductSKURequest{
-				Specs: map[string]string{"color": "white", "size": "L"},
-			}); err != nil {
-				t.Fatalf("create sku with matching spec keys: %v", err)
-			}
+		_, err := skuService.Create(ctx, 1, &dto.CreateProductSKURequest{
+			Specs: map[string]string{"colour": "white", "size": "L"},
 		})
-
-		cases := []struct {
-			name  string
-			specs map[string]string
-		}{
-			{name: "missing key", specs: map[string]string{"color": "white"}},
-			{name: "extra key", specs: map[string]string{"color": "white", "size": "L", "material": "cotton"}},
-			{name: "renamed key", specs: map[string]string{"colour": "white", "size": "L"}},
-		}
-		for _, tc := range cases {
-			t.Run(tc.name, func(t *testing.T) {
-				skuService, productReader, skuRepository := newTestProductSKUService(t)
-
-				productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
-				skuRepository.EXPECT().ListProductSKUsByProductID(ctx, 1).Return(existingSKUs, nil)
-
-				_, err := skuService.Create(ctx, 1, &dto.CreateProductSKURequest{Specs: tc.specs})
-				requireErrorIs(t, err, apperr.ErrProductSKUSpecsMismatch)
-			})
-		}
+		requireErrorIs(t, err, apperr.ErrProductSKUSpecsMismatch)
 	})
 }
 

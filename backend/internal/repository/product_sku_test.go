@@ -2,6 +2,8 @@ package repository_test
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 
 	"pinshaoshao/internal/apperr"
@@ -106,5 +108,71 @@ func TestProductSKURepository(t *testing.T) {
 			Specs:     map[string]string{"color": "black"},
 		})
 		requireErrorIs(t, err, apperr.ErrProductNotFound)
+	})
+
+	t.Run("rejects spec keys that differ from existing skus", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+
+		if err := skuRepository.CreateProductSKU(ctx, &model.ProductSKU{
+			ProductID: product.ID,
+			Specs:     map[string]string{"color": "black"},
+		}); err != nil {
+			t.Fatalf("create product sku: %v", err)
+		}
+
+		err := skuRepository.CreateProductSKU(ctx, &model.ProductSKU{
+			ProductID: product.ID,
+			Specs:     map[string]string{"size": "M"},
+		})
+		requireErrorIs(t, err, apperr.ErrProductSKUSpecsMismatch)
+	})
+
+	t.Run("serializes concurrent creation of the first skus", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+
+		specs := []map[string]string{
+			{"color": "black"},
+			{"size": "M"},
+		}
+		errs := make([]error, len(specs))
+		var wg sync.WaitGroup
+		for i := range specs {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				errs[i] = skuRepository.CreateProductSKU(ctx, &model.ProductSKU{
+					ProductID: product.ID,
+					Specs:     specs[i],
+				})
+			}(i)
+		}
+		wg.Wait()
+
+		var created, mismatched int
+		for _, err := range errs {
+			switch {
+			case err == nil:
+				created++
+			case errors.Is(err, apperr.ErrProductSKUSpecsMismatch):
+				mismatched++
+			default:
+				t.Fatalf("unexpected create error: %v", err)
+			}
+		}
+		if created != 1 || mismatched != 1 {
+			t.Fatalf("created = %d, mismatched = %d, want 1 and 1", created, mismatched)
+		}
+
+		skus, err := skuRepository.ListProductSKUsByProductID(ctx, product.ID)
+		if err != nil {
+			t.Fatalf("list product skus: %v", err)
+		}
+		if len(skus) != 1 {
+			t.Fatalf("product sku count = %d, want 1", len(skus))
+		}
 	})
 }

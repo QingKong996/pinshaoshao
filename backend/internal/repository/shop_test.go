@@ -81,6 +81,54 @@ func TestShopRepositoryCreateShop(t *testing.T) {
 	})
 }
 
+func TestShopRepositoryCreateShopWithSession(t *testing.T) {
+	ctx := context.Background()
+	shopRepository := repository.NewShopRepository(testPool)
+
+	t.Run("creates the shop and its session", func(t *testing.T) {
+		resetDatabase(t)
+
+		shop := &model.Shop{
+			Username:     testShopUsername,
+			PasswordHash: testShopPassword,
+			Email:        testShopEmail,
+		}
+		tokenHash := []byte("shop-with-session-token")
+		if err := shopRepository.CreateShopWithSession(ctx, shop, tokenHash); err != nil {
+			t.Fatalf("create shop with session: %v", err)
+		}
+
+		got, err := shopRepository.GetShopBySessionTokenHash(ctx, tokenHash)
+		if err != nil {
+			t.Fatalf("get shop by session: %v", err)
+		}
+		if got.ID != shop.ID {
+			t.Fatalf("shop ID = %d, want %d", got.ID, shop.ID)
+		}
+	})
+
+	t.Run("rolls back the shop when the session cannot be created", func(t *testing.T) {
+		resetDatabase(t)
+		otherShop := insertShop(t)
+		tokenHash := []byte("duplicate-shop-session-token")
+		if err := shopRepository.CreateSession(ctx, otherShop, tokenHash); err != nil {
+			t.Fatalf("create session: %v", err)
+		}
+
+		shop := &model.Shop{
+			Username:     "shop02",
+			PasswordHash: testShopPassword,
+			Email:        "shop02@example.com",
+		}
+		if err := shopRepository.CreateShopWithSession(ctx, shop, tokenHash); err == nil {
+			t.Fatal("create shop with session: expected an error")
+		}
+
+		_, err := shopRepository.GetShopByUsername(ctx, "shop02")
+		requireErrorIs(t, err, apperr.ErrShopNotFound)
+	})
+}
+
 func TestShopRepositorySessions(t *testing.T) {
 	ctx := context.Background()
 	shopRepository := repository.NewShopRepository(testPool)

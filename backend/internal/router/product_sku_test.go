@@ -64,15 +64,12 @@ func TestProductSKURoutes(t *testing.T) {
 	}
 
 	userRepository.EXPECT().
-		CreateUser(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, user *model.User) error {
+		CreateUserWithSession(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, user *model.User, _ []byte) error {
 			user.ID = 1
 			user.Status = model.UserStatusActive
 			return nil
 		})
-	userRepository.EXPECT().
-		CreateSession(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(nil)
 
 	rec := doRequest(r, http.MethodPost, "/api/v1/register", "", credentials)
 	requireStatus(t, rec, http.StatusCreated)
@@ -140,9 +137,9 @@ func TestProductSKURoutes(t *testing.T) {
 		userRepository.EXPECT().
 			GetUserBySessionTokenHash(gomock.Any(), security.HashSessionToken(token)).
 			Return(activeUser, nil)
-		productReader.EXPECT().
-			GetProductByID(gomock.Any(), 99).
-			Return(nil, fmt.Errorf("repository.GetProductByID: %w", apperr.ErrProductNotFound))
+		skuRepository.EXPECT().
+			CreateProductSKU(gomock.Any(), gomock.Any()).
+			Return(fmt.Errorf("repository.CreateProductSKU: %w", apperr.ErrProductNotFound))
 
 		rec := doRequest(r, http.MethodPost, "/api/v1/products/99/skus", "Bearer "+token, skuBody)
 		requireStatus(t, rec, http.StatusNotFound)
@@ -173,12 +170,6 @@ func TestProductSKURoutes(t *testing.T) {
 		userRepository.EXPECT().
 			GetUserBySessionTokenHash(gomock.Any(), security.HashSessionToken(token)).
 			Return(activeUser, nil)
-		productReader.EXPECT().
-			GetProductByID(gomock.Any(), 1).
-			Return(product, nil)
-		skuRepository.EXPECT().
-			ListProductSKUsByProductID(gomock.Any(), 1).
-			Return([]model.ProductSKU{}, nil)
 		skuRepository.EXPECT().
 			CreateProductSKU(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, sku *model.ProductSKU) error {
@@ -211,12 +202,9 @@ func TestProductSKURoutes(t *testing.T) {
 		userRepository.EXPECT().
 			GetUserBySessionTokenHash(gomock.Any(), security.HashSessionToken(token)).
 			Return(activeUser, nil)
-		productReader.EXPECT().
-			GetProductByID(gomock.Any(), 1).
-			Return(product, nil)
 		skuRepository.EXPECT().
-			ListProductSKUsByProductID(gomock.Any(), 1).
-			Return([]model.ProductSKU{createdSKU}, nil)
+			CreateProductSKU(gomock.Any(), gomock.Any()).
+			Return(fmt.Errorf("repository.CreateProductSKU: %w", apperr.ErrProductSKUSpecsMismatch))
 
 		body := `{"specs":{"color":"white"},"price_cents":1999,"stock":10}`
 		rec := doRequest(r, http.MethodPost, "/api/v1/products/1/skus", "Bearer "+token, body)
@@ -230,12 +218,6 @@ func TestProductSKURoutes(t *testing.T) {
 		userRepository.EXPECT().
 			GetUserBySessionTokenHash(gomock.Any(), security.HashSessionToken(token)).
 			Return(activeUser, nil)
-		productReader.EXPECT().
-			GetProductByID(gomock.Any(), 1).
-			Return(product, nil)
-		skuRepository.EXPECT().
-			ListProductSKUsByProductID(gomock.Any(), 1).
-			Return([]model.ProductSKU{createdSKU}, nil)
 		skuRepository.EXPECT().
 			CreateProductSKU(gomock.Any(), gomock.Any()).
 			Return(fmt.Errorf("repository.CreateProductSKU: %w", apperr.ErrProductSKUAlreadyExists))

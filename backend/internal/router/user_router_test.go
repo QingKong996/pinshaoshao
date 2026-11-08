@@ -129,15 +129,12 @@ func TestUserRoutes(t *testing.T) {
 
 	t.Run("register issues a session token", func(t *testing.T) {
 		userRepository.EXPECT().
-			CreateUser(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, user *model.User) error {
+			CreateUserWithSession(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, user *model.User, _ []byte) error {
 				user.ID = 1
 				user.Status = model.UserStatusActive
 				return nil
 			})
-		userRepository.EXPECT().
-			CreateSession(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil)
 
 		rec := doRequest(r, http.MethodPost, "/api/v1/register", "", credentials)
 		requireStatus(t, rec, http.StatusCreated)

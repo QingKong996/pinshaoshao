@@ -101,6 +101,54 @@ func TestUserRepositoryCreateUser(t *testing.T) {
 	})
 }
 
+func TestUserRepositoryCreateUserWithSession(t *testing.T) {
+	ctx := context.Background()
+	userRepository := repository.NewUserRepository(testPool)
+
+	t.Run("creates the user and its session", func(t *testing.T) {
+		resetDatabase(t)
+
+		user := &model.User{
+			Username:     testUserUsername,
+			PasswordHash: testUserPassword,
+			Email:        testUserEmail,
+		}
+		tokenHash := []byte("user-with-session-token")
+		if err := userRepository.CreateUserWithSession(ctx, user, tokenHash); err != nil {
+			t.Fatalf("create user with session: %v", err)
+		}
+
+		got, err := userRepository.GetUserBySessionTokenHash(ctx, tokenHash)
+		if err != nil {
+			t.Fatalf("get user by session: %v", err)
+		}
+		if got.ID != user.ID {
+			t.Fatalf("user ID = %d, want %d", got.ID, user.ID)
+		}
+	})
+
+	t.Run("rolls back the user when the session cannot be created", func(t *testing.T) {
+		resetDatabase(t)
+		otherUser := insertUser(t)
+		tokenHash := []byte("duplicate-session-token")
+		if err := userRepository.CreateSession(ctx, otherUser, tokenHash); err != nil {
+			t.Fatalf("create session: %v", err)
+		}
+
+		user := &model.User{
+			Username:     "alice02",
+			PasswordHash: testUserPassword,
+			Email:        "alice02@example.com",
+		}
+		if err := userRepository.CreateUserWithSession(ctx, user, tokenHash); err == nil {
+			t.Fatal("create user with session: expected an error")
+		}
+
+		_, err := userRepository.GetUserByUsername(ctx, "alice02")
+		requireErrorIs(t, err, apperr.ErrUserNotFound)
+	})
+}
+
 func TestUserRepositorySessions(t *testing.T) {
 	ctx := context.Background()
 	userRepository := repository.NewUserRepository(testPool)
