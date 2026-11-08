@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"log/slog"
 	"os"
 	"pinshaoshao/internal/controller"
@@ -20,8 +22,6 @@ import (
 // @version                    0.1.0
 // @description                E-commerce backend API.
 // @BasePath                   /api/v1
-// @schemes                    http
-// @host                       localhost:8080
 // @securityDefinitions.apikey BearerAuth
 // @in                         header
 // @name                       Authorization
@@ -39,8 +39,13 @@ func main() {
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load(); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		fatal("load .env file", "error", err)
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
 
 	corsOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
@@ -59,6 +64,10 @@ func main() {
 		fatal("create database pool", "error", err)
 	}
 	defer pool.Close()
+
+	if err := pool.Ping(ctx); err != nil {
+		fatal("connect database", "error", err)
+	}
 
 	userRepository := repository.NewUserRepository(pool)
 	userService := service.NewUserService(userRepository)
@@ -79,7 +88,7 @@ func main() {
 	router.ShopRegister(r, shopController, shopAuthMiddleware)
 	router.ProductSKURegister(r, productSKUController, shopAuthMiddleware)
 
-	if err := r.Run(":8080"); err != nil {
+	if err := r.Run(":" + port); err != nil {
 		fatal("run server", "error", err)
 	}
 }
