@@ -21,7 +21,7 @@ func TestShopRepositoryCreateShop(t *testing.T) {
 			PasswordHash: testShopPassword,
 			Email:        testShopEmail,
 		}
-		if err := shopRepository.CreateShop(ctx, shop); err != nil {
+		if err := shopRepository.CreateShopWithSession(ctx, shop, testTokenHash(shop.Username)); err != nil {
 			t.Fatalf("create shop: %v", err)
 		}
 		if shop.ID == 0 {
@@ -53,11 +53,11 @@ func TestShopRepositoryCreateShop(t *testing.T) {
 		resetDatabase(t)
 		insertShop(t)
 
-		err := shopRepository.CreateShop(ctx, &model.Shop{
+		err := shopRepository.CreateShopWithSession(ctx, &model.Shop{
 			Username:     testShopUsername,
 			PasswordHash: testShopPassword,
 			Email:        "another@example.com",
-		})
+		}, testTokenHash("duplicate-username"))
 		requireErrorIs(t, err, apperr.ErrShopUsernameTaken)
 	})
 
@@ -65,11 +65,11 @@ func TestShopRepositoryCreateShop(t *testing.T) {
 		resetDatabase(t)
 		insertShop(t)
 
-		err := shopRepository.CreateShop(ctx, &model.Shop{
+		err := shopRepository.CreateShopWithSession(ctx, &model.Shop{
 			Username:     "shop02",
 			PasswordHash: testShopPassword,
 			Email:        testShopEmail,
-		})
+		}, testTokenHash("duplicate-email"))
 		requireErrorIs(t, err, apperr.ErrShopEmailTaken)
 	})
 

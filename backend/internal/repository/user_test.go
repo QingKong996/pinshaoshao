@@ -21,7 +21,7 @@ func TestUserRepositoryCreateUser(t *testing.T) {
 			PasswordHash: testUserPassword,
 			Email:        testUserEmail,
 		}
-		if err := userRepository.CreateUser(ctx, user); err != nil {
+		if err := userRepository.CreateUserWithSession(ctx, user, testTokenHash(user.Username)); err != nil {
 			t.Fatalf("create user: %v", err)
 		}
 		if user.ID == 0 {
@@ -56,7 +56,7 @@ func TestUserRepositoryCreateUser(t *testing.T) {
 			Username:     testUserUsername,
 			PasswordHash: testUserPassword,
 		}
-		if err := userRepository.CreateUser(ctx, user); err != nil {
+		if err := userRepository.CreateUserWithSession(ctx, user, testTokenHash(user.Username)); err != nil {
 			t.Fatalf("create user: %v", err)
 		}
 
@@ -73,11 +73,11 @@ func TestUserRepositoryCreateUser(t *testing.T) {
 		resetDatabase(t)
 		insertUser(t)
 
-		err := userRepository.CreateUser(ctx, &model.User{
+		err := userRepository.CreateUserWithSession(ctx, &model.User{
 			Username:     testUserUsername,
 			PasswordHash: testUserPassword,
 			Email:        "another@example.com",
-		})
+		}, testTokenHash("duplicate-username"))
 		requireErrorIs(t, err, apperr.ErrUsernameTaken)
 	})
 
@@ -85,11 +85,11 @@ func TestUserRepositoryCreateUser(t *testing.T) {
 		resetDatabase(t)
 		insertUser(t)
 
-		err := userRepository.CreateUser(ctx, &model.User{
+		err := userRepository.CreateUserWithSession(ctx, &model.User{
 			Username:     "alice02",
 			PasswordHash: testUserPassword,
 			Email:        testUserEmail,
-		})
+		}, testTokenHash("duplicate-email"))
 		requireErrorIs(t, err, apperr.ErrEmailTaken)
 	})
 
