@@ -12,6 +12,8 @@ const (
 type Shop struct {
 	ID           int
 	Username     string
+	Name         string
+	Description  string
 	PasswordHash string
 	Email        string
 	Status       ShopStatus
