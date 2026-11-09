@@ -3,6 +3,7 @@ package service_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -270,5 +271,92 @@ func TestShopRegister(t *testing.T) {
 			Email:    testShopEmail,
 		})
 		requireErrorIs(t, err, apperr.ErrShopEmailTaken)
+	})
+}
+
+func TestShopGetProfile(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns the shop profile", func(t *testing.T) {
+		shopService, shopRepository := newTestShopService(t)
+		shop := &model.Shop{
+			ID:          1,
+			Username:    testShopUsername,
+			Name:        "First shop",
+			Description: "Intro",
+			Status:      model.ShopStatusActive,
+		}
+
+		shopRepository.EXPECT().GetShopByID(ctx, 1).Return(shop, nil)
+
+		got, err := shopService.GetProfile(ctx, 1)
+		if err != nil {
+			t.Fatalf("get profile: %v", err)
+		}
+		if got.Name != "First shop" || got.Description != "Intro" {
+			t.Fatalf("profile = %+v, want updated fields", got)
+		}
+	})
+
+	t.Run("unknown shop", func(t *testing.T) {
+		shopService, shopRepository := newTestShopService(t)
+
+		shopRepository.EXPECT().
+			GetShopByID(ctx, 99).
+			Return(nil, fmt.Errorf("shop repository: %w", apperr.ErrShopNotFound))
+
+		_, err := shopService.GetProfile(ctx, 99)
+		requireErrorIs(t, err, apperr.ErrShopNotFound)
+	})
+}
+
+func TestShopUpdateProfile(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("updates the shop profile", func(t *testing.T) {
+		shopService, shopRepository := newTestShopService(t)
+		description := "Intro"
+		updated := &model.Shop{
+			ID:          1,
+			Username:    testShopUsername,
+			Name:        "First shop",
+			Description: description,
+			Status:      model.ShopStatusActive,
+		}
+
+		shopRepository.EXPECT().UpdateShopProfile(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, shop *model.Shop) (*model.Shop, error) {
+			if shop.ID != 1 || shop.Name != "First shop" || shop.Description != "Intro" {
+				t.Fatalf("shop = %+v, want profile fields", shop)
+			}
+			return updated, nil
+		})
+
+		got, err := shopService.UpdateProfile(ctx, 1, &dto.UpdateShopProfileRequest{
+			Name:        "First shop",
+			Description: &description,
+		})
+		if err != nil {
+			t.Fatalf("update profile: %v", err)
+		}
+		if got.Name != "First shop" || got.Description != "Intro" {
+			t.Fatalf("profile = %+v, want updated fields", got)
+		}
+	})
+
+	t.Run("repository failure", func(t *testing.T) {
+		shopService, shopRepository := newTestShopService(t)
+		description := "Intro"
+
+		shopRepository.EXPECT().
+			UpdateShopProfile(ctx, gomock.Any()).
+			Return(nil, errors.New("database is down"))
+
+		_, err := shopService.UpdateProfile(ctx, 1, &dto.UpdateShopProfileRequest{
+			Name:        "First shop",
+			Description: &description,
+		})
+		if err == nil {
+			t.Fatal("update profile: expected an error")
+		}
 	})
 }

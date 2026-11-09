@@ -80,13 +80,22 @@ func main() {
 	shopAuthMiddleware := middleware.ShopAuth(shopService)
 
 	productRepository := repository.NewProductRepository(pool)
+	productCategoryRepository := repository.NewProductCategoryRepository(pool)
 	productSKURepository := repository.NewProductSKURepository(pool)
 	productSKUService := service.NewProductSKUService(productRepository, productSKURepository)
+	productCategoryService := service.NewProductCategoryService(productCategoryRepository)
 	productSKUController := controller.NewProductSKUController(productSKUService)
+	productCategoryController := controller.NewProductCategoryController(productCategoryService)
 
 	router.UserRegister(r, userController, userAuthMiddleware)
 	router.ShopRegister(r, shopController, shopAuthMiddleware)
 	router.ProductSKURegister(r, productSKUController, shopAuthMiddleware)
+	router.MerchantRegister(
+		r,
+		shopController,
+		productCategoryController,
+		shopAuthMiddleware,
+	)
 
 	if err := r.Run(":" + port); err != nil {
 		fatal("run server", "error", err)

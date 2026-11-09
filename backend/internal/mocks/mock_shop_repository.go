@@ -83,6 +83,21 @@ func (mr *MockShopRepositoryMockRecorder) DeleteSessionByTokenHash(ctx, tokenHas
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSessionByTokenHash", reflect.TypeOf((*MockShopRepository)(nil).DeleteSessionByTokenHash), ctx, tokenHash)
 }
 
+// GetShopByID mocks base method.
+func (m *MockShopRepository) GetShopByID(ctx context.Context, id int) (*model.Shop, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetShopByID", ctx, id)
+	ret0, _ := ret[0].(*model.Shop)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetShopByID indicates an expected call of GetShopByID.
+func (mr *MockShopRepositoryMockRecorder) GetShopByID(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShopByID", reflect.TypeOf((*MockShopRepository)(nil).GetShopByID), ctx, id)
+}
+
 // GetShopBySessionTokenHash mocks base method.
 func (m *MockShopRepository) GetShopBySessionTokenHash(ctx context.Context, tokenHash []byte) (*model.Shop, error) {
 	m.ctrl.T.Helper()
@@ -111,4 +126,19 @@ func (m *MockShopRepository) GetShopByUsername(ctx context.Context, username str
 func (mr *MockShopRepositoryMockRecorder) GetShopByUsername(ctx, username any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShopByUsername", reflect.TypeOf((*MockShopRepository)(nil).GetShopByUsername), ctx, username)
+}
+
+// UpdateShopProfile mocks base method.
+func (m *MockShopRepository) UpdateShopProfile(ctx context.Context, shop *model.Shop) (*model.Shop, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateShopProfile", ctx, shop)
+	ret0, _ := ret[0].(*model.Shop)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateShopProfile indicates an expected call of UpdateShopProfile.
+func (mr *MockShopRepositoryMockRecorder) UpdateShopProfile(ctx, shop any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShopProfile", reflect.TypeOf((*MockShopRepository)(nil).UpdateShopProfile), ctx, shop)
 }

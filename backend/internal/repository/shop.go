@@ -13,9 +13,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const shopColumns = `id, username, password_hash, email, status, created_at, updated_at`
+const shopColumns = `id, username, name, description, password_hash, email, status, created_at, updated_at`
 
-const aliasedShopColumns = `sh.id, sh.username, sh.password_hash, sh.email, sh.status, sh.created_at, sh.updated_at`
+const aliasedShopColumns = `sh.id, sh.username, sh.name, sh.description, sh.password_hash, sh.email, sh.status, sh.created_at, sh.updated_at`
 
 type ShopRepository struct {
 	pool *pgxpool.Pool
@@ -34,6 +34,20 @@ func (r *ShopRepository) GetShopByUsername(ctx context.Context, username string)
 			return nil, fmt.Errorf(`repository.GetShopByUsername: %w`, apperr.ErrShopNotFound)
 		}
 		return nil, fmt.Errorf("repository.GetShopByUsername: %w", err)
+	}
+	return shop, nil
+}
+
+// GetShopByID returns the shop with the given ID.
+func (r *ShopRepository) GetShopByID(ctx context.Context, id int) (*model.Shop, error) {
+	const query = `SELECT ` + shopColumns + ` FROM shops WHERE id = $1`
+
+	shop, err := scanShop(r.pool.QueryRow(ctx, query, id))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf(`repository.GetShopByID: %w`, apperr.ErrShopNotFound)
+		}
+		return nil, fmt.Errorf("repository.GetShopByID: %w", err)
 	}
 	return shop, nil
 }
@@ -74,6 +88,20 @@ func (r *ShopRepository) CreateSession(ctx context.Context, shop *model.Shop, to
 		return fmt.Errorf("repository.CreateSession: %w", err)
 	}
 	return nil
+}
+
+// UpdateShopProfile updates the editable profile fields and returns the stored shop.
+func (r *ShopRepository) UpdateShopProfile(ctx context.Context, shop *model.Shop) (*model.Shop, error) {
+	const query = `UPDATE shops SET name = $1, description = $2, updated_at = now() WHERE id = $3 RETURNING ` + shopColumns
+
+	updated, err := scanShop(r.pool.QueryRow(ctx, query, shop.Name, shop.Description, shop.ID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("repository.UpdateShopProfile: %w", apperr.ErrShopNotFound)
+		}
+		return nil, fmt.Errorf("repository.UpdateShopProfile: %w", err)
+	}
+	return updated, nil
 }
 
 func createShop(ctx context.Context, db dbtx, shop *model.Shop) error {
@@ -118,6 +146,8 @@ func scanShop(row pgx.Row) (*model.Shop, error) {
 	err := row.Scan(
 		&shop.ID,
 		&shop.Username,
+		&shop.Name,
+		&shop.Description,
 		&shop.PasswordHash,
 		&shop.Email,
 		&shop.Status,
