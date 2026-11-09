@@ -105,7 +105,7 @@ func TestShopLogin(t *testing.T) {
 }
 
 func TestShopRegister(t *testing.T) {
-	registration := fmt.Sprintf(`{"username":%q,"password":%q,"email":%q}`, testShopUsername, testPassword, testShopEmail)
+	registration := fmt.Sprintf(`{"username":%q,"name":"Test Shop","password":%q,"email":%q}`, testShopUsername, testPassword, testShopEmail)
 
 	t.Run("returns a session token", func(t *testing.T) {
 		shopController, shopService := newTestShopController(t)
@@ -139,7 +139,7 @@ func TestShopRegister(t *testing.T) {
 			Register(gomock.Any(), gomock.Any()).
 			Return("", fmt.Errorf("service: %w", apperr.ErrShopEmailTaken))
 
-		body := fmt.Sprintf(`{"username":"shop02","password":%q,"email":%q}`, testPassword, testShopEmail)
+		body := fmt.Sprintf(`{"username":"shop02","name":"Test Shop","password":%q,"email":%q}`, testPassword, testShopEmail)
 		ctx, rec := newControllerContext(t, http.MethodPost, "/register", body)
 		shopController.Register(ctx)
 
@@ -160,7 +160,7 @@ func TestShopRegister(t *testing.T) {
 	t.Run("rejects an invalid email", func(t *testing.T) {
 		shopController, _ := newTestShopController(t)
 
-		body := fmt.Sprintf(`{"username":%q,"password":%q,"email":"not-an-email"}`, testShopUsername, testPassword)
+		body := fmt.Sprintf(`{"username":%q,"name":"Test Shop","password":%q,"email":"not-an-email"}`, testShopUsername, testPassword)
 		ctx, rec := newControllerContext(t, http.MethodPost, "/register", body)
 		shopController.Register(ctx)
 
@@ -171,7 +171,29 @@ func TestShopRegister(t *testing.T) {
 	t.Run("rejects an invalid payload", func(t *testing.T) {
 		shopController, _ := newTestShopController(t)
 
-		body := fmt.Sprintf(`{"username":%q,"password":%q,"email":%q}`, "sh", testPassword, testShopEmail)
+		body := fmt.Sprintf(`{"username":%q,"name":"Test Shop","password":%q,"email":%q}`, "sh", testPassword, testShopEmail)
+		ctx, rec := newControllerContext(t, http.MethodPost, "/register", body)
+		shopController.Register(ctx)
+
+		requireStatus(t, rec, http.StatusBadRequest)
+		requireError(t, rec, apperr.ErrInvalidJsonFormat)
+	})
+
+	t.Run("rejects a missing shop name", func(t *testing.T) {
+		shopController, _ := newTestShopController(t)
+
+		body := fmt.Sprintf(`{"username":%q,"password":%q,"email":%q}`, testShopUsername, testPassword, testShopEmail)
+		ctx, rec := newControllerContext(t, http.MethodPost, "/register", body)
+		shopController.Register(ctx)
+
+		requireStatus(t, rec, http.StatusBadRequest)
+		requireError(t, rec, apperr.ErrInvalidJsonFormat)
+	})
+
+	t.Run("rejects a one-character shop name", func(t *testing.T) {
+		shopController, _ := newTestShopController(t)
+
+		body := fmt.Sprintf(`{"username":%q,"name":"A","password":%q,"email":%q}`, testShopUsername, testPassword, testShopEmail)
 		ctx, rec := newControllerContext(t, http.MethodPost, "/register", body)
 		shopController.Register(ctx)
 

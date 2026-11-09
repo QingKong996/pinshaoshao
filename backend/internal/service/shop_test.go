@@ -217,6 +217,29 @@ func TestShopLogin(t *testing.T) {
 func TestShopRegister(t *testing.T) {
 	ctx := context.Background()
 
+	t.Run("stores the display name", func(t *testing.T) {
+		shopService, shopRepository := newTestShopService(t)
+
+		shopRepository.EXPECT().
+			CreateShopWithSession(ctx, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, shop *model.Shop, _ []byte) error {
+				if shop.Name != "Test Shop" {
+					t.Fatalf("display name = %q, want %q", shop.Name, "Test Shop")
+				}
+				shop.ID = 1
+				return nil
+			})
+
+		if _, err := shopService.Register(ctx, &dto.ShopRegisterRequest{
+			Username: testShopUsername,
+			Name:     "Test Shop",
+			Password: testShopPassword,
+			Email:    testShopEmail,
+		}); err != nil {
+			t.Fatalf("register: %v", err)
+		}
+	})
+
 	t.Run("duplicate username", func(t *testing.T) {
 		shopService, shopRepository := newTestShopService(t)
 
@@ -226,6 +249,7 @@ func TestShopRegister(t *testing.T) {
 
 		_, err := shopService.Register(ctx, &dto.ShopRegisterRequest{
 			Username: testShopUsername,
+			Name:     "Test Shop",
 			Password: testShopPassword,
 			Email:    "another@example.com",
 		})
@@ -241,6 +265,7 @@ func TestShopRegister(t *testing.T) {
 
 		_, err := shopService.Register(ctx, &dto.ShopRegisterRequest{
 			Username: "shop02",
+			Name:     "Test Shop",
 			Password: testShopPassword,
 			Email:    testShopEmail,
 		})
