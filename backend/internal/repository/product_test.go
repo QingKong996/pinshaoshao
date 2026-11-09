@@ -22,6 +22,7 @@ func TestProductRepository(t *testing.T) {
 			ShopID:      shop.ID,
 			Name:        "T-shirt",
 			Description: "Cotton T-shirt",
+			Status:      model.ProductStatusOffShelf,
 		}
 		if err := productRepository.CreateProduct(ctx, product); err != nil {
 			t.Fatalf("create product: %v", err)
@@ -68,11 +69,11 @@ func TestProductRepository(t *testing.T) {
 		}
 
 		for _, name := range []string{"first", "second"} {
-			if err := productRepository.CreateProduct(ctx, &model.Product{ShopID: shop.ID, Name: name}); err != nil {
+			if err := productRepository.CreateProduct(ctx, &model.Product{ShopID: shop.ID, Name: name, Status: model.ProductStatusOffShelf}); err != nil {
 				t.Fatalf("create product %q: %v", name, err)
 			}
 		}
-		if err := productRepository.CreateProduct(ctx, &model.Product{ShopID: otherShop.ID, Name: "other"}); err != nil {
+		if err := productRepository.CreateProduct(ctx, &model.Product{ShopID: otherShop.ID, Name: "other", Status: model.ProductStatusOffShelf}); err != nil {
 			t.Fatalf("create other product: %v", err)
 		}
 
