@@ -176,3 +176,107 @@ func TestProductSKURepository(t *testing.T) {
 		}
 	})
 }
+
+func TestProductSKUUpdateAndDelete(t *testing.T) {
+	ctx := context.Background()
+	skuRepository := repository.NewProductSKURepository(testPool)
+
+	t.Run("updates only the provided fields", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999, 3)
+
+		stock := 42
+		got, err := skuRepository.UpdateProductSKU(ctx, product.ID, sku.ID, &model.ProductSKUUpdate{Stock: &stock})
+		if err != nil {
+			t.Fatalf("update product sku: %v", err)
+		}
+		if got.Stock != 42 {
+			t.Fatalf("stock = %d, want 42", got.Stock)
+		}
+		if got.PriceCents != 1999 || got.Specs["color"] != "black" || !got.IsEnabled {
+			t.Fatalf("product sku = %+v, want unchanged fields", got)
+		}
+	})
+
+	t.Run("rejects spec keys that differ from the other skus", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+		first := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999, 3)
+		createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "white"}, 1999, 3)
+
+		specs := map[string]string{"size": "M"}
+		_, err := skuRepository.UpdateProductSKU(ctx, product.ID, first.ID, &model.ProductSKUUpdate{Specs: specs})
+		requireErrorIs(t, err, apperr.ErrProductSKUSpecsMismatch)
+	})
+
+	t.Run("allows changing the spec keys of the only sku", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999, 3)
+
+		specs := map[string]string{"size": "M"}
+		got, err := skuRepository.UpdateProductSKU(ctx, product.ID, sku.ID, &model.ProductSKUUpdate{Specs: specs})
+		if err != nil {
+			t.Fatalf("update product sku: %v", err)
+		}
+		if got.Specs["size"] != "M" {
+			t.Fatalf("specs = %v, want size=M", got.Specs)
+		}
+	})
+
+	t.Run("rejects an unknown sku", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+
+		stock := 1
+		_, err := skuRepository.UpdateProductSKU(ctx, product.ID, 404, &model.ProductSKUUpdate{Stock: &stock})
+		requireErrorIs(t, err, apperr.ErrProductSKUNotFound)
+	})
+
+	t.Run("deletes the sku", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999, 3)
+
+		if err := skuRepository.DeleteProductSKU(ctx, product.ID, sku.ID); err != nil {
+			t.Fatalf("delete product sku: %v", err)
+		}
+		skus, err := skuRepository.ListProductSKUsByProductID(ctx, product.ID)
+		if err != nil {
+			t.Fatalf("list product skus: %v", err)
+		}
+		if len(skus) != 0 {
+			t.Fatalf("product sku count = %d, want 0", len(skus))
+		}
+	})
+
+	t.Run("rejects deleting an unknown sku", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+
+		requireErrorIs(t, skuRepository.DeleteProductSKU(ctx, product.ID, 404), apperr.ErrProductSKUNotFound)
+	})
+}
+
+func createTestSKU(t *testing.T, ctx context.Context, skuRepository *repository.ProductSKURepository, productID int, specs map[string]string, priceCents int64, stock int) *model.ProductSKU {
+	t.Helper()
+
+	sku := &model.ProductSKU{
+		ProductID:  productID,
+		Specs:      specs,
+		PriceCents: priceCents,
+		Stock:      stock,
+		IsEnabled:  true,
+	}
+	if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
+		t.Fatalf("create product sku: %v", err)
+	}
+	return sku
+}

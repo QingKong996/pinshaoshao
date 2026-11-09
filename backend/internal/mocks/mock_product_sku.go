@@ -94,6 +94,20 @@ func (mr *MockProductSKURepositoryMockRecorder) CreateProductSKU(ctx, sku any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateProductSKU", reflect.TypeOf((*MockProductSKURepository)(nil).CreateProductSKU), ctx, sku)
 }
 
+// DeleteProductSKU mocks base method.
+func (m *MockProductSKURepository) DeleteProductSKU(ctx context.Context, productID, skuID int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteProductSKU", ctx, productID, skuID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteProductSKU indicates an expected call of DeleteProductSKU.
+func (mr *MockProductSKURepositoryMockRecorder) DeleteProductSKU(ctx, productID, skuID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteProductSKU", reflect.TypeOf((*MockProductSKURepository)(nil).DeleteProductSKU), ctx, productID, skuID)
+}
+
 // ListProductSKUsByProductID mocks base method.
 func (m *MockProductSKURepository) ListProductSKUsByProductID(ctx context.Context, productID int) ([]model.ProductSKU, error) {
 	m.ctrl.T.Helper()
@@ -107,4 +121,19 @@ func (m *MockProductSKURepository) ListProductSKUsByProductID(ctx context.Contex
 func (mr *MockProductSKURepositoryMockRecorder) ListProductSKUsByProductID(ctx, productID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProductSKUsByProductID", reflect.TypeOf((*MockProductSKURepository)(nil).ListProductSKUsByProductID), ctx, productID)
+}
+
+// UpdateProductSKU mocks base method.
+func (m *MockProductSKURepository) UpdateProductSKU(ctx context.Context, productID, skuID int, update *model.ProductSKUUpdate) (*model.ProductSKU, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateProductSKU", ctx, productID, skuID, update)
+	ret0, _ := ret[0].(*model.ProductSKU)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateProductSKU indicates an expected call of UpdateProductSKU.
+func (mr *MockProductSKURepositoryMockRecorder) UpdateProductSKU(ctx, productID, skuID, update any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProductSKU", reflect.TypeOf((*MockProductSKURepository)(nil).UpdateProductSKU), ctx, productID, skuID, update)
 }

@@ -91,12 +91,12 @@ func main() {
 
 	router.UserRegister(r, userController, userAuthMiddleware)
 	router.ShopRegister(r, shopController, shopAuthMiddleware)
-	router.ProductSKURegister(r, productSKUController, shopAuthMiddleware)
 	router.MerchantRegister(
 		r,
 		shopController,
 		productCategoryController,
 		productController,
+		productSKUController,
 		shopAuthMiddleware,
 	)
 
