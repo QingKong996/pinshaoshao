@@ -50,6 +50,60 @@ func (r *ProductSKURepository) CreateProductSKU(ctx context.Context, sku *model.
 	return nil
 }
 
+// UpdateProductSKU applies a partial update while holding the product row lock, so
+// the spec key set cannot change between validation and write. Only the provided
+// fields are written, so concurrent updates of other fields are not overwritten.
+// Updating the only SKU of a product is allowed to change the spec keys.
+func (r *ProductSKURepository) UpdateProductSKU(ctx context.Context, productID int, skuID int, update *model.ProductSKUUpdate) (*model.ProductSKU, error) {
+	var sku *model.ProductSKU
+
+	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
+		if err := lockProduct(ctx, tx, productID); err != nil {
+			return err
+		}
+
+		skus, err := listProductSKUs(ctx, tx, productID)
+		if err != nil {
+			return fmt.Errorf("list product skus: %w", err)
+		}
+
+		found := false
+		for i := range skus {
+			if skus[i].ID == skuID {
+				found = true
+				continue
+			}
+			if update.Specs != nil && !hasSameSpecKeys(skus[i].Specs, update.Specs) {
+				return apperr.ErrProductSKUSpecsMismatch
+			}
+		}
+		if !found {
+			return apperr.ErrProductSKUNotFound
+		}
+
+		sku, err = updateProductSKU(ctx, tx, productID, skuID, update)
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("repository.UpdateProductSKU: %w", err)
+	}
+	return sku, nil
+}
+
+// DeleteProductSKU deletes a SKU of the product.
+func (r *ProductSKURepository) DeleteProductSKU(ctx context.Context, productID int, skuID int) error {
+	const query = `DELETE FROM product_skus WHERE product_id = $1 AND id = $2`
+
+	tag, err := r.pool.Exec(ctx, query, productID, skuID)
+	if err != nil {
+		return fmt.Errorf("repository.DeleteProductSKU: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("repository.DeleteProductSKU: %w", apperr.ErrProductSKUNotFound)
+	}
+	return nil
+}
+
 func lockProduct(ctx context.Context, db dbtx, productID int) error {
 	const query = `SELECT id FROM products WHERE id = $1 FOR UPDATE`
 
@@ -115,6 +169,35 @@ func insertProductSKU(ctx context.Context, db dbtx, sku *model.ProductSKU) error
 		return err
 	}
 	return nil
+}
+
+func updateProductSKU(ctx context.Context, db dbtx, productID int, skuID int, update *model.ProductSKUUpdate) (*model.ProductSKU, error) {
+	const query = `UPDATE product_skus SET
+    specs = COALESCE($1::jsonb, specs),
+    price_cents = COALESCE($2, price_cents),
+    stock = COALESCE($3, stock),
+    is_enabled = COALESCE($4, is_enabled),
+    updated_at = now()
+WHERE id = $5 AND product_id = $6
+RETURNING ` + productSKUColumns
+
+	var specs any
+	if update.Specs != nil {
+		specs = update.Specs
+	}
+
+	sku, err := scanProductSKU(db.QueryRow(ctx, query, specs, update.PriceCents, update.Stock, update.IsEnabled, skuID, productID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperr.ErrProductSKUNotFound
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode && pgErr.ConstraintName == "product_skus_product_id_specs_key" {
+			return nil, apperr.ErrProductSKUAlreadyExists
+		}
+		return nil, err
+	}
+	return sku, nil
 }
 
 func hasSameSpecKeys(a, b map[string]string) bool {
