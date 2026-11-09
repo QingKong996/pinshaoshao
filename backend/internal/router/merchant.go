@@ -13,6 +13,8 @@ func MerchantRegister(
 	categoryController *controller.ProductCategoryController,
 	productController *controller.ProductController,
 	skuController *controller.ProductSKUController,
+	inventoryController *controller.InventoryController,
+	dashboardController *controller.DashboardController,
 	authMiddleware gin.HandlerFunc,
 ) {
 	merchant := r.Group("/api/v1/merchant")
@@ -38,4 +40,7 @@ func MerchantRegister(
 	protected.POST("/products/:productID/skus", skuController.Create)
 	protected.PATCH("/products/:productID/skus/:skuID", skuController.Update)
 	protected.DELETE("/products/:productID/skus/:skuID", skuController.Delete)
+
+	protected.GET("/inventory", inventoryController.List)
+	protected.GET("/dashboard", dashboardController.Overview)
 }
