@@ -70,13 +70,19 @@ func requireStatus(t *testing.T, rec *httptest.ResponseRecorder, want int) {
 func requireError(t *testing.T, rec *httptest.ResponseRecorder, want error) {
 	t.Helper()
 
+	if got := decodeError(t, rec); got != want.Error() {
+		t.Fatalf("error = %q, want %q", got, want.Error())
+	}
+}
+
+func decodeError(t *testing.T, rec *httptest.ResponseRecorder) string {
+	t.Helper()
+
 	var body dto.ErrorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode error response: %v", err)
 	}
-	if body.Error != want.Error() {
-		t.Fatalf("error = %q, want %q", body.Error, want.Error())
-	}
+	return body.Error
 }
 
 func requireToken(t *testing.T, rec *httptest.ResponseRecorder) string {

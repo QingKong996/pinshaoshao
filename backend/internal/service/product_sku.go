@@ -7,6 +7,14 @@ import (
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/model"
+	"strings"
+	"unicode/utf8"
+)
+
+const (
+	maxSKUSpecEntries   = 5
+	maxSKUSpecKeyLength = 20
+	maxSKUSpecValueLen  = 50
 )
 
 // ProductReader is the product lookup the SKU service depends on.
@@ -18,6 +26,8 @@ type ProductReader interface {
 type ProductSKURepository interface {
 	CreateProductSKU(ctx context.Context, sku *model.ProductSKU) error
 	ListProductSKUsByProductID(ctx context.Context, productID int) ([]model.ProductSKU, error)
+	UpdateProductSKU(ctx context.Context, productID int, skuID int, update *model.ProductSKUUpdate) (*model.ProductSKU, error)
+	DeleteProductSKU(ctx context.Context, productID int, skuID int) error
 }
 
 type ProductSKUService struct {
@@ -32,18 +42,15 @@ func NewProductSKUService(productRepository ProductReader, skuRepository Product
 	}
 }
 
+// Create adds a SKU to a product owned by the shop.
 func (s *ProductSKUService) Create(ctx context.Context, shopID int, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error) {
-	product, err := s.productRepository.GetProductByID(ctx, productID)
-	if err != nil {
-		return nil, fmt.Errorf("service.CreateProductSKU: get product: %w", err)
-	}
-	if product.ShopID != shopID {
-		return nil, fmt.Errorf("service.CreateProductSKU: %w", apperr.ErrProductAccessDenied)
+	if err := s.ensureOwnedProduct(ctx, shopID, productID); err != nil {
+		return nil, fmt.Errorf("service.CreateProductSKU: %w", err)
 	}
 
-	specs := make(map[string]string, len(req.Specs))
-	for name, value := range req.Specs {
-		specs[name] = value
+	specs, err := normalizeSpecs(req.Specs)
+	if err != nil {
+		return nil, fmt.Errorf("service.CreateProductSKU: %w", err)
 	}
 
 	isEnabled := true
@@ -65,8 +72,9 @@ func (s *ProductSKUService) Create(ctx context.Context, shopID int, productID in
 	return sku, nil
 }
 
-func (s *ProductSKUService) List(ctx context.Context, productID int) ([]model.ProductSKU, error) {
-	if err := s.ensureProductExists(ctx, productID); err != nil {
+// List returns the SKUs of a product owned by the shop.
+func (s *ProductSKUService) List(ctx context.Context, shopID int, productID int) ([]model.ProductSKU, error) {
+	if err := s.ensureOwnedProduct(ctx, shopID, productID); err != nil {
 		return nil, fmt.Errorf("service.ListProductSKUs: %w", err)
 	}
 
@@ -77,13 +85,82 @@ func (s *ProductSKUService) List(ctx context.Context, productID int) ([]model.Pr
 	return skus, nil
 }
 
-func (s *ProductSKUService) ensureProductExists(ctx context.Context, productID int) error {
-	_, err := s.productRepository.GetProductByID(ctx, productID)
+// Update partially updates a SKU of a product owned by the shop.
+func (s *ProductSKUService) Update(ctx context.Context, shopID int, productID int, skuID int, req *dto.UpdateProductSKURequest) (*model.ProductSKU, error) {
+	if err := s.ensureOwnedProduct(ctx, shopID, productID); err != nil {
+		return nil, fmt.Errorf("service.UpdateProductSKU: %w", err)
+	}
+
+	if req.Specs == nil && req.PriceCents == nil && req.Stock == nil && req.IsEnabled == nil {
+		return nil, fmt.Errorf("service.UpdateProductSKU: %w", apperr.ErrInvalidProductSKUUpdate)
+	}
+
+	update := &model.ProductSKUUpdate{
+		PriceCents: req.PriceCents,
+		Stock:      req.Stock,
+		IsEnabled:  req.IsEnabled,
+	}
+	if req.Specs != nil {
+		specs, err := normalizeSpecs(req.Specs)
+		if err != nil {
+			return nil, fmt.Errorf("service.UpdateProductSKU: %w", err)
+		}
+		update.Specs = specs
+	}
+
+	sku, err := s.skuRepository.UpdateProductSKU(ctx, productID, skuID, update)
+	if err != nil {
+		return nil, fmt.Errorf("service.UpdateProductSKU: %w", err)
+	}
+	return sku, nil
+}
+
+// Delete removes a SKU of a product owned by the shop.
+func (s *ProductSKUService) Delete(ctx context.Context, shopID int, productID int, skuID int) error {
+	if err := s.ensureOwnedProduct(ctx, shopID, productID); err != nil {
+		return fmt.Errorf("service.DeleteProductSKU: %w", err)
+	}
+
+	if err := s.skuRepository.DeleteProductSKU(ctx, productID, skuID); err != nil {
+		return fmt.Errorf("service.DeleteProductSKU: %w", err)
+	}
+	return nil
+}
+
+// ensureOwnedProduct returns ErrProductNotFound for a missing or foreign product.
+func (s *ProductSKUService) ensureOwnedProduct(ctx context.Context, shopID int, productID int) error {
+	product, err := s.productRepository.GetProductByID(ctx, productID)
 	if err != nil {
 		if errors.Is(err, apperr.ErrProductNotFound) {
 			return apperr.ErrProductNotFound
 		}
 		return fmt.Errorf("get product: %w", err)
 	}
+	if product.ShopID != shopID {
+		return apperr.ErrProductNotFound
+	}
 	return nil
+}
+
+// normalizeSpecs trims the spec keys and values and validates their shape.
+func normalizeSpecs(specs map[string]string) (map[string]string, error) {
+	if len(specs) > maxSKUSpecEntries {
+		return nil, apperr.ErrInvalidProductSKUSpecs
+	}
+
+	normalized := make(map[string]string, len(specs))
+	for key, value := range specs {
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key == "" || value == "" ||
+			utf8.RuneCountInString(key) > maxSKUSpecKeyLength ||
+			utf8.RuneCountInString(value) > maxSKUSpecValueLen {
+			return nil, apperr.ErrInvalidProductSKUSpecs
+		}
+		if _, exists := normalized[key]; exists {
+			return nil, apperr.ErrInvalidProductSKUSpecs
+		}
+		normalized[key] = value
+	}
+	return normalized, nil
 }
