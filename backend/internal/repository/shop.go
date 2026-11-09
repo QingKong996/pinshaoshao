@@ -77,9 +77,9 @@ func (r *ShopRepository) CreateSession(ctx context.Context, shop *model.Shop, to
 }
 
 func createShop(ctx context.Context, db dbtx, shop *model.Shop) error {
-	const query = `INSERT INTO shops (username, password_hash, email) VALUES ($1, $2, $3) RETURNING id`
+	const query = `INSERT INTO shops (username, name, password_hash, email) VALUES ($1, $2, $3, $4) RETURNING id`
 
-	err := db.QueryRow(ctx, query, shop.Username, shop.PasswordHash, shop.Email).Scan(&shop.ID)
+	err := db.QueryRow(ctx, query, shop.Username, shop.Name, shop.PasswordHash, shop.Email).Scan(&shop.ID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode {
