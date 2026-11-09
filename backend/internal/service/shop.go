@@ -13,9 +13,11 @@ import (
 // ShopRepository is the persistence the shop service depends on.
 type ShopRepository interface {
 	GetShopByUsername(ctx context.Context, username string) (*model.Shop, error)
+	GetShopByID(ctx context.Context, id int) (*model.Shop, error)
 	CreateShopWithSession(ctx context.Context, shop *model.Shop, tokenHash []byte) error
 	CreateSession(ctx context.Context, shop *model.Shop, tokenHash []byte) error
 	GetShopBySessionTokenHash(ctx context.Context, tokenHash []byte) (*model.Shop, error)
+	UpdateShopProfile(ctx context.Context, shop *model.Shop) (*model.Shop, error)
 	DeleteSessionByTokenHash(ctx context.Context, tokenHash []byte) error
 }
 
@@ -117,4 +119,31 @@ func (s *ShopService) Logout(ctx context.Context, token string) error {
 	}
 
 	return nil
+}
+
+// GetProfile returns the profile of the shop.
+func (s *ShopService) GetProfile(ctx context.Context, shopID int) (*model.Shop, error) {
+	shop, err := s.shopRepository.GetShopByID(ctx, shopID)
+	if err != nil {
+		return nil, fmt.Errorf("service.ShopGetProfile: %w", err)
+	}
+	return shop, nil
+}
+
+// UpdateProfile updates the editable profile fields of the shop.
+func (s *ShopService) UpdateProfile(ctx context.Context, shopID int, req *dto.UpdateShopProfileRequest) (*model.Shop, error) {
+	description := ""
+	if req.Description != nil {
+		description = *req.Description
+	}
+
+	shop, err := s.shopRepository.UpdateShopProfile(ctx, &model.Shop{
+		ID:          shopID,
+		Name:        req.Name,
+		Description: description,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("service.ShopUpdateProfile: %w", err)
+	}
+	return shop, nil
 }

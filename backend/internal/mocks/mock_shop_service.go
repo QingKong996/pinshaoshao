@@ -12,6 +12,7 @@ package mocks
 import (
 	context "context"
 	dto "pinshaoshao/internal/dto"
+	model "pinshaoshao/internal/model"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -39,6 +40,21 @@ func NewMockShopService(ctrl *gomock.Controller) *MockShopService {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockShopService) EXPECT() *MockShopServiceMockRecorder {
 	return m.recorder
+}
+
+// GetProfile mocks base method.
+func (m *MockShopService) GetProfile(ctx context.Context, shopID int) (*model.Shop, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetProfile", ctx, shopID)
+	ret0, _ := ret[0].(*model.Shop)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetProfile indicates an expected call of GetProfile.
+func (mr *MockShopServiceMockRecorder) GetProfile(ctx, shopID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProfile", reflect.TypeOf((*MockShopService)(nil).GetProfile), ctx, shopID)
 }
 
 // Login mocks base method.
@@ -83,4 +99,19 @@ func (m *MockShopService) Register(ctx context.Context, req *dto.ShopRegisterReq
 func (mr *MockShopServiceMockRecorder) Register(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockShopService)(nil).Register), ctx, req)
+}
+
+// UpdateProfile mocks base method.
+func (m *MockShopService) UpdateProfile(ctx context.Context, shopID int, req *dto.UpdateShopProfileRequest) (*model.Shop, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateProfile", ctx, shopID, req)
+	ret0, _ := ret[0].(*model.Shop)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateProfile indicates an expected call of UpdateProfile.
+func (mr *MockShopServiceMockRecorder) UpdateProfile(ctx, shopID, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProfile", reflect.TypeOf((*MockShopService)(nil).UpdateProfile), ctx, shopID, req)
 }

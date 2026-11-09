@@ -1,13 +1,17 @@
 package controller_test
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/controller"
+	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/middleware"
 	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
@@ -35,6 +39,19 @@ func newShopLogoutRouter(t *testing.T, shopController *controller.ShopController
 
 	r := gin.New()
 	r.POST("/logout", middleware.ShopAuth(stubShopAuthenticator{shop: shop}), shopController.Logout)
+	return r
+}
+
+func newShopProfileRouter(t *testing.T, shopController *controller.ShopController, shop *model.Shop) *gin.Engine {
+	t.Helper()
+
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	protected := r.Group("")
+	protected.Use(middleware.ShopAuth(stubShopAuthenticator{shop: shop}))
+	protected.GET("/shop", shopController.GetProfile)
+	protected.PATCH("/shop", shopController.UpdateProfile)
 	return r
 }
 
@@ -239,6 +256,130 @@ func TestShopLogout(t *testing.T) {
 			Return(errors.New("database is down"))
 
 		rec := doRequest(newShopLogoutRouter(t, shopController, activeShop), http.MethodPost, "/logout", "Bearer session-token", "")
+
+		requireStatus(t, rec, http.StatusInternalServerError)
+		requireError(t, rec, apperr.ErrInternalServer)
+	})
+}
+
+func TestShopGetProfile(t *testing.T) {
+	activeShop := &model.Shop{ID: 7, Username: testShopUsername, Status: model.ShopStatusActive}
+
+	t.Run("returns the shop profile", func(t *testing.T) {
+		shopController, shopService := newTestShopController(t)
+		shopService.EXPECT().
+			GetProfile(gomock.Any(), activeShop.ID).
+			Return(&model.Shop{
+				ID:          activeShop.ID,
+				Username:    testShopUsername,
+				Name:        "First shop",
+				Description: "Intro",
+				Email:       testShopEmail,
+				Status:      model.ShopStatusActive,
+			}, nil)
+
+		rec := doRequest(newShopProfileRouter(t, shopController, activeShop), http.MethodGet, "/shop", "Bearer session-token", "")
+
+		requireStatus(t, rec, http.StatusOK)
+
+		var body dto.ShopProfileResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode shop profile: %v", err)
+		}
+		if body.ID != activeShop.ID || body.Username != testShopUsername {
+			t.Fatalf("profile = %+v, want shop %d", body, activeShop.ID)
+		}
+		if body.Name != "First shop" || body.Description != "Intro" {
+			t.Fatalf("profile = %+v, want profile fields", body)
+		}
+		if body.Status != string(model.ShopStatusActive) {
+			t.Fatalf("status = %q, want %q", body.Status, model.ShopStatusActive)
+		}
+	})
+
+	t.Run("returns 500 on service failure", func(t *testing.T) {
+		shopController, shopService := newTestShopController(t)
+		shopService.EXPECT().
+			GetProfile(gomock.Any(), activeShop.ID).
+			Return(nil, errors.New("database is down"))
+
+		rec := doRequest(newShopProfileRouter(t, shopController, activeShop), http.MethodGet, "/shop", "Bearer session-token", "")
+
+		requireStatus(t, rec, http.StatusInternalServerError)
+		requireError(t, rec, apperr.ErrInternalServer)
+	})
+}
+
+func TestShopUpdateProfile(t *testing.T) {
+	activeShop := &model.Shop{ID: 7, Username: testShopUsername, Status: model.ShopStatusActive}
+	validBody := `{"name":"First shop","description":"Intro"}`
+
+	t.Run("returns the updated profile", func(t *testing.T) {
+		shopController, shopService := newTestShopController(t)
+		shopService.EXPECT().
+			UpdateProfile(gomock.Any(), activeShop.ID, gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ int, req *dto.UpdateShopProfileRequest) (*model.Shop, error) {
+				if req.Description == nil || *req.Description != "Intro" {
+					t.Fatalf("description = %v, want %q", req.Description, "Intro")
+				}
+				return &model.Shop{
+					ID:          activeShop.ID,
+					Username:    testShopUsername,
+					Name:        "First shop",
+					Description: *req.Description,
+					Status:      model.ShopStatusActive,
+				}, nil
+			})
+
+		rec := doRequest(newShopProfileRouter(t, shopController, activeShop), http.MethodPatch, "/shop", "Bearer session-token", validBody)
+
+		requireStatus(t, rec, http.StatusOK)
+
+		var body dto.ShopProfileResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode shop profile: %v", err)
+		}
+		if body.Name != "First shop" || body.Description != "Intro" {
+			t.Fatalf("profile = %+v, want updated fields", body)
+		}
+	})
+
+	t.Run("rejects malformed json", func(t *testing.T) {
+		shopController, _ := newTestShopController(t)
+
+		rec := doRequest(newShopProfileRouter(t, shopController, activeShop), http.MethodPatch, "/shop", "Bearer session-token", `{bad`)
+
+		requireStatus(t, rec, http.StatusBadRequest)
+		requireError(t, rec, apperr.ErrInvalidJsonFormat)
+	})
+
+	t.Run("rejects an invalid payload", func(t *testing.T) {
+		payloads := map[string]string{
+			"missing name":         `{"description":"Intro"}`,
+			"missing description":  `{"name":"First shop"}`,
+			"empty name":           `{"name":"","description":"Intro"}`,
+			"name too long":        fmt.Sprintf(`{"name":%q,"description":"Intro"}`, strings.Repeat("n", 51)),
+			"description too long": fmt.Sprintf(`{"name":"First shop","description":%q}`, strings.Repeat("d", 501)),
+		}
+		for name, payload := range payloads {
+			t.Run(name, func(t *testing.T) {
+				shopController, _ := newTestShopController(t)
+
+				rec := doRequest(newShopProfileRouter(t, shopController, activeShop), http.MethodPatch, "/shop", "Bearer session-token", payload)
+
+				requireStatus(t, rec, http.StatusBadRequest)
+				requireError(t, rec, apperr.ErrInvalidJsonFormat)
+			})
+		}
+	})
+
+	t.Run("returns 500 on service failure", func(t *testing.T) {
+		shopController, shopService := newTestShopController(t)
+		shopService.EXPECT().
+			UpdateProfile(gomock.Any(), activeShop.ID, gomock.Any()).
+			Return(nil, errors.New("database is down"))
+
+		rec := doRequest(newShopProfileRouter(t, shopController, activeShop), http.MethodPatch, "/shop", "Bearer session-token", validBody)
 
 		requireStatus(t, rec, http.StatusInternalServerError)
 		requireError(t, rec, apperr.ErrInternalServer)
