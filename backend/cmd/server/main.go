@@ -84,8 +84,10 @@ func main() {
 	productSKURepository := repository.NewProductSKURepository(pool)
 	productSKUService := service.NewProductSKUService(productRepository, productSKURepository)
 	productCategoryService := service.NewProductCategoryService(productCategoryRepository)
+	productService := service.NewProductService(productRepository, productCategoryRepository)
 	productSKUController := controller.NewProductSKUController(productSKUService)
 	productCategoryController := controller.NewProductCategoryController(productCategoryService)
+	productController := controller.NewProductController(productService)
 
 	router.UserRegister(r, userController, userAuthMiddleware)
 	router.ShopRegister(r, shopController, shopAuthMiddleware)
@@ -94,6 +96,7 @@ func main() {
 		r,
 		shopController,
 		productCategoryController,
+		productController,
 		shopAuthMiddleware,
 	)
 

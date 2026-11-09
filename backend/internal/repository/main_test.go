@@ -135,6 +135,7 @@ func insertProduct(t *testing.T, shopID int) *model.Product {
 	product := &model.Product{
 		ShopID: shopID,
 		Name:   "T-shirt",
+		Status: model.ProductStatusOffShelf,
 	}
 	if err := repository.NewProductRepository(testPool).CreateProduct(context.Background(), product); err != nil {
 		t.Fatalf("create product: %v", err)
