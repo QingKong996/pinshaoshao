@@ -11,6 +11,12 @@ export type RegisterRequest = {
   email?: string
 }
 
+export type MerchantRegisterRequest = {
+  username: string
+  password: string
+  email: string
+}
+
 export type TokenResponse = {
   token: string
 }
@@ -81,6 +87,27 @@ export function register(body: RegisterRequest) {
 
 export function logout(token: string) {
   return requestJson<void>("/logout", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+export function merchantLogin(body: LoginRequest) {
+  return requestJson<TokenResponse>("/merchant/login", {
+    method: "POST",
+    body: JSON.stringify(body),
+  })
+}
+
+export function merchantRegister(body: MerchantRegisterRequest) {
+  return requestJson<TokenResponse>("/merchant/register", {
+    method: "POST",
+    body: JSON.stringify(body),
+  })
+}
+
+export function merchantLogout(token: string) {
+  return requestJson<void>("/merchant/logout", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   })

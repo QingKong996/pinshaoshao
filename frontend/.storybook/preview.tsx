@@ -1,7 +1,7 @@
 import type { Preview } from "@storybook/react-vite"
 import { MemoryRouter } from "react-router"
 import "@/i18n"
-import { AuthProvider } from "@/lib/auth"
+import { AuthProvider, MerchantAuthProvider } from "@/lib/auth"
 import "../src/index.css"
 
 const preview: Preview = {
@@ -9,7 +9,9 @@ const preview: Preview = {
     (Story) => (
       <MemoryRouter>
         <AuthProvider>
-          <Story />
+          <MerchantAuthProvider>
+            <Story />
+          </MerchantAuthProvider>
         </AuthProvider>
       </MemoryRouter>
     ),
