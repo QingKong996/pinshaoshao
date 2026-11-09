@@ -70,6 +70,7 @@ func (s *ShopService) Register(ctx context.Context, req *dto.ShopRegisterRequest
 
 	shop := &model.Shop{
 		Username:     req.Username,
+		Name:         req.Name,
 		PasswordHash: passwordHash,
 		Email:        req.Email,
 	}
