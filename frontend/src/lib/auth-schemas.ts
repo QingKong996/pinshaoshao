@@ -11,6 +11,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const VALIDATION_KEYS = {
   usernameRequired: "auth:validation.usernameRequired",
   usernameLength: "auth:validation.usernameLength",
+  emailRequired: "auth:validation.emailRequired",
   emailInvalid: "auth:validation.emailInvalid",
   passwordRequired: "auth:validation.passwordRequired",
   passwordLength: "auth:validation.passwordLength",
@@ -50,6 +51,36 @@ const passwordSchema = z
   .min(PASSWORD_MIN, VALIDATION_KEYS.passwordLength)
   .max(PASSWORD_MAX, VALIDATION_KEYS.passwordLength)
 
+const optionalEmailSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => !value || EMAIL_PATTERN.test(value),
+    VALIDATION_KEYS.emailInvalid,
+  )
+
+const requiredEmailSchema = z
+  .string()
+  .trim()
+  .min(1, VALIDATION_KEYS.emailRequired)
+  .refine((value) => EMAIL_PATTERN.test(value), VALIDATION_KEYS.emailInvalid)
+
+function createSignUpSchema(requireEmail: boolean) {
+  return z
+    .object({
+      username: usernameSchema,
+      email: requireEmail ? requiredEmailSchema : optionalEmailSchema,
+      password: passwordSchema,
+      confirmPassword: z
+        .string()
+        .min(1, VALIDATION_KEYS.confirmPasswordRequired),
+    })
+    .refine((values) => values.confirmPassword === values.password, {
+      error: VALIDATION_KEYS.confirmPasswordMismatch,
+      path: ["confirmPassword"],
+    })
+}
+
 export const signInSchema = z.object({
   username: usernameSchema,
   password: passwordSchema,
@@ -57,22 +88,8 @@ export const signInSchema = z.object({
 
 export type SignInValues = z.infer<typeof signInSchema>
 
-export const signUpSchema = z
-  .object({
-    username: usernameSchema,
-    email: z
-      .string()
-      .trim()
-      .refine(
-        (value) => !value || EMAIL_PATTERN.test(value),
-        VALIDATION_KEYS.emailInvalid,
-      ),
-    password: passwordSchema,
-    confirmPassword: z.string().min(1, VALIDATION_KEYS.confirmPasswordRequired),
-  })
-  .refine((values) => values.confirmPassword === values.password, {
-    error: VALIDATION_KEYS.confirmPasswordMismatch,
-    path: ["confirmPassword"],
-  })
+export const signUpSchema = createSignUpSchema(false)
 
 export type SignUpValues = z.infer<typeof signUpSchema>
+
+export const merchantSignUpSchema = createSignUpSchema(true)

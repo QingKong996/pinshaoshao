@@ -1,8 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { Link } from "react-router"
 import { AuthLayout } from "@/components/auth-layout"
-import { SignInForm } from "@/components/auth/sign-in-form"
-import { SignUpForm } from "@/components/auth/sign-up-form"
+import {
+  MerchantSignInForm,
+  SignInForm,
+} from "@/components/auth/sign-in-form"
+import {
+  MerchantSignUpForm,
+  SignUpForm,
+} from "@/components/auth/sign-up-form"
 
 const meta = {
   title: "Components/AuthLayout",
@@ -51,5 +57,45 @@ export const SignUp: Story = {
       </>
     ),
     children: <SignUpForm />,
+  },
+}
+
+export const MerchantSignIn: Story = {
+  args: {
+    variant: "merchant",
+    title: "商家登录",
+    description: "登录店铺，管理你的商品与订单。",
+    footer: (
+      <>
+        还没有店铺？
+        <Link
+          to="/merchant/signup"
+          className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
+        >
+          立即入驻
+        </Link>
+      </>
+    ),
+    children: <MerchantSignInForm />,
+  },
+}
+
+export const MerchantSignUp: Story = {
+  args: {
+    variant: "merchant",
+    title: "开店入驻",
+    description: "注册商家账号，把好货卖给拼团买家。",
+    footer: (
+      <>
+        已有店铺？
+        <Link
+          to="/merchant/signin"
+          className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
+        >
+          去登录
+        </Link>
+      </>
+    ),
+    children: <MerchantSignUpForm />,
   },
 }

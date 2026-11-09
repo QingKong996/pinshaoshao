@@ -9,7 +9,13 @@ import { PasswordInput } from "@/components/auth/password-input"
 import { Button } from "@/components/ui/button"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { useAuth } from "@/lib/auth-context"
+import type { LoginRequest } from "@/lib/api"
+import {
+  useAuth,
+  useMerchantAuth,
+  type AuthKind,
+  type AuthSession,
+} from "@/lib/auth-context"
 import { describeAuthError } from "@/lib/auth-errors"
 import {
   signInSchema,
@@ -22,9 +28,30 @@ const INITIAL_VALUES: SignInValues = {
   password: "",
 }
 
-export function SignInForm() {
+const COPY = {
+  user: {
+    username: "auth:fields.username",
+    submit: "auth:signIn.submit",
+    submitting: "auth:signIn.submitting",
+    status: "auth:signIn.status",
+  },
+  merchant: {
+    username: "auth:merchant.fields.username",
+    submit: "auth:merchant.signIn.submit",
+    submitting: "auth:merchant.signIn.submitting",
+    status: "auth:merchant.signIn.status",
+  },
+} as const
+
+type SignInFormViewProps = {
+  kind: AuthKind
+  session: AuthSession | null
+  onSignIn: (credentials: LoginRequest) => Promise<void>
+}
+
+function SignInFormView({ kind, session, onSignIn }: SignInFormViewProps) {
   const { t } = useTranslation()
-  const { session, signIn } = useAuth()
+  const copy = COPY[kind]
   const [serverError, setServerError] = useState<unknown>(null)
 
   const {
@@ -39,7 +66,7 @@ export function SignInForm() {
   async function onSubmit(values: SignInValues) {
     setServerError(null)
     try {
-      await signIn(values)
+      await onSignIn(values)
     } catch (error) {
       setServerError(error)
     }
@@ -66,9 +93,7 @@ export function SignInForm() {
 
       <FieldGroup>
         <Field data-invalid={errors.username ? true : undefined}>
-          <FieldLabel htmlFor="signin-username">
-            {t("auth:fields.username")}
-          </FieldLabel>
+          <FieldLabel htmlFor="signin-username">{t(copy.username)}</FieldLabel>
           <Input
             id="signin-username"
             autoComplete="username"
@@ -122,16 +147,30 @@ export function SignInForm() {
         {isSubmitting ? (
           <>
             <LoaderCircle className="animate-spin" aria-hidden />
-            {t("auth:signIn.submitting")}
+            {t(copy.submitting)}
           </>
         ) : (
-          t("auth:signIn.submit")
+          t(copy.submit)
         )}
       </Button>
 
       <span role="status" className="sr-only">
-        {isSubmitting ? t("auth:signIn.status") : ""}
+        {isSubmitting ? t(copy.status) : ""}
       </span>
     </form>
+  )
+}
+
+export function SignInForm() {
+  const { session, signIn } = useAuth()
+
+  return <SignInFormView kind="user" session={session} onSignIn={signIn} />
+}
+
+export function MerchantSignInForm() {
+  const { session, signIn } = useMerchantAuth()
+
+  return (
+    <SignInFormView kind="merchant" session={session} onSignIn={signIn} />
   )
 }

@@ -1,5 +1,13 @@
 import type { ReactNode } from "react"
-import { ShieldCheck, Truck, Users, X } from "lucide-react"
+import {
+  Package,
+  ShieldCheck,
+  Store,
+  TrendingUp,
+  Truck,
+  Users,
+  X,
+} from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router"
 import { BrandMark } from "@/components/brand-mark"
@@ -12,21 +20,44 @@ type AuthLayoutProps = {
   description: string
   footer: ReactNode
   children: ReactNode
+  variant?: "user" | "merchant"
 }
 
-const HIGHLIGHTS = [
+const USER_HIGHLIGHTS = [
   { icon: Users, labelKey: "auth:layout.highlights.groupPrice" },
   { icon: ShieldCheck, labelKey: "auth:layout.highlights.authentic" },
   { icon: Truck, labelKey: "auth:layout.highlights.service" },
 ] as const
+
+const MERCHANT_HIGHLIGHTS = [
+  { icon: Store, labelKey: "auth:merchant.layout.highlights.storefront" },
+  { icon: Package, labelKey: "auth:merchant.layout.highlights.products" },
+  { icon: TrendingUp, labelKey: "auth:merchant.layout.highlights.orders" },
+] as const
+
+const USER_PANEL = {
+  titleLead: "auth:layout.titleLead",
+  titleRest: "auth:layout.titleRest",
+  description: "auth:layout.description",
+} as const
+
+const MERCHANT_PANEL = {
+  titleLead: "auth:merchant.layout.titleLead",
+  titleRest: "auth:merchant.layout.titleRest",
+  description: "auth:merchant.layout.description",
+} as const
 
 export function AuthLayout({
   title,
   description,
   footer,
   children,
+  variant = "user",
 }: AuthLayoutProps) {
   const { t } = useTranslation()
+  const panel = variant === "merchant" ? MERCHANT_PANEL : USER_PANEL
+  const highlights =
+    variant === "merchant" ? MERCHANT_HIGHLIGHTS : USER_HIGHLIGHTS
 
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
@@ -43,15 +74,15 @@ export function AuthLayout({
 
         <div className="relative max-w-md">
           <h2 className="text-3xl font-semibold tracking-tight text-balance xl:text-4xl">
-            {t("auth:layout.titleLead")}
+            {t(panel.titleLead)}
             <br />
-            {t("auth:layout.titleRest")}
+            {t(panel.titleRest)}
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-white/60">
-            {t("auth:layout.description")}
+            {t(panel.description)}
           </p>
           <ul className="mt-8 space-y-3">
-            {HIGHLIGHTS.map(({ icon: Icon, labelKey }) => (
+            {highlights.map(({ icon: Icon, labelKey }) => (
               <li
                 key={labelKey}
                 className="flex items-center gap-3 text-sm text-white/75"
