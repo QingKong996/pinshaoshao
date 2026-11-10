@@ -5,11 +5,14 @@ import {
   createBrowserRouter,
 } from "react-router"
 import { GridOverlay } from "@/components/grid-overlay"
+import { MerchantLayout } from "@/components/merchant/merchant-layout"
 import { MerchantAuthProvider } from "@/lib/merchant-auth"
 import { UserAuthProvider } from "@/lib/user-auth"
 import HomePage from "@/pages/home"
 import MerchantSignInPage from "@/pages/merchant-sign-in"
 import MerchantSignUpPage from "@/pages/merchant-sign-up"
+import DashboardPage from "@/pages/merchant/dashboard"
+import ShopProfilePage from "@/pages/merchant/shop"
 import NotFoundPage from "@/pages/not-found"
 import SignInPage from "@/pages/sign-in"
 import SignUpPage from "@/pages/sign-up"
@@ -31,6 +34,14 @@ const router = createBrowserRouter([
       { path: "/", element: <HomePage /> },
       { path: "/signin", element: <SignInPage /> },
       { path: "/signup", element: <SignUpPage /> },
+      {
+        path: "/merchant",
+        element: <MerchantLayout />,
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: "shop", element: <ShopProfilePage /> },
+        ],
+      },
       { path: "/merchant/signin", element: <MerchantSignInPage /> },
       { path: "/merchant/signup", element: <MerchantSignUpPage /> },
       { path: "*", element: <NotFoundPage /> },

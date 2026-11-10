@@ -50,7 +50,7 @@ export function MerchantSignInForm() {
   }
 
   if (session) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/merchant" replace />
   }
 
   return (
