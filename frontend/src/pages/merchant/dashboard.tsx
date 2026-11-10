@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   Boxes,
   CircleDollarSign,
   Package,
@@ -39,6 +40,15 @@ export default function DashboardPage() {
       <PageHeader
         title={t("dashboard.title")}
         description={t("dashboard.description")}
+        actions={
+          <Link
+            to="/merchant/products"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            {t("nav.products")}
+            <ArrowRight aria-hidden />
+          </Link>
+        }
       />
 
       {dashboard.error ? (

@@ -11,7 +11,9 @@ import { UserAuthProvider } from "@/lib/user-auth"
 import HomePage from "@/pages/home"
 import MerchantSignInPage from "@/pages/merchant-sign-in"
 import MerchantSignUpPage from "@/pages/merchant-sign-up"
+import CategoriesPage from "@/pages/merchant/categories"
 import DashboardPage from "@/pages/merchant/dashboard"
+import ProductsPage from "@/pages/merchant/products"
 import ShopProfilePage from "@/pages/merchant/shop"
 import NotFoundPage from "@/pages/not-found"
 import SignInPage from "@/pages/sign-in"
@@ -39,6 +41,8 @@ const router = createBrowserRouter([
         element: <MerchantLayout />,
         children: [
           { index: true, element: <DashboardPage /> },
+          { path: "products", element: <ProductsPage /> },
+          { path: "categories", element: <CategoriesPage /> },
           { path: "shop", element: <ShopProfilePage /> },
         ],
       },
