@@ -1,0 +1,11 @@
+{
+  "title": "商户中心",
+  "sidebarDescription": "商户中心导航菜单",
+  "nav": {
+    "dashboard": "概览",
+    "products": "商品",
+    "categories": "分类",
+    "inventory": "库存",
+    "shop": "店铺设置"
+  }
+}
