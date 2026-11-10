@@ -13,6 +13,7 @@ import MerchantSignInPage from "@/pages/merchant-sign-in"
 import MerchantSignUpPage from "@/pages/merchant-sign-up"
 import CategoriesPage from "@/pages/merchant/categories"
 import DashboardPage from "@/pages/merchant/dashboard"
+import ProductDetailPage from "@/pages/merchant/product-detail"
 import ProductsPage from "@/pages/merchant/products"
 import ShopProfilePage from "@/pages/merchant/shop"
 import NotFoundPage from "@/pages/not-found"
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: "products", element: <ProductsPage /> },
+          { path: "products/:productID", element: <ProductDetailPage /> },
           { path: "categories", element: <CategoriesPage /> },
           { path: "shop", element: <ShopProfilePage /> },
         ],

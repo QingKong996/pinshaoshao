@@ -1,5 +1,6 @@
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { Boxes, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -106,6 +107,12 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
                   <MoreHorizontal aria-hidden />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    render={<Link to={`/merchant/products/${product.id}`} />}
+                  >
+                    <Boxes aria-hidden />
+                    {t("products.actions.manageSkus")}
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onEdit(product)}>
                     <Pencil aria-hidden />
                     {t("products.actions.edit")}
