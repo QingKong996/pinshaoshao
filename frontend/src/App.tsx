@@ -1,11 +1,18 @@
 import {
+  Navigate,
   Outlet,
   RouterProvider,
   ScrollRestoration,
   createBrowserRouter,
 } from "react-router"
 import { GridOverlay } from "@/components/grid-overlay"
+import { MerchantConsoleLayout } from "@/components/merchant-console-layout"
 import { MerchantAuthProvider } from "@/lib/merchant-auth"
+import {
+  MERCHANT_CONSOLE_BASE_PATH,
+  MERCHANT_CONSOLE_HOME_PATH,
+  MERCHANT_CONSOLE_SECTIONS,
+} from "@/lib/merchant-console-nav"
 import { UserAuthProvider } from "@/lib/user-auth"
 import HomePage from "@/pages/home"
 import MerchantSignInPage from "@/pages/merchant-sign-in"
@@ -33,6 +40,18 @@ const router = createBrowserRouter([
       { path: "/signup", element: <SignUpPage /> },
       { path: "/merchant/signin", element: <MerchantSignInPage /> },
       { path: "/merchant/signup", element: <MerchantSignUpPage /> },
+      {
+        path: MERCHANT_CONSOLE_BASE_PATH,
+        element: <MerchantConsoleLayout />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to={MERCHANT_CONSOLE_HOME_PATH} replace />,
+          },
+          // Section pages are intentionally empty until their content lands.
+          ...MERCHANT_CONSOLE_SECTIONS.map(({ slug }) => ({ path: slug })),
+        ],
+      },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
