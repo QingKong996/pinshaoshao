@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { LayoutDashboard, Package, Store, Tags } from "lucide-react"
+import { Boxes, LayoutDashboard, Package, Store, Tags } from "lucide-react"
 import type { ParseKeys } from "i18next"
 
 export type MerchantNavItem = {
@@ -25,6 +25,11 @@ export const MERCHANT_NAV = [
     to: "/merchant/categories",
     labelKey: "nav.categories",
     icon: Tags,
+  },
+  {
+    to: "/merchant/inventory",
+    labelKey: "nav.inventory",
+    icon: Boxes,
   },
   {
     to: "/merchant/shop",

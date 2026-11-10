@@ -13,6 +13,7 @@ import MerchantSignInPage from "@/pages/merchant-sign-in"
 import MerchantSignUpPage from "@/pages/merchant-sign-up"
 import CategoriesPage from "@/pages/merchant/categories"
 import DashboardPage from "@/pages/merchant/dashboard"
+import InventoryPage from "@/pages/merchant/inventory"
 import ProductDetailPage from "@/pages/merchant/product-detail"
 import ProductsPage from "@/pages/merchant/products"
 import ShopProfilePage from "@/pages/merchant/shop"
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
           { path: "products", element: <ProductsPage /> },
           { path: "products/:productID", element: <ProductDetailPage /> },
           { path: "categories", element: <CategoriesPage /> },
+          { path: "inventory", element: <InventoryPage /> },
           { path: "shop", element: <ShopProfilePage /> },
         ],
       },
