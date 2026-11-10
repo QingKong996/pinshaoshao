@@ -1,0 +1,11 @@
+{
+  "title": "Merchant center",
+  "sidebarDescription": "Merchant center navigation",
+  "nav": {
+    "dashboard": "Overview",
+    "products": "Products",
+    "categories": "Categories",
+    "inventory": "Inventory",
+    "shop": "Shop settings"
+  }
+}
