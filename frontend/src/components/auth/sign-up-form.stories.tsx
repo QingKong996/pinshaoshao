@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import {
-  MerchantSignUpForm,
-  SignUpForm,
-} from "@/components/auth/sign-up-form"
+import { MerchantSignUpForm } from "@/components/auth/merchant-sign-up-form"
+import { SignUpForm } from "@/components/auth/sign-up-form"
 
 const meta = {
   title: "Components/Auth/SignUpForm",
