@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 type BrandMarkProps = {
   className?: string
   inverted?: boolean
+  to?: string
 }
 
 const TAG_PATH =
@@ -29,10 +30,14 @@ function BrandGlyph() {
   )
 }
 
-export function BrandMark({ className, inverted = false }: BrandMarkProps) {
+export function BrandMark({
+  className,
+  inverted = false,
+  to = "/",
+}: BrandMarkProps) {
   return (
     <Link
-      to="/"
+      to={to}
       aria-label={BRAND.name}
       className={cn(
         "group inline-flex items-center gap-2.5 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50",

@@ -1,0 +1,308 @@
+{
+  "documentTitle": {
+    "dashboard": "Overview · Merchant console · {{brand}}",
+    "products": "Products · Merchant console · {{brand}}",
+    "categories": "Categories · Merchant console · {{brand}}",
+    "inventory": "Inventory · Merchant console · {{brand}}",
+    "shop": "Shop profile · Merchant console · {{brand}}",
+    "productDetail": "{{name}} · Products · Merchant console · {{brand}}"
+  },
+  "nav": {
+    "group": "Merchant",
+    "dashboard": "Overview",
+    "products": "Products",
+    "categories": "Categories",
+    "inventory": "Inventory",
+    "shop": "Shop profile"
+  },
+  "layout": {
+    "console": "Merchant console",
+    "navLabel": "Merchant navigation",
+    "toggleNav": "Toggle navigation"
+  },
+  "account": {
+    "menu": "Account menu",
+    "backToStore": "Back to store",
+    "signOut": "Sign out"
+  },
+  "common": {
+    "actions": "Actions",
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "add": "Add",
+    "loading": "Loading...",
+    "retry": "Retry",
+    "all": "All",
+    "uncategorized": "Uncategorized",
+    "none": "None",
+    "close": "Close",
+    "loadError": "Could not load data"
+  },
+  "status": {
+    "onShelf": "On shelf",
+    "offShelf": "Off shelf",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "active": "Active",
+    "banned": "Banned"
+  },
+  "errors": {
+    "unauthorized": "Your session has expired. Please sign in again.",
+    "banned": "This shop has been banned.",
+    "forbidden": "You do not have permission for this action.",
+    "notFound": "The resource does not exist or was deleted.",
+    "conflict": "The action conflicts with the current data. Please refresh and retry.",
+    "invalidInput": "Please check the submitted values.",
+    "network": "Cannot reach the server. Check your connection and try again.",
+    "server": "Something went wrong on the server. Please try again later.",
+    "unknown": "Something went wrong. Please try again later.",
+    "categoryExists": "A category with this name already exists.",
+    "skuExists": "A SKU with the same specs already exists.",
+    "invalidCategory": "The selected category is invalid. Please refresh and retry.",
+    "specsMismatch": "Spec names must match the product's existing SKUs."
+  },
+  "validation": {
+    "nameRequired": "Enter a name",
+    "nameTooLong": "Name must be at most {{max}} characters",
+    "productNameTooLong": "Product name must be at most {{max}} characters",
+    "categoryNameTooLong": "Category name must be at most {{max}} characters",
+    "descriptionTooLong": "Description must be at most {{max}} characters",
+    "productDescriptionTooLong": "Product description must be at most {{max}} characters",
+    "priceRequired": "Enter a price",
+    "priceInvalid": "Enter a valid price with at most two decimals",
+    "priceTooLarge": "Price is out of range",
+    "stockRequired": "Enter the stock",
+    "stockInvalid": "Stock must be a non-negative integer",
+    "stockTooLarge": "Stock is out of range",
+    "specRequired": "Add at least one spec",
+    "specKeyRequired": "Enter a spec name",
+    "specValueRequired": "Enter a spec value",
+    "specKeyTooLong": "Spec name must be at most {{max}} characters",
+    "specValueTooLong": "Spec value must be at most {{max}} characters",
+    "specKeyDuplicate": "Spec names must be unique",
+    "specsTooMany": "At most {{max}} specs are allowed"
+  },
+  "dashboard": {
+    "title": "Overview",
+    "description": "A quick look at your products, SKUs, and stock.",
+    "stats": {
+      "products": "Products",
+      "productsHint": "{{onShelf}} on shelf",
+      "skus": "SKUs",
+      "skusHint_one": "Across {{count}} category",
+      "skusHint_other": "Across {{count}} categories",
+      "stock": "Total stock",
+      "stockHint_one": "{{count}} SKU out of stock",
+      "stockHint_other": "{{count}} SKUs out of stock",
+      "value": "Stock value",
+      "valueHint": "Estimated at current prices"
+    },
+    "shopCard": {
+      "title": "Shop profile",
+      "edit": "Edit shop profile",
+      "noDescription": "No shop description yet.",
+      "statusLabel": "Shop status"
+    }
+  },
+  "shop": {
+    "title": "Shop profile",
+    "description": "Set the shop name and description that shoppers see.",
+    "form": {
+      "profileTitle": "Shop details",
+      "nameLabel": "Shop name",
+      "nameHint": "Shown to shoppers. It can differ from your login username.",
+      "descriptionLabel": "Description",
+      "descriptionHint": "A short sentence that introduces your shop.",
+      "accountTitle": "Account",
+      "usernameLabel": "Login username",
+      "usernameHint": "The login username cannot be changed.",
+      "emailLabel": "Email",
+      "statusLabel": "Shop status",
+      "createdAtLabel": "Joined"
+    },
+    "save": "Save changes",
+    "saving": "Saving...",
+    "saved": "Shop profile saved."
+  },
+  "products": {
+    "title": "Products",
+    "description": "Maintain product details, shelf status, and category.",
+    "create": "New product",
+    "searchPlaceholder": "Search products",
+    "filterCategory": "All categories",
+    "filterStatus": "All statuses",
+    "categoryFilterLabel": "Category filter",
+    "statusFilterLabel": "Status filter",
+    "manageCategories": "Manage categories",
+    "empty": {
+      "title": "No products yet",
+      "description": "Create your first product to manage it here."
+    },
+    "emptyFiltered": {
+      "title": "No matching products",
+      "description": "Try adjusting the search or filters."
+    },
+    "columns": {
+      "product": "Product",
+      "category": "Category",
+      "status": "Status",
+      "sku": "SKUs",
+      "stock": "Stock",
+      "price": "Price",
+      "updatedAt": "Updated"
+    },
+    "rowActions": "Product actions",
+    "actions": {
+      "manageSkus": "Manage SKUs",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "form": {
+      "titleCreate": "New product",
+      "titleEdit": "Edit product",
+      "nameLabel": "Product name",
+      "namePlaceholder": "e.g. Cotton crew-neck T-shirt",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Describe the highlights, material, and more",
+      "categoryLabel": "Category",
+      "uncategorized": "Uncategorized",
+      "statusLabel": "Shelf status"
+    },
+    "delete": {
+      "title": "Delete product?",
+      "description": "Deleting “{{name}}” also deletes its SKUs and stock records. This cannot be undone."
+    },
+    "created": "Product created.",
+    "updated": "Product updated.",
+    "deleted": "Product deleted."
+  },
+  "categories": {
+    "title": "Categories",
+    "description": "Categories organize products. Deleting one makes its products uncategorized.",
+    "create": "New category",
+    "empty": {
+      "title": "No categories yet",
+      "description": "Create a category to start grouping products."
+    },
+    "columns": {
+      "name": "Category",
+      "productCount": "Products",
+      "createdAt": "Created"
+    },
+    "form": {
+      "titleCreate": "New category",
+      "titleEdit": "Rename category",
+      "nameLabel": "Category name",
+      "namePlaceholder": "e.g. Apparel"
+    },
+    "delete": {
+      "title": "Delete category?",
+      "description": "Products in “{{name}}” will become uncategorized."
+    },
+    "productCount_one": "{{count}} product",
+    "productCount_other": "{{count}} products",
+    "created": "Category created.",
+    "updated": "Category updated.",
+    "deleted": "Category deleted."
+  },
+  "productDetail": {
+    "back": "Back to products",
+    "notFound": {
+      "title": "Product not found",
+      "description": "This product may have been deleted."
+    },
+    "info": {
+      "category": "Category",
+      "status": "Status",
+      "createdAt": "Created",
+      "updatedAt": "Updated",
+      "description": "Description",
+      "noDescription": "No description yet."
+    }
+  },
+  "skus": {
+    "title": "Specs & SKUs",
+    "description": "Maintain sellable variants, prices, and stock for this product.",
+    "add": "Add SKU",
+    "empty": {
+      "title": "No SKUs yet",
+      "description": "Add at least one SKU before the product can be sold."
+    },
+    "columns": {
+      "specs": "Specs",
+      "price": "Price",
+      "stock": "Stock",
+      "enabled": "Status",
+      "updatedAt": "Updated"
+    },
+    "rowActions": "SKU actions",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "form": {
+      "titleCreate": "Add SKU",
+      "titleEdit": "Edit SKU",
+      "priceLabel": "Price (CNY)",
+      "pricePlaceholder": "0.00",
+      "stockLabel": "Stock",
+      "stockPlaceholder": "0",
+      "enabledLabel": "Enable this SKU",
+      "enabledHint": "Disabled SKUs cannot be purchased.",
+      "specsLabel": "Spec combination",
+      "specsHint": "All SKUs of a product must use the same spec names.",
+      "firstSKUsHint": "The first SKU's spec names become the product's spec template.",
+      "addSpec": "Add spec",
+      "removeSpec": "Remove spec",
+      "specKeyPlaceholder": "Spec name, e.g. Color",
+      "specValuePlaceholder": "Spec value, e.g. Black"
+    },
+    "delete": {
+      "title": "Delete SKU?",
+      "description": "This variant will no longer be sellable. This cannot be undone."
+    },
+    "created": "SKU added.",
+    "updated": "SKU updated.",
+    "deleted": "SKU deleted."
+  },
+  "inventory": {
+    "title": "Inventory",
+    "description": "Review and adjust stock for every SKU.",
+    "searchPlaceholder": "Search by product or spec",
+    "filterLabel": "Stock filter",
+    "filter": {
+      "all": "All",
+      "out": "Out of stock"
+    },
+    "empty": {
+      "title": "No inventory yet",
+      "description": "Create a product with SKUs to manage stock here."
+    },
+    "emptyFiltered": {
+      "title": "No matching inventory",
+      "description": "Try adjusting the search or filters."
+    },
+    "columns": {
+      "product": "Product",
+      "category": "Category",
+      "specs": "Specs",
+      "price": "Unit price",
+      "stock": "Stock",
+      "updatedAt": "Updated"
+    },
+    "adjust": "Adjust stock",
+    "badge": {
+      "out": "Out of stock"
+    },
+    "dialog": {
+      "title": "Adjust stock",
+      "description": "Set the current stock for “{{name}}”.",
+      "stockLabel": "Stock",
+      "submit": "Save stock"
+    },
+    "adjusted": "Stock updated."
+  }
+}
