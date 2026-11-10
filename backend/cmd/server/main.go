@@ -82,12 +82,18 @@ func main() {
 	productRepository := repository.NewProductRepository(pool)
 	productCategoryRepository := repository.NewProductCategoryRepository(pool)
 	productSKURepository := repository.NewProductSKURepository(pool)
+	inventoryRepository := repository.NewInventoryRepository(pool)
+	dashboardRepository := repository.NewDashboardRepository(pool)
 	productSKUService := service.NewProductSKUService(productRepository, productSKURepository)
 	productCategoryService := service.NewProductCategoryService(productCategoryRepository)
 	productService := service.NewProductService(productRepository, productCategoryRepository)
+	inventoryService := service.NewInventoryService(inventoryRepository)
+	dashboardService := service.NewDashboardService(dashboardRepository)
 	productSKUController := controller.NewProductSKUController(productSKUService)
 	productCategoryController := controller.NewProductCategoryController(productCategoryService)
 	productController := controller.NewProductController(productService)
+	inventoryController := controller.NewInventoryController(inventoryService)
+	dashboardController := controller.NewDashboardController(dashboardService)
 
 	router.UserRegister(r, userController, userAuthMiddleware)
 	router.ShopRegister(r, shopController, shopAuthMiddleware)
@@ -97,6 +103,8 @@ func main() {
 		productCategoryController,
 		productController,
 		productSKUController,
+		inventoryController,
+		dashboardController,
 		shopAuthMiddleware,
 	)
 
