@@ -1,14 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { Link } from "react-router"
 import { AuthLayout } from "@/components/auth-layout"
-import {
-  MerchantSignInForm,
-  SignInForm,
-} from "@/components/auth/sign-in-form"
-import {
-  MerchantSignUpForm,
-  SignUpForm,
-} from "@/components/auth/sign-up-form"
+import { MerchantSignInForm } from "@/components/auth/merchant-sign-in-form"
+import { MerchantSignUpForm } from "@/components/auth/merchant-sign-up-form"
+import { SignInForm } from "@/components/auth/sign-in-form"
+import { SignUpForm } from "@/components/auth/sign-up-form"
 
 const meta = {
   title: "Components/AuthLayout",
