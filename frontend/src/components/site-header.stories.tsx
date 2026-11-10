@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { SiteHeader } from "@/components/site-header"
-import { AuthContext, type AuthContextValue } from "@/lib/auth-context"
+import {
+  UserAuthContext,
+  type UserAuthContextValue,
+} from "@/lib/user-auth-context"
 
-const MOCK_AUTH: AuthContextValue = {
+const MOCK_AUTH: UserAuthContextValue = {
   session: {
     token: "storybook-token",
     username: "alice01",
@@ -30,9 +33,9 @@ export const SignedOut: Story = {}
 export const SignedIn: Story = {
   decorators: [
     (Story) => (
-      <AuthContext.Provider value={MOCK_AUTH}>
+      <UserAuthContext.Provider value={MOCK_AUTH}>
         <Story />
-      </AuthContext.Provider>
+      </UserAuthContext.Provider>
     ),
   ],
 }

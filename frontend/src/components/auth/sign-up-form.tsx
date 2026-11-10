@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { LoaderCircle } from "lucide-react"
-import { useForm, type Resolver } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { Navigate } from "react-router"
 import { AuthErrorAlert } from "@/components/auth/auth-error-alert"
@@ -16,75 +16,42 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
-  useAuth,
-  useMerchantAuth,
-  type AuthKind,
-  type AuthSession,
-} from "@/lib/auth-context"
-import { describeAuthError } from "@/lib/auth-errors"
-import {
-  merchantSignUpSchema,
   signUpSchema,
   translateAuthValidationMessage,
   type SignUpValues,
 } from "@/lib/auth-schemas"
+import { describeUserAuthError } from "@/lib/user-auth-errors"
+import { useAuth } from "@/lib/user-auth-context"
 
-const INITIAL_VALUES: SignUpFormValues = {
-  name: "",
+const INITIAL_VALUES: SignUpValues = {
   username: "",
   email: "",
   password: "",
   confirmPassword: "",
 }
 
-const COPY = {
-  user: {
-    username: "auth:fields.username",
-    emailHint: "auth:hints.optional",
-    submit: "auth:signUp.submit",
-    submitting: "auth:signUp.submitting",
-    status: "auth:signUp.status",
-  },
-  merchant: {
-    username: "auth:merchant.fields.username",
-    emailHint: "auth:merchant.hints.email",
-    submit: "auth:merchant.signUp.submit",
-    submitting: "auth:merchant.signUp.submitting",
-    status: "auth:merchant.signUp.status",
-  },
-} as const
-
-type SignUpFormValues = SignUpValues & { name?: string }
-
-const RESOLVERS = {
-  user: zodResolver(signUpSchema),
-  merchant: zodResolver(merchantSignUpSchema),
-} as const
-
-type SignUpFormViewProps = {
-  kind: AuthKind
-  session: AuthSession | null
-  onSignUp: (values: SignUpFormValues) => Promise<void>
-}
-
-function SignUpFormView({ kind, session, onSignUp }: SignUpFormViewProps) {
+export function SignUpForm() {
   const { t } = useTranslation()
-  const copy = COPY[kind]
+  const { session, signUp } = useAuth()
   const [serverError, setServerError] = useState<unknown>(null)
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<SignUpFormValues>({
-    resolver: RESOLVERS[kind] as Resolver<SignUpFormValues>,
+  } = useForm<SignUpValues>({
+    resolver: zodResolver(signUpSchema),
     defaultValues: INITIAL_VALUES,
   })
 
-  async function onSubmit(values: SignUpFormValues) {
+  async function onSubmit(values: SignUpValues) {
     setServerError(null)
     try {
-      await onSignUp(values)
+      await signUp({
+        username: values.username,
+        email: values.email || undefined,
+        password: values.password,
+      })
     } catch (error) {
       setServerError(error)
     }
@@ -107,48 +74,20 @@ function SignUpFormView({ kind, session, onSignUp }: SignUpFormViewProps) {
     >
       {serverError ? (
         <AuthErrorAlert
-          message={describeAuthError(serverError, "register", t)}
+          message={describeUserAuthError(serverError, "register", t)}
         />
       ) : null}
 
       <FieldGroup>
-        {kind === "merchant" ? (
-          <Field data-invalid={errors.name ? true : undefined}>
-            <FieldLabel htmlFor="signup-shop-name">
-              {t("auth:merchant.fields.name")}
-            </FieldLabel>
-            <Input
-              id="signup-shop-name"
-              autoComplete="organization"
-              autoFocus
-              required
-              aria-invalid={errors.name ? true : undefined}
-              aria-describedby={
-                errors.name
-                  ? "signup-shop-name-hint signup-shop-name-error"
-                  : "signup-shop-name-hint"
-              }
-              className="h-10"
-              {...register("name", { onChange: clearServerError })}
-            />
-            <FieldDescription id="signup-shop-name-hint">
-              {t("auth:merchant.hints.name")}
-            </FieldDescription>
-            {errors.name ? (
-              <FieldError id="signup-shop-name-error">
-                {translateAuthValidationMessage(errors.name.message, t)}
-              </FieldError>
-            ) : null}
-          </Field>
-        ) : null}
-
         <Field data-invalid={errors.username ? true : undefined}>
-          <FieldLabel htmlFor="signup-username">{t(copy.username)}</FieldLabel>
+          <FieldLabel htmlFor="signup-username">
+            {t("auth:fields.username")}
+          </FieldLabel>
           <Input
             id="signup-username"
             autoComplete="username"
             autoCapitalize="none"
-            autoFocus={kind === "user"}
+            autoFocus
             spellCheck={false}
             required
             aria-invalid={errors.username ? true : undefined}
@@ -171,20 +110,21 @@ function SignUpFormView({ kind, session, onSignUp }: SignUpFormViewProps) {
         </Field>
 
         <Field data-invalid={errors.email ? true : undefined}>
-          <FieldLabel htmlFor="signup-email">{t("auth:fields.email")}</FieldLabel>
+          <FieldLabel htmlFor="signup-email">
+            {t("auth:fields.email")}
+          </FieldLabel>
           <Input
             id="signup-email"
             type="email"
             autoComplete="email"
             autoCapitalize="none"
             spellCheck={false}
-            required={kind === "merchant"}
             aria-invalid={errors.email ? true : undefined}
             aria-describedby={errors.email ? "signup-email-error" : undefined}
             className="h-10"
             {...register("email", { onChange: clearServerError })}
           />
-          <FieldDescription>{t(copy.emailHint)}</FieldDescription>
+          <FieldDescription>{t("auth:hints.optional")}</FieldDescription>
           {errors.email ? (
             <FieldError id="signup-email-error">
               {translateAuthValidationMessage(errors.email.message, t)}
@@ -259,53 +199,16 @@ function SignUpFormView({ kind, session, onSignUp }: SignUpFormViewProps) {
         {isSubmitting ? (
           <>
             <LoaderCircle className="animate-spin" aria-hidden />
-            {t(copy.submitting)}
+            {t("auth:signUp.submitting")}
           </>
         ) : (
-          t(copy.submit)
+          t("auth:signUp.submit")
         )}
       </Button>
 
       <span role="status" className="sr-only">
-        {isSubmitting ? t(copy.status) : ""}
+        {isSubmitting ? t("auth:signUp.status") : ""}
       </span>
     </form>
-  )
-}
-
-export function SignUpForm() {
-  const { session, signUp } = useAuth()
-
-  return (
-    <SignUpFormView
-      kind="user"
-      session={session}
-      onSignUp={(values) =>
-        signUp({
-          username: values.username,
-          email: values.email || undefined,
-          password: values.password,
-        })
-      }
-    />
-  )
-}
-
-export function MerchantSignUpForm() {
-  const { session, signUp } = useMerchantAuth()
-
-  return (
-    <SignUpFormView
-      kind="merchant"
-      session={session}
-      onSignUp={(values) =>
-        signUp({
-          username: values.username,
-          name: values.name ?? "",
-          email: values.email,
-          password: values.password,
-        })
-      }
-    />
   )
 }
