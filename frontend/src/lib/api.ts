@@ -36,7 +36,19 @@ export class ApiError extends Error {
   }
 }
 
-async function requestJson<T>(
+type UnauthorizedListener = () => void
+
+const unauthorizedListeners = new Set<UnauthorizedListener>()
+
+// Lets the active session provider clear a stale session when the API rejects its token.
+export function onUnauthorized(listener: UnauthorizedListener): () => void {
+  unauthorizedListeners.add(listener)
+  return () => {
+    unauthorizedListeners.delete(listener)
+  }
+}
+
+export async function requestJson<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
@@ -62,6 +74,11 @@ async function requestJson<T>(
       }
     } catch {
       // keep the status based message
+    }
+    if (response.status === 401) {
+      for (const listener of unauthorizedListeners) {
+        listener()
+      }
     }
     throw new ApiError(response.status, message)
   }

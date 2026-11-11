@@ -22,6 +22,7 @@ import {
 } from "@/lib/auth-schemas"
 import { describeMerchantAuthError } from "@/lib/merchant-auth-errors"
 import { useMerchantAuth } from "@/lib/merchant-auth-context"
+import { MERCHANT_CONSOLE_HOME_PATH } from "@/lib/merchant-console-nav"
 
 const INITIAL_VALUES: MerchantSignUpValues = {
   name: "",
@@ -59,7 +60,7 @@ export function MerchantSignUpForm() {
   }
 
   if (session) {
-    return <Navigate to="/" replace />
+    return <Navigate to={MERCHANT_CONSOLE_HOME_PATH} replace />
   }
 
   return (
