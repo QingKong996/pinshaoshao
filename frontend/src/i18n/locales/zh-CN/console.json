@@ -9,11 +9,16 @@
     "shop": "店铺设置"
   },
   "documentTitle": {
-    "dashboard": "概览 · 商户中心 · {{brand}}"
+    "dashboard": "概览 · 商户中心 · {{brand}}",
+    "products": "商品 · 商户中心 · {{brand}}",
+    "productDetail": "{{name}} · 商户中心 · {{brand}}"
   },
   "common": {
     "loadError": "加载失败",
-    "retry": "重试"
+    "retry": "重试",
+    "cancel": "取消",
+    "saveError": "保存失败",
+    "actionError": "操作失败"
   },
   "errors": {
     "unauthorized": "登录状态已失效，请重新登录。",
@@ -21,11 +26,20 @@
     "notFound": "资源不存在或已被删除。",
     "network": "无法连接服务器，请检查网络后重试。",
     "server": "服务器开小差了，请稍后重试。",
-    "unknown": "出了点问题，请稍后重试。"
+    "unknown": "出了点问题，请稍后重试。",
+    "productNotFound": "商品不存在或已被删除。",
+    "invalidCategory": "所选分类无效，请重新选择。",
+    "productSKUSpecs": "规格格式不正确，请检查规格名和规格值。",
+    "productSKUSpecsMismatch": "所有 SKU 的规格名必须保持一致。",
+    "productSKUAlreadyExists": "已存在相同规格的 SKU。"
   },
   "status": {
     "active": "正常",
     "banned": "已封禁"
+  },
+  "productStatus": {
+    "on_shelf": "已上架",
+    "off_shelf": "已下架"
   },
   "dashboard": {
     "title": "概览",
@@ -46,6 +60,138 @@
       "title": "店铺信息",
       "noDescription": "还没有填写店铺描述。",
       "statusLabel": "店铺状态"
+    }
+  },
+  "products": {
+    "title": "商品",
+    "description": "管理店铺商品、上下架状态与可售 SKU。",
+    "new": "新建商品",
+    "searchPlaceholder": "搜索商品名称",
+    "filters": {
+      "allStatuses": "全部状态",
+      "allCategories": "全部分类",
+      "uncategorized": "未分类"
+    },
+    "table": {
+      "product": "商品",
+      "category": "分类",
+      "status": "状态",
+      "skus": "SKU",
+      "stock": "库存",
+      "price": "价格",
+      "actions": "操作"
+    },
+    "actions": {
+      "edit": "编辑",
+      "manageSkus": "管理 SKU",
+      "putOnShelf": "上架",
+      "takeOffShelf": "下架",
+      "delete": "删除"
+    },
+    "empty": {
+      "title": "还没有商品",
+      "description": "创建第一个商品，开始销售。",
+      "filtered": "没有符合筛选条件的商品。"
+    },
+    "deleteDialog": {
+      "title": "删除商品？",
+      "description": "删除「{{name}}」及其全部 SKU，此操作不可撤销。",
+      "confirm": "删除"
+    }
+  },
+  "productForm": {
+    "createTitle": "新建商品",
+    "editTitle": "编辑商品",
+    "fields": {
+      "name": "商品名称",
+      "namePlaceholder": "如：纯棉 T 恤",
+      "description": "商品描述",
+      "descriptionPlaceholder": "介绍商品材质、版型等信息",
+      "category": "分类",
+      "status": "状态"
+    },
+    "submit": {
+      "create": "创建",
+      "save": "保存",
+      "saving": "保存中…"
+    },
+    "errors": {
+      "nameRequired": "请输入商品名称。",
+      "nameLength": "商品名称不能超过 {{max}} 个字符。"
+    }
+  },
+  "productDetail": {
+    "back": "返回商品列表",
+    "edit": "编辑商品",
+    "noDescription": "暂无商品描述。",
+    "meta": {
+      "category": "分类",
+      "skuCount": "SKU 数量",
+      "stock": "总库存",
+      "price": "价格区间",
+      "updatedAt": "更新时间"
+    },
+    "skus": {
+      "title": "SKU 规格",
+      "description": "为每个可售规格配置价格与库存。",
+      "add": "添加 SKU",
+      "table": {
+        "specs": "规格",
+        "price": "价格",
+        "stock": "库存",
+        "enabled": "状态",
+        "actions": "操作"
+      },
+      "enabled": "启用",
+      "disabled": "停用",
+      "defaultSpecs": "默认规格",
+      "empty": {
+        "title": "还没有 SKU",
+        "description": "至少添加一个 SKU，商品才可售卖。"
+      },
+      "actions": {
+        "edit": "编辑",
+        "delete": "删除"
+      },
+      "deleteDialog": {
+        "title": "删除 SKU？",
+        "description": "删除规格为「{{specs}}」的 SKU，此操作不可撤销。",
+        "confirm": "删除"
+      }
+    }
+  },
+  "skuForm": {
+    "createTitle": "添加 SKU",
+    "editTitle": "编辑 SKU",
+    "fields": {
+      "specs": "规格",
+      "specKey": "规格名",
+      "specValue": "规格值",
+      "price": "价格（元）",
+      "stock": "库存",
+      "enabled": "启用"
+    },
+    "specPlaceholder": {
+      "key": "如：颜色",
+      "value": "如：黑色"
+    },
+    "addSpec": "添加规格",
+    "removeSpec": "删除规格",
+    "specsLockedHint": "规格名需与商品已有 SKU 保持一致。",
+    "submit": {
+      "create": "添加",
+      "save": "保存",
+      "saving": "保存中…"
+    },
+    "errors": {
+      "specKeyRequired": "请输入规格名。",
+      "specValueRequired": "请输入规格值。",
+      "specDuplicate": "规格名不能重复。",
+      "specLimit": "最多添加 {{max}} 个规格。",
+      "priceRequired": "请输入价格。",
+      "priceInvalid": "请输入有效的价格（最多两位小数）。",
+      "stockRequired": "请输入库存。",
+      "stockInvalid": "库存需为不小于 0 的整数。"
     }
   }
 }

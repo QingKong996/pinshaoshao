@@ -26,6 +26,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
@@ -34,8 +37,11 @@ import { onUnauthorized } from "@/lib/api"
 import { useMerchantAuth } from "@/lib/merchant-auth-context"
 import {
   findMerchantConsoleSection,
+  findMerchantConsoleSectionBySlug,
+  isMerchantConsoleSectionActive,
   MERCHANT_CONSOLE_HOME_PATH,
   MERCHANT_CONSOLE_SECTIONS,
+  merchantConsoleChildSections,
   merchantConsoleSectionPath,
 } from "@/lib/merchant-console-nav"
 import { cn } from "@/lib/utils"
@@ -67,8 +73,8 @@ export function MerchantConsoleLayout() {
     <SidebarProvider>
       <MerchantConsoleSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl">
-          <MerchantConsoleBreadcrumb className="ml-auto" />
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl md:px-6">
+          <MerchantConsoleBreadcrumb />
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
           <Outlet />
@@ -98,26 +104,48 @@ function MerchantConsoleSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {MERCHANT_CONSOLE_SECTIONS.map(({ slug, icon: Icon, labelKey }) => {
-                const to = merchantConsoleSectionPath(slug)
-                const label = t(labelKey)
-                const isActive =
-                  pathname === to || pathname.startsWith(`${to}/`)
+              {MERCHANT_CONSOLE_SECTIONS.filter((section) => !section.parentSlug).map(
+                ({ slug, icon: Icon, labelKey }) => {
+                  const label = t(labelKey)
+                  const children = merchantConsoleChildSections(slug)
 
-                return (
-                  <SidebarMenuItem key={slug}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      tooltip={label}
-                      className="[&_svg]:size-3.5"
-                      render={<Link to={to} />}
-                    >
-                      <Icon />
-                      <span>{label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
+                  return (
+                    <SidebarMenuItem key={slug}>
+                      <SidebarMenuButton
+                        isActive={isMerchantConsoleSectionActive(pathname, slug)}
+                        tooltip={label}
+                        className="h-10 text-lg [&_svg]:size-4"
+                        render={<Link to={merchantConsoleSectionPath(slug)} />}
+                      >
+                        <Icon />
+                        <span>{label}</span>
+                      </SidebarMenuButton>
+                      {children.length > 0 ? (
+                        <SidebarMenuSub>
+                          {children.map((child) => (
+                            <SidebarMenuSubItem key={child.slug}>
+                              <SidebarMenuSubButton
+                                isActive={isMerchantConsoleSectionActive(
+                                  pathname,
+                                  child.slug,
+                                )}
+                                className="h-9 text-lg"
+                                render={
+                                  <Link
+                                    to={merchantConsoleSectionPath(child.slug)}
+                                  />
+                                }
+                              >
+                                <span>{t(child.labelKey)}</span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      ) : null}
+                    </SidebarMenuItem>
+                  )
+                },
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -131,6 +159,9 @@ function MerchantConsoleBreadcrumb({ className }: { className?: string }) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
   const section = findMerchantConsoleSection(pathname)
+  const parent = section?.parentSlug
+    ? findMerchantConsoleSectionBySlug(section.parentSlug)
+    : undefined
 
   return (
     <Breadcrumb className={cn(className)}>
@@ -140,6 +171,20 @@ function MerchantConsoleBreadcrumb({ className }: { className?: string }) {
             {t("console:title")}
           </BreadcrumbLink>
         </BreadcrumbItem>
+        {parent ? (
+          <>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink
+                render={
+                  <Link to={merchantConsoleSectionPath(parent.slug)} />
+                }
+              >
+                {t(parent.labelKey)}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          </>
+        ) : null}
         {section ? (
           <>
             <BreadcrumbSeparator />
