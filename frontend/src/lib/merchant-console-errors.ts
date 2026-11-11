@@ -8,6 +8,13 @@ const SERVER_MESSAGE_KEYS: Record<string, ConsoleKey> = {
   "invalid or expired shop session": "errors.unauthorized",
   "shop is banned": "errors.banned",
   "shop not found": "errors.notFound",
+  "product not found": "errors.productNotFound",
+  "invalid category": "errors.invalidCategory",
+  "invalid product sku specs": "errors.productSKUSpecs",
+  "product sku specs must have the same keys as the product's existing skus":
+    "errors.productSKUSpecsMismatch",
+  "product sku with the same specs already exists":
+    "errors.productSKUAlreadyExists",
   "internal server error": "errors.server",
 }
 
