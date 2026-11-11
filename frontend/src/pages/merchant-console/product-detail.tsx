@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   AlertCircle,
   ArrowLeft,
@@ -51,18 +52,20 @@ import {
   formatPriceRange,
 } from "@/lib/format"
 import {
-  deleteProductSKU,
   getProduct,
   listProductCategories,
   listProductSKUs,
   type Product,
   type ProductSKU,
 } from "@/lib/merchant-console-api"
+import { useDeleteProductSKU } from "@/lib/merchant-console-mutations"
 import { describeConsoleError } from "@/lib/merchant-console-errors"
 import { merchantConsoleSectionPath } from "@/lib/merchant-console-nav"
+import { merchantConsoleQueryKeys } from "@/lib/merchant-console-query-keys"
 import { useDocumentTitle } from "@/lib/use-document-title"
 import { useMerchantSession } from "@/lib/use-merchant-session"
-import { useRequest } from "@/lib/use-request"
+
+const PRODUCT_NOT_FOUND_ERROR = new ApiError(404, "product not found")
 
 export default function MerchantConsoleProductDetailPage() {
   const { t } = useTranslation("console")
@@ -72,25 +75,22 @@ export default function MerchantConsoleProductDetailPage() {
   const productID = Number(routeProductID)
   const validProductID = Number.isInteger(productID) && productID > 0
 
-  const product = useRequest(
-    () =>
-      validProductID
-        ? getProduct(token, productID)
-        : Promise.reject(new ApiError(404, "product not found")),
-    `${token}:${routeProductID}`,
-  )
-  const skus = useRequest(
-    () =>
-      validProductID
-        ? listProductSKUs(token, productID)
-        : Promise.resolve<ProductSKU[]>([]),
-    `${token}:${routeProductID}:skus`,
-  )
-  const categories = useRequest(
-    () =>
-      validProductID ? listProductCategories(token) : Promise.resolve([]),
-    token,
-  )
+  const product = useQuery({
+    queryKey: merchantConsoleQueryKeys.product(productID),
+    queryFn: () => getProduct(token, productID),
+    enabled: validProductID,
+  })
+  const skus = useQuery({
+    queryKey: merchantConsoleQueryKeys.productSKUs(productID),
+    queryFn: () => listProductSKUs(token, productID),
+    enabled: validProductID,
+  })
+  const categories = useQuery({
+    queryKey: merchantConsoleQueryKeys.categories(),
+    queryFn: () => listProductCategories(token),
+    enabled: validProductID,
+  })
+  const deleteProductSKUMutation = useDeleteProductSKU(token)
 
   useDocumentTitle(
     product.data
@@ -102,22 +102,15 @@ export default function MerchantConsoleProductDetailPage() {
   const [skuDialogOpen, setSkuDialogOpen] = useState(false)
   const [editingSKU, setEditingSKU] = useState<ProductSKU | null>(null)
   const [deletingSKU, setDeletingSKU] = useState<ProductSKU | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [actionError, setActionError] = useState<unknown>(null)
 
-  function reloadSKUsAndProduct() {
-    skus.reload()
-    product.reload()
-  }
+  const actionError = deleteProductSKUMutation.error
 
   function openCreateSKU() {
-    setActionError(null)
     setEditingSKU(null)
     setSkuDialogOpen(true)
   }
 
   function openEditSKU(sku: ProductSKU) {
-    setActionError(null)
     setEditingSKU(sku)
     setSkuDialogOpen(true)
   }
@@ -127,22 +120,14 @@ export default function MerchantConsoleProductDetailPage() {
     setEditingSKU(null)
   }
 
-  async function handleDeleteSKU() {
-    if (!deletingSKU || !validProductID) {
+  function handleDeleteSKU() {
+    if (!deletingSKU) {
       return
     }
-    setDeleting(true)
-    setActionError(null)
-    try {
-      await deleteProductSKU(token, productID, deletingSKU.id)
-      setDeletingSKU(null)
-      reloadSKUsAndProduct()
-    } catch (error) {
-      setDeletingSKU(null)
-      setActionError(error)
-    } finally {
-      setDeleting(false)
-    }
+    deleteProductSKUMutation.mutate(
+      { productID, skuID: deletingSKU.id },
+      { onSettled: () => setDeletingSKU(null) },
+    )
   }
 
   return (
@@ -155,13 +140,17 @@ export default function MerchantConsoleProductDetailPage() {
         {t("productDetail.back")}
       </Link>
 
-      {product.error ? (
-        <QueryError error={product.error} onRetry={product.reload} />
+      {!validProductID ? (
+        <QueryError error={PRODUCT_NOT_FOUND_ERROR} />
       ) : null}
 
-      {product.loading && !product.data ? <ProductDetailSkeleton /> : null}
+      {validProductID && product.error ? (
+        <QueryError error={product.error} onRetry={product.refetch} />
+      ) : null}
 
-      {product.data ? (
+      {validProductID && product.isPending ? <ProductDetailSkeleton /> : null}
+
+      {validProductID && product.data ? (
         <>
           <PageHeader
             title={
@@ -212,7 +201,7 @@ export default function MerchantConsoleProductDetailPage() {
               ) : null}
 
               {skus.error ? (
-                <QueryError error={skus.error} onRetry={skus.reload} />
+                <QueryError error={skus.error} onRetry={skus.refetch} />
               ) : null}
 
               <Table>
@@ -236,7 +225,7 @@ export default function MerchantConsoleProductDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {skus.loading && !skus.data ? <SKUTableSkeleton /> : null}
+                  {skus.isPending ? <SKUTableSkeleton /> : null}
 
                   {skus.data && skus.data.length === 0 ? (
                     <TableRow className="hover:bg-transparent">
@@ -308,7 +297,6 @@ export default function MerchantConsoleProductDetailPage() {
         onOpenChange={setProductDialogOpen}
         product={product.data ?? undefined}
         categories={categories.data ?? []}
-        onSaved={product.reload}
       />
 
       {skuDialogOpen && validProductID ? (
@@ -323,15 +311,14 @@ export default function MerchantConsoleProductDetailPage() {
           productID={productID}
           sku={editingSKU ?? undefined}
           skus={skus.data ?? []}
-          onSaved={reloadSKUsAndProduct}
         />
       ) : null}
 
       <DeleteSKUDialog
         sku={deletingSKU}
-        pending={deleting}
+        pending={deleteProductSKUMutation.isPending}
         onOpenChange={(open) => {
-          if (!open && !deleting) {
+          if (!open && !deleteProductSKUMutation.isPending) {
             setDeletingSKU(null)
           }
         }}

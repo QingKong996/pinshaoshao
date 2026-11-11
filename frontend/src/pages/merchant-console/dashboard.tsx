@@ -1,4 +1,8 @@
 import {
+  type UseQueryResult,
+  useQuery,
+} from "@tanstack/react-query"
+import {
   Boxes,
   CircleDollarSign,
   Package,
@@ -23,17 +27,23 @@ import {
   type Dashboard,
   type ShopProfile,
 } from "@/lib/merchant-console-api"
+import { merchantConsoleQueryKeys } from "@/lib/merchant-console-query-keys"
 import { useDocumentTitle } from "@/lib/use-document-title"
 import { useMerchantSession } from "@/lib/use-merchant-session"
-import { useRequest, type RequestState } from "@/lib/use-request"
 
 export default function MerchantConsoleDashboardPage() {
   const { t } = useTranslation("console")
   useDocumentTitle(t("documentTitle.dashboard"))
 
   const { token } = useMerchantSession()
-  const dashboard = useRequest(() => getDashboard(token), token)
-  const shop = useRequest(() => getShopProfile(token), token)
+  const dashboard = useQuery({
+    queryKey: merchantConsoleQueryKeys.dashboard(),
+    queryFn: () => getDashboard(token),
+  })
+  const shop = useQuery({
+    queryKey: merchantConsoleQueryKeys.shop(),
+    queryFn: () => getShopProfile(token),
+  })
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,12 +53,10 @@ export default function MerchantConsoleDashboardPage() {
       />
 
       {dashboard.error ? (
-        <QueryError error={dashboard.error} onRetry={dashboard.reload} />
+        <QueryError error={dashboard.error} onRetry={dashboard.refetch} />
       ) : null}
 
-      {dashboard.loading && !dashboard.data ? (
-        <DashboardStatsSkeleton />
-      ) : null}
+      {dashboard.isPending ? <DashboardStatsSkeleton /> : null}
 
       {dashboard.data ? <DashboardStats data={dashboard.data} /> : null}
 
@@ -114,7 +122,7 @@ function DashboardStatsSkeleton() {
   )
 }
 
-function ShopProfileCard({ shop }: { shop: RequestState<ShopProfile> }) {
+function ShopProfileCard({ shop }: { shop: UseQueryResult<ShopProfile> }) {
   const { t } = useTranslation("console")
 
   return (
@@ -123,7 +131,7 @@ function ShopProfileCard({ shop }: { shop: RequestState<ShopProfile> }) {
         <CardTitle>{t("dashboard.shopCard.title")}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {shop.loading && !shop.data ? (
+        {shop.isPending ? (
           <>
             <Skeleton className="h-5 w-32" />
             <Skeleton className="h-4 w-full" />
@@ -131,7 +139,7 @@ function ShopProfileCard({ shop }: { shop: RequestState<ShopProfile> }) {
           </>
         ) : null}
         {shop.error && !shop.data ? (
-          <QueryError error={shop.error} onRetry={shop.reload} />
+          <QueryError error={shop.error} onRetry={shop.refetch} />
         ) : null}
         {shop.data ? (
           <>

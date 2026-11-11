@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { ParseKeys, TFunction } from "i18next"
 import { AlertCircle, LoaderCircle, Plus, Trash2 } from "lucide-react"
@@ -23,11 +23,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import {
-  createProductSKU,
-  updateProductSKU,
   type ProductSKU,
   type ProductSKUInput,
 } from "@/lib/merchant-console-api"
+import {
+  useCreateProductSKU,
+  useUpdateProductSKU,
+} from "@/lib/merchant-console-mutations"
 import { describeConsoleError } from "@/lib/merchant-console-errors"
 import { useMerchantSession } from "@/lib/use-merchant-session"
 
@@ -180,7 +182,6 @@ export type SKUFormDialogProps = {
   productID: number
   sku?: ProductSKU
   skus: ProductSKU[]
-  onSaved?: () => void
 }
 
 export function SKUFormDialog({
@@ -189,11 +190,14 @@ export function SKUFormDialog({
   productID,
   sku,
   skus,
-  onSaved,
 }: SKUFormDialogProps) {
   const { t } = useTranslation("console")
   const { token } = useMerchantSession()
-  const [serverError, setServerError] = useState<unknown>(null)
+  const createProductSKUMutation = useCreateProductSKU(token)
+  const updateProductSKUMutation = useUpdateProductSKU(token)
+  const saveError = sku
+    ? updateProductSKUMutation.error
+    : createProductSKUMutation.error
 
   // Spec keys are shared by every SKU of a product, so they stay fixed once
   // more than one SKU exists.
@@ -221,8 +225,15 @@ export function SKUFormDialog({
 
   const { fields, append, remove } = useFieldArray({ control, name: "specs" })
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      createProductSKUMutation.reset()
+      updateProductSKUMutation.reset()
+    }
+    onOpenChange(nextOpen)
+  }
+
   async function onSubmit(values: FormValues) {
-    setServerError(null)
     const input: ProductSKUInput = {
       specs: Object.fromEntries(
         values.specs.map((spec) => [spec.key.trim(), spec.value.trim()]),
@@ -234,19 +245,22 @@ export function SKUFormDialog({
 
     try {
       if (sku) {
-        await updateProductSKU(token, productID, sku.id, input)
+        await updateProductSKUMutation.mutateAsync({
+          productID,
+          skuID: sku.id,
+          input,
+        })
       } else {
-        await createProductSKU(token, productID, input)
+        await createProductSKUMutation.mutateAsync({ productID, input })
       }
-      onOpenChange(false)
-      onSaved?.()
-    } catch (error) {
-      setServerError(error)
+      handleOpenChange(false)
+    } catch {
+      // the mutation state renders the error
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
@@ -260,12 +274,12 @@ export function SKUFormDialog({
           onSubmit={handleSubmit(onSubmit)}
           className="flex flex-col gap-4"
         >
-          {serverError ? (
+          {saveError ? (
             <Alert variant="destructive">
               <AlertCircle aria-hidden />
               <AlertTitle>{t("common.saveError")}</AlertTitle>
               <AlertDescription>
-                {describeConsoleError(serverError, t)}
+                {describeConsoleError(saveError, t)}
               </AlertDescription>
             </Alert>
           ) : null}
@@ -442,7 +456,7 @@ export function SKUFormDialog({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
           >
             {t("common.cancel")}
           </Button>

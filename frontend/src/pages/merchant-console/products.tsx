@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   AlertCircle,
   ArrowDownToLine,
@@ -55,18 +56,20 @@ import {
 } from "@/components/ui/table"
 import { formatPriceRange } from "@/lib/format"
 import {
-  deleteProduct,
   listProductCategories,
   listProducts,
-  updateProduct,
   type Product,
   type ProductStatus,
 } from "@/lib/merchant-console-api"
+import {
+  useDeleteProduct,
+  useUpdateProduct,
+} from "@/lib/merchant-console-mutations"
 import { describeConsoleError } from "@/lib/merchant-console-errors"
 import { merchantConsoleProductPath } from "@/lib/merchant-console-nav"
+import { merchantConsoleQueryKeys } from "@/lib/merchant-console-query-keys"
 import { useDocumentTitle } from "@/lib/use-document-title"
 import { useMerchantSession } from "@/lib/use-merchant-session"
-import { useRequest } from "@/lib/use-request"
 
 const COLUMN_COUNT = 7
 const ALL = "all"
@@ -84,8 +87,16 @@ export default function MerchantConsoleProductsPage() {
   useDocumentTitle(t("documentTitle.products"))
 
   const { token } = useMerchantSession()
-  const products = useRequest(() => listProducts(token), token)
-  const categories = useRequest(() => listProductCategories(token), token)
+  const products = useQuery({
+    queryKey: merchantConsoleQueryKeys.products(),
+    queryFn: () => listProducts(token),
+  })
+  const categories = useQuery({
+    queryKey: merchantConsoleQueryKeys.categories(),
+    queryFn: () => listProductCategories(token),
+  })
+  const updateProductMutation = useUpdateProduct(token)
+  const deleteProductMutation = useDeleteProduct(token)
 
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(ALL)
@@ -95,8 +106,9 @@ export default function MerchantConsoleProductsPage() {
     product: null,
   })
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [actionError, setActionError] = useState<unknown>(null)
+
+  const actionError =
+    updateProductMutation.error ?? deleteProductMutation.error
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -147,38 +159,25 @@ export default function MerchantConsoleProductsPage() {
     setForm({ open: true, product })
   }
 
-  async function toggleShelfStatus(product: Product) {
-    setActionError(null)
-
-    try {
-      await updateProduct(token, product.id, {
+  function toggleShelfStatus(product: Product) {
+    updateProductMutation.mutate({
+      productID: product.id,
+      input: {
         name: product.name,
         description: product.description,
         category_id: product.category_id,
         status: product.status === "on_shelf" ? "off_shelf" : "on_shelf",
-      })
-      products.reload()
-    } catch (error) {
-      setActionError(error)
-    }
+      },
+    })
   }
 
-  async function confirmDelete() {
+  function confirmDelete() {
     if (!deleteTarget) {
       return
     }
-    setActionError(null)
-    setDeleting(true)
-
-    try {
-      await deleteProduct(token, deleteTarget.id)
-      products.reload()
-    } catch (error) {
-      setActionError(error)
-    } finally {
-      setDeleteTarget(null)
-      setDeleting(false)
-    }
+    deleteProductMutation.mutate(deleteTarget.id, {
+      onSettled: () => setDeleteTarget(null),
+    })
   }
 
   return (
@@ -195,7 +194,7 @@ export default function MerchantConsoleProductsPage() {
       />
 
       {products.error && !products.data ? (
-        <QueryError error={products.error} onRetry={products.reload} />
+        <QueryError error={products.error} onRetry={products.refetch} />
       ) : (
         <Card className="gap-0 overflow-hidden p-0">
           <div className="flex flex-col gap-2 border-b p-4 lg:flex-row lg:items-center">
@@ -301,7 +300,7 @@ export default function MerchantConsoleProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.loading && !products.data ? (
+              {products.isPending ? (
                 <ProductTableSkeleton />
               ) : filteredProducts.length === 0 ? (
                 <TableRow>
@@ -429,13 +428,12 @@ export default function MerchantConsoleProductsPage() {
         }
         product={form.product ?? undefined}
         categories={categories.data ?? []}
-        onSaved={products.reload}
       />
 
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open && !deleting) {
+          if (!open && !deleteProductMutation.isPending) {
             setDeleteTarget(null)
           }
         }}
@@ -450,15 +448,15 @@ export default function MerchantConsoleProductsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>
+            <AlertDialogCancel disabled={deleteProductMutation.isPending}>
               {t("common.cancel")}
             </AlertDialogCancel>
             <Button
               variant="destructive"
-              disabled={deleting}
-              onClick={() => void confirmDelete()}
+              disabled={deleteProductMutation.isPending}
+              onClick={confirmDelete}
             >
-              {deleting ? (
+              {deleteProductMutation.isPending ? (
                 <LoaderCircle className="animate-spin" aria-hidden />
               ) : null}
               {t("products.deleteDialog.confirm")}

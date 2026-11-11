@@ -1,3 +1,4 @@
+import { QueryClientProvider } from "@tanstack/react-query"
 import {
   Navigate,
   Outlet,
@@ -12,6 +13,7 @@ import {
   MERCHANT_CONSOLE_HOME_PATH,
   MERCHANT_CONSOLE_SECTIONS,
 } from "@/lib/merchant-console-nav"
+import { queryClient } from "@/lib/query-client"
 import { UserAuthProvider } from "@/lib/user-auth"
 import HomePage from "@/pages/home"
 import MerchantConsoleDashboardPage from "@/pages/merchant-console/dashboard"
@@ -72,11 +74,13 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-    <UserAuthProvider>
-      <MerchantAuthProvider>
-        <RouterProvider router={router} />
-      </MerchantAuthProvider>
-    </UserAuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <UserAuthProvider>
+        <MerchantAuthProvider>
+          <RouterProvider router={router} />
+        </MerchantAuthProvider>
+      </UserAuthProvider>
+    </QueryClientProvider>
   )
 }
 
