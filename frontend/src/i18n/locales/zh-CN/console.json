@@ -7,5 +7,45 @@
     "categories": "分类",
     "inventory": "库存",
     "shop": "店铺设置"
+  },
+  "documentTitle": {
+    "dashboard": "概览 · 商户中心 · {{brand}}"
+  },
+  "common": {
+    "loadError": "加载失败",
+    "retry": "重试"
+  },
+  "errors": {
+    "unauthorized": "登录状态已失效，请重新登录。",
+    "banned": "该店铺已被封禁。",
+    "notFound": "资源不存在或已被删除。",
+    "network": "无法连接服务器，请检查网络后重试。",
+    "server": "服务器开小差了，请稍后重试。",
+    "unknown": "出了点问题，请稍后重试。"
+  },
+  "status": {
+    "active": "正常",
+    "banned": "已封禁"
+  },
+  "dashboard": {
+    "title": "概览",
+    "description": "快速了解店铺的商品、SKU 与库存状况。",
+    "stats": {
+      "products": "商品",
+      "productsHint": "其中 {{onShelf}} 件已上架",
+      "skus": "SKU",
+      "skusHint_one": "覆盖 {{count}} 个分类",
+      "skusHint_other": "覆盖 {{count}} 个分类",
+      "stock": "库存总量",
+      "stockHint_one": "{{count}} 个 SKU 已售罄",
+      "stockHint_other": "{{count}} 个 SKU 已售罄",
+      "value": "库存总值",
+      "valueHint": "按当前售价估算"
+    },
+    "shopCard": {
+      "title": "店铺信息",
+      "noDescription": "还没有填写店铺描述。",
+      "statusLabel": "店铺状态"
+    }
   }
 }

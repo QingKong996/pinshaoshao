@@ -1,5 +1,12 @@
+import { useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { Link, Navigate, Outlet, useLocation } from "react-router"
+import {
+  Link,
+  Navigate,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router"
 import { BrandMark } from "@/components/brand-mark"
 import {
   Breadcrumb,
@@ -23,17 +30,34 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { onUnauthorized } from "@/lib/api"
+import { useMerchantAuth } from "@/lib/merchant-auth-context"
 import {
   findMerchantConsoleSection,
   MERCHANT_CONSOLE_HOME_PATH,
   MERCHANT_CONSOLE_SECTIONS,
   merchantConsoleSectionPath,
 } from "@/lib/merchant-console-nav"
-import { useMerchantAuth } from "@/lib/merchant-auth-context"
 import { cn } from "@/lib/utils"
 
 export function MerchantConsoleLayout() {
-  const { session } = useMerchantAuth()
+  const { session, signOut } = useMerchantAuth()
+  const navigate = useNavigate()
+  const handlingUnauthorized = useRef(false)
+
+  useEffect(() => {
+    if (!session) {
+      return
+    }
+    return onUnauthorized(() => {
+      if (handlingUnauthorized.current) {
+        return
+      }
+      handlingUnauthorized.current = true
+      void signOut()
+      navigate("/merchant/signin", { replace: true })
+    })
+  }, [navigate, session, signOut])
 
   if (!session) {
     return <Navigate to="/merchant/signin" replace />

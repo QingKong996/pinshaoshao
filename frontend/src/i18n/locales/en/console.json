@@ -7,5 +7,45 @@
     "categories": "Categories",
     "inventory": "Inventory",
     "shop": "Shop settings"
+  },
+  "documentTitle": {
+    "dashboard": "Overview · Merchant center · {{brand}}"
+  },
+  "common": {
+    "loadError": "Could not load data",
+    "retry": "Retry"
+  },
+  "errors": {
+    "unauthorized": "Your session has expired. Please sign in again.",
+    "banned": "This shop has been banned.",
+    "notFound": "The resource does not exist or was deleted.",
+    "network": "Cannot reach the server. Check your connection and try again.",
+    "server": "Something went wrong on the server. Please try again later.",
+    "unknown": "Something went wrong. Please try again later."
+  },
+  "status": {
+    "active": "Active",
+    "banned": "Banned"
+  },
+  "dashboard": {
+    "title": "Overview",
+    "description": "A quick look at your products, SKUs, and stock.",
+    "stats": {
+      "products": "Products",
+      "productsHint": "{{onShelf}} on shelf",
+      "skus": "SKUs",
+      "skusHint_one": "Across {{count}} category",
+      "skusHint_other": "Across {{count}} categories",
+      "stock": "Total stock",
+      "stockHint_one": "{{count}} SKU out of stock",
+      "stockHint_other": "{{count}} SKUs out of stock",
+      "value": "Stock value",
+      "valueHint": "Estimated at current prices"
+    },
+    "shopCard": {
+      "title": "Shop profile",
+      "noDescription": "No shop description yet.",
+      "statusLabel": "Shop status"
+    }
   }
 }

@@ -15,6 +15,7 @@ import {
 } from "@/lib/merchant-console-nav"
 import { UserAuthProvider } from "@/lib/user-auth"
 import HomePage from "@/pages/home"
+import MerchantConsoleDashboardPage from "@/pages/merchant-console/dashboard"
 import MerchantSignInPage from "@/pages/merchant-sign-in"
 import MerchantSignUpPage from "@/pages/merchant-sign-up"
 import NotFoundPage from "@/pages/not-found"
@@ -48,8 +49,12 @@ const router = createBrowserRouter([
             index: true,
             element: <Navigate to={MERCHANT_CONSOLE_HOME_PATH} replace />,
           },
-          // Section pages are intentionally empty until their content lands.
-          ...MERCHANT_CONSOLE_SECTIONS.map(({ slug }) => ({ path: slug })),
+          // Remaining console sections stay empty until their pages land.
+          ...MERCHANT_CONSOLE_SECTIONS.map(({ slug }) =>
+            slug === "dashboard"
+              ? { path: slug, element: <MerchantConsoleDashboardPage /> }
+              : { path: slug },
+          ),
         ],
       },
       { path: "*", element: <NotFoundPage /> },
