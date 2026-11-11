@@ -5,7 +5,6 @@ import {
   ScrollRestoration,
   createBrowserRouter,
 } from "react-router"
-import { GridOverlay } from "@/components/grid-overlay"
 import { MerchantConsoleLayout } from "@/components/merchant-console-layout"
 import { MerchantAuthProvider } from "@/lib/merchant-auth"
 import {
@@ -16,6 +15,8 @@ import {
 import { UserAuthProvider } from "@/lib/user-auth"
 import HomePage from "@/pages/home"
 import MerchantConsoleDashboardPage from "@/pages/merchant-console/dashboard"
+import MerchantConsoleProductDetailPage from "@/pages/merchant-console/product-detail"
+import MerchantConsoleProductsPage from "@/pages/merchant-console/products"
 import MerchantSignInPage from "@/pages/merchant-sign-in"
 import MerchantSignUpPage from "@/pages/merchant-sign-up"
 import NotFoundPage from "@/pages/not-found"
@@ -27,7 +28,6 @@ function RootLayout() {
     <>
       <Outlet />
       <ScrollRestoration />
-      {import.meta.env.DEV && <GridOverlay />}
     </>
   )
 }
@@ -50,11 +50,19 @@ const router = createBrowserRouter([
             element: <Navigate to={MERCHANT_CONSOLE_HOME_PATH} replace />,
           },
           // Remaining console sections stay empty until their pages land.
-          ...MERCHANT_CONSOLE_SECTIONS.map(({ slug }) =>
-            slug === "dashboard"
-              ? { path: slug, element: <MerchantConsoleDashboardPage /> }
-              : { path: slug },
-          ),
+          ...MERCHANT_CONSOLE_SECTIONS.map(({ slug }) => {
+            if (slug === "dashboard") {
+              return { path: slug, element: <MerchantConsoleDashboardPage /> }
+            }
+            if (slug === "products") {
+              return { path: slug, element: <MerchantConsoleProductsPage /> }
+            }
+            return { path: slug }
+          }),
+          {
+            path: "products/:productID",
+            element: <MerchantConsoleProductDetailPage />,
+          },
         ],
       },
       { path: "*", element: <NotFoundPage /> },

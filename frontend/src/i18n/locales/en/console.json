@@ -9,11 +9,16 @@
     "shop": "Shop settings"
   },
   "documentTitle": {
-    "dashboard": "Overview · Merchant center · {{brand}}"
+    "dashboard": "Overview · Merchant center · {{brand}}",
+    "products": "Products · Merchant center · {{brand}}",
+    "productDetail": "{{name}} · Merchant center · {{brand}}"
   },
   "common": {
     "loadError": "Could not load data",
-    "retry": "Retry"
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "saveError": "Could not save changes",
+    "actionError": "The action could not be completed"
   },
   "errors": {
     "unauthorized": "Your session has expired. Please sign in again.",
@@ -21,11 +26,20 @@
     "notFound": "The resource does not exist or was deleted.",
     "network": "Cannot reach the server. Check your connection and try again.",
     "server": "Something went wrong on the server. Please try again later.",
-    "unknown": "Something went wrong. Please try again later."
+    "unknown": "Something went wrong. Please try again later.",
+    "productNotFound": "The product does not exist or was deleted.",
+    "invalidCategory": "The selected category is unavailable. Choose another one.",
+    "productSKUSpecs": "The SKU specs are invalid. Check the spec names and values.",
+    "productSKUSpecsMismatch": "All SKUs of a product must use the same spec names.",
+    "productSKUAlreadyExists": "A SKU with these specs already exists."
   },
   "status": {
     "active": "Active",
     "banned": "Banned"
+  },
+  "productStatus": {
+    "on_shelf": "On shelf",
+    "off_shelf": "Off shelf"
   },
   "dashboard": {
     "title": "Overview",
@@ -46,6 +60,138 @@
       "title": "Shop profile",
       "noDescription": "No shop description yet.",
       "statusLabel": "Shop status"
+    }
+  },
+  "products": {
+    "title": "Products",
+    "description": "Manage the products of your shop, their shelf status, and purchasable SKUs.",
+    "new": "New product",
+    "searchPlaceholder": "Search products by name",
+    "filters": {
+      "allStatuses": "All statuses",
+      "allCategories": "All categories",
+      "uncategorized": "Uncategorized"
+    },
+    "table": {
+      "product": "Product",
+      "category": "Category",
+      "status": "Status",
+      "skus": "SKUs",
+      "stock": "Stock",
+      "price": "Price",
+      "actions": "Actions"
+    },
+    "actions": {
+      "edit": "Edit",
+      "manageSkus": "Manage SKUs",
+      "putOnShelf": "Put on shelf",
+      "takeOffShelf": "Take off shelf",
+      "delete": "Delete"
+    },
+    "empty": {
+      "title": "No products yet",
+      "description": "Create your first product to start selling.",
+      "filtered": "No products match the current filters."
+    },
+    "deleteDialog": {
+      "title": "Delete product?",
+      "description": "Delete “{{name}}” and all of its SKUs. This cannot be undone.",
+      "confirm": "Delete"
+    }
+  },
+  "productForm": {
+    "createTitle": "New product",
+    "editTitle": "Edit product",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "e.g. Cotton T-shirt",
+      "description": "Description",
+      "descriptionPlaceholder": "Describe the material, fit, and other details.",
+      "category": "Category",
+      "status": "Status"
+    },
+    "submit": {
+      "create": "Create",
+      "save": "Save",
+      "saving": "Saving…"
+    },
+    "errors": {
+      "nameRequired": "Enter a product name.",
+      "nameLength": "The product name must be at most {{max}} characters."
+    }
+  },
+  "productDetail": {
+    "back": "Back to products",
+    "edit": "Edit product",
+    "noDescription": "No product description yet.",
+    "meta": {
+      "category": "Category",
+      "skuCount": "SKUs",
+      "stock": "Total stock",
+      "price": "Price range",
+      "updatedAt": "Updated"
+    },
+    "skus": {
+      "title": "SKUs",
+      "description": "Set the specs, price, and stock of each purchasable variant.",
+      "add": "Add SKU",
+      "table": {
+        "specs": "Specs",
+        "price": "Price",
+        "stock": "Stock",
+        "enabled": "Status",
+        "actions": "Actions"
+      },
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "defaultSpecs": "Default",
+      "empty": {
+        "title": "No SKUs yet",
+        "description": "Add at least one SKU so the product can be sold."
+      },
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "deleteDialog": {
+        "title": "Delete SKU?",
+        "description": "Delete the SKU with specs {{specs}}. This cannot be undone.",
+        "confirm": "Delete"
+      }
+    }
+  },
+  "skuForm": {
+    "createTitle": "Add SKU",
+    "editTitle": "Edit SKU",
+    "fields": {
+      "specs": "Specs",
+      "specKey": "Spec name",
+      "specValue": "Spec value",
+      "price": "Price (CNY)",
+      "stock": "Stock",
+      "enabled": "Enabled"
+    },
+    "specPlaceholder": {
+      "key": "e.g. Color",
+      "value": "e.g. Black"
+    },
+    "addSpec": "Add spec",
+    "removeSpec": "Remove spec",
+    "specsLockedHint": "Spec names must match the product's existing SKUs.",
+    "submit": {
+      "create": "Add",
+      "save": "Save",
+      "saving": "Saving…"
+    },
+    "errors": {
+      "specKeyRequired": "Enter a spec name.",
+      "specValueRequired": "Enter a spec value.",
+      "specDuplicate": "Spec names must be unique.",
+      "specLimit": "A SKU can have at most {{max}} specs.",
+      "priceRequired": "Enter a price.",
+      "priceInvalid": "Enter a valid price with up to two decimals.",
+      "stockRequired": "Enter the stock.",
+      "stockInvalid": "Stock must be a whole number of 0 or more."
     }
   }
 }

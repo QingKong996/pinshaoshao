@@ -20,6 +20,7 @@ export type MerchantConsoleSection = {
   slug: string
   icon: LucideIcon
   labelKey: MerchantConsoleLabelKey
+  parentSlug?: string
 }
 
 export const MERCHANT_CONSOLE_SECTIONS: MerchantConsoleSection[] = [
@@ -29,13 +30,27 @@ export const MERCHANT_CONSOLE_SECTIONS: MerchantConsoleSection[] = [
     labelKey: "console:nav.dashboard",
   },
   { slug: "products", icon: Package, labelKey: "console:nav.products" },
-  { slug: "categories", icon: FolderTree, labelKey: "console:nav.categories" },
-  { slug: "inventory", icon: Boxes, labelKey: "console:nav.inventory" },
+  {
+    slug: "categories",
+    icon: FolderTree,
+    labelKey: "console:nav.categories",
+    parentSlug: "products",
+  },
+  {
+    slug: "inventory",
+    icon: Boxes,
+    labelKey: "console:nav.inventory",
+    parentSlug: "products",
+  },
   { slug: "shop", icon: Store, labelKey: "console:nav.shop" },
 ]
 
 export function merchantConsoleSectionPath(slug: string) {
   return `${MERCHANT_CONSOLE_BASE_PATH}/${slug}`
+}
+
+export function merchantConsoleProductPath(productID: number) {
+  return `${merchantConsoleSectionPath("products")}/${productID}`
 }
 
 export const MERCHANT_CONSOLE_HOME_PATH = merchantConsoleSectionPath(
@@ -47,4 +62,19 @@ export function findMerchantConsoleSection(pathname: string) {
     const path = merchantConsoleSectionPath(slug)
     return pathname === path || pathname.startsWith(`${path}/`)
   })
+}
+
+export function findMerchantConsoleSectionBySlug(slug: string) {
+  return MERCHANT_CONSOLE_SECTIONS.find((section) => section.slug === slug)
+}
+
+export function merchantConsoleChildSections(parentSlug: string) {
+  return MERCHANT_CONSOLE_SECTIONS.filter(
+    (section) => section.parentSlug === parentSlug,
+  )
+}
+
+export function isMerchantConsoleSectionActive(pathname: string, slug: string) {
+  const path = merchantConsoleSectionPath(slug)
+  return pathname === path || pathname.startsWith(`${path}/`)
 }
