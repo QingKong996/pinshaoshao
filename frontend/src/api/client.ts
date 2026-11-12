@@ -1,3 +1,5 @@
+import axios from "axios"
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1"
 
 type ErrorResponse = {
@@ -26,43 +28,34 @@ export function onUnauthorized(listener: UnauthorizedListener): () => void {
   }
 }
 
-export async function requestJson<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
-  let response: Response
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    })
-  } catch {
-    throw new ApiError(0, "network error")
-  }
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+})
 
-  if (!response.ok) {
-    let message = `request failed with status ${response.status}`
-    try {
-      const body = (await response.json()) as Partial<ErrorResponse>
-      if (typeof body.error === "string" && body.error) {
-        message = body.error
-      }
-    } catch {
-      // keep the status based message
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: unknown) => {
+    if (!axios.isAxiosError(error)) {
+      return Promise.reject(error)
     }
-    if (response.status === 401) {
+
+    const status = error.response?.status ?? 0
+    const body = error.response?.data as Partial<ErrorResponse> | undefined
+    let message =
+      status === 0 ? "network error" : `request failed with status ${status}`
+    if (typeof body?.error === "string" && body.error) {
+      message = body.error
+    }
+
+    if (status === 401) {
       for (const listener of unauthorizedListeners) {
         listener()
       }
     }
-    throw new ApiError(response.status, message)
-  }
 
-  if (response.status === 204) {
-    return undefined as T
-  }
-  return (await response.json()) as T
-}
+    return Promise.reject(new ApiError(status, message))
+  },
+)
