@@ -1,4 +1,4 @@
-import { requestJson } from "@/api/client"
+import { apiClient } from "@/api/client"
 
 export type Dashboard = {
   product_count: number
@@ -71,109 +71,123 @@ export type ProductSKUInput = {
   is_enabled: boolean
 }
 
-function authorized(token: string): RequestInit {
+function authorized(token: string) {
   return {
     headers: { Authorization: `Bearer ${token}` },
   }
 }
 
-function authorizedJson(
-  token: string,
-  method: "POST" | "PATCH" | "DELETE",
-  body?: unknown,
-): RequestInit {
-  const init: RequestInit = { ...authorized(token), method }
-  if (body !== undefined) {
-    init.body = JSON.stringify(body)
-  }
-  return init
+export async function getDashboard(token: string) {
+  const { data } = await apiClient.get<Dashboard>(
+    "/merchant/dashboard",
+    authorized(token),
+  )
+  return data
 }
 
-export function getDashboard(token: string) {
-  return requestJson<Dashboard>("/merchant/dashboard", authorized(token))
+export async function getShopProfile(token: string) {
+  const { data } = await apiClient.get<ShopProfile>(
+    "/merchant/shop",
+    authorized(token),
+  )
+  return data
 }
 
-export function getShopProfile(token: string) {
-  return requestJson<ShopProfile>("/merchant/shop", authorized(token))
+export async function listProducts(token: string) {
+  const { data } = await apiClient.get<Product[]>(
+    "/merchant/products",
+    authorized(token),
+  )
+  return data
 }
 
-export function listProducts(token: string) {
-  return requestJson<Product[]>("/merchant/products", authorized(token))
-}
-
-export function getProduct(token: string, productID: number) {
-  return requestJson<Product>(
+export async function getProduct(token: string, productID: number) {
+  const { data } = await apiClient.get<Product>(
     `/merchant/products/${productID}`,
     authorized(token),
   )
+  return data
 }
 
-export function createProduct(token: string, input: ProductInput) {
-  return requestJson<Product>(
+export async function createProduct(token: string, input: ProductInput) {
+  const { data } = await apiClient.post<Product>(
     "/merchant/products",
-    authorizedJson(token, "POST", input),
+    input,
+    authorized(token),
   )
+  return data
 }
 
-export function updateProduct(
+export async function updateProduct(
   token: string,
   productID: number,
   input: ProductInput,
 ) {
-  return requestJson<Product>(
+  const { data } = await apiClient.patch<Product>(
     `/merchant/products/${productID}`,
-    authorizedJson(token, "PATCH", input),
+    input,
+    authorized(token),
   )
+  return data
 }
 
-export function deleteProduct(token: string, productID: number) {
-  return requestJson<void>(
+export async function deleteProduct(token: string, productID: number) {
+  await apiClient.delete(
     `/merchant/products/${productID}`,
-    authorizedJson(token, "DELETE"),
-  )
-}
-
-export function listProductCategories(token: string) {
-  return requestJson<ProductCategory[]>("/merchant/categories", authorized(token))
-}
-
-export function listProductSKUs(token: string, productID: number) {
-  return requestJson<ProductSKU[]>(
-    `/merchant/products/${productID}/skus`,
     authorized(token),
   )
 }
 
-export function createProductSKU(
-  token: string,
-  productID: number,
-  input: ProductSKUInput,
-) {
-  return requestJson<ProductSKU>(
+export async function listProductCategories(token: string) {
+  const { data } = await apiClient.get<ProductCategory[]>(
+    "/merchant/categories",
+    authorized(token),
+  )
+  return data
+}
+
+export async function listProductSKUs(token: string, productID: number) {
+  const { data } = await apiClient.get<ProductSKU[]>(
     `/merchant/products/${productID}/skus`,
-    authorizedJson(token, "POST", input),
+    authorized(token),
   )
+  return data
 }
 
-export function updateProductSKU(
+export async function createProductSKU(
+  token: string,
+  productID: number,
+  input: ProductSKUInput,
+) {
+  const { data } = await apiClient.post<ProductSKU>(
+    `/merchant/products/${productID}/skus`,
+    input,
+    authorized(token),
+  )
+  return data
+}
+
+export async function updateProductSKU(
   token: string,
   productID: number,
   skuID: number,
   input: ProductSKUInput,
 ) {
-  return requestJson<ProductSKU>(
+  const { data } = await apiClient.patch<ProductSKU>(
     `/merchant/products/${productID}/skus/${skuID}`,
-    authorizedJson(token, "PATCH", input),
+    input,
+    authorized(token),
   )
+  return data
 }
 
-export function deleteProductSKU(
+export async function deleteProductSKU(
   token: string,
   productID: number,
   skuID: number,
 ) {
-  return requestJson<void>(
+  await apiClient.delete(
     `/merchant/products/${productID}/skus/${skuID}`,
-    authorizedJson(token, "DELETE"),
+    authorized(token),
   )
 }
