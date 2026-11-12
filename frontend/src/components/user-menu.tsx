@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useAuth, type UserSession } from "@/lib/user-auth-context"
+import { useAuth, type UserSession } from "@/auth/user/context"
 import { cn } from "@/lib/utils"
 
 type UserMenuProps = {

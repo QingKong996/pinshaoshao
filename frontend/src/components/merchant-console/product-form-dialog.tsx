@@ -35,9 +35,9 @@ import {
   type Product,
   type ProductCategory,
   type ProductInput,
-} from "@/lib/merchant-console-api"
-import { describeConsoleError } from "@/lib/merchant-console-errors"
-import { useMerchantSession } from "@/lib/use-merchant-session"
+} from "@/api/merchant-console"
+import { describeConsoleError } from "@/merchant-console/errors"
+import { useMerchantSession } from "@/hooks/use-merchant-session"
 
 const PRODUCT_NAME_MAX = 100
 const UNCATEGORIZED = "none"

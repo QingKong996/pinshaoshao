@@ -44,7 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ApiError } from "@/lib/api"
+import { ApiError } from "@/api/client"
 import {
   formatDateTime,
   formatPriceCents,
@@ -57,12 +57,12 @@ import {
   listProductSKUs,
   type Product,
   type ProductSKU,
-} from "@/lib/merchant-console-api"
-import { describeConsoleError } from "@/lib/merchant-console-errors"
-import { merchantConsoleSectionPath } from "@/lib/merchant-console-nav"
-import { useDocumentTitle } from "@/lib/use-document-title"
-import { useMerchantSession } from "@/lib/use-merchant-session"
-import { useRequest } from "@/lib/use-request"
+} from "@/api/merchant-console"
+import { describeConsoleError } from "@/merchant-console/errors"
+import { merchantConsoleSectionPath } from "@/merchant-console/nav"
+import { useDocumentTitle } from "@/hooks/use-document-title"
+import { useMerchantSession } from "@/hooks/use-merchant-session"
+import { useRequest } from "@/hooks/use-request"
 
 export default function MerchantConsoleProductDetailPage() {
   const { t } = useTranslation("console")

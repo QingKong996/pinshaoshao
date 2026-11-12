@@ -1,22 +1,22 @@
 import type { ParseKeys, TFunction } from "i18next"
-import { ApiError } from "@/lib/api"
+import { ApiError } from "@/api/client"
 
-export type UserAuthAction = "login" | "register"
+export type MerchantAuthAction = "login" | "register"
 
 const SERVER_MESSAGE_KEYS: Record<string, ParseKeys> = {
   "invalid credentials": "auth:errors.invalidCredentials",
-  "user is banned": "auth:errors.accountBanned",
-  "username already exists": "auth:errors.usernameTaken",
-  "email already exists": "auth:errors.emailTaken",
+  "shop is banned": "auth:errors.shopBanned",
+  "shop username already exists": "auth:errors.shopUsernameTaken",
+  "shop email already exists": "auth:errors.shopEmailTaken",
   "invalid json format": "auth:errors.invalidForm",
   "authentication required": "auth:errors.sessionExpired",
-  "invalid or expired session": "auth:errors.sessionExpired",
+  "invalid or expired shop session": "auth:errors.sessionExpired",
   "internal server error": "auth:errors.serverError",
 }
 
-export function describeUserAuthError(
+export function describeMerchantAuthError(
   error: unknown,
-  action: UserAuthAction,
+  action: MerchantAuthAction,
   t: TFunction,
 ): string {
   if (!(error instanceof ApiError)) {
@@ -37,7 +37,7 @@ export function describeUserAuthError(
     case 401:
       return t("auth:errors.invalidCredentials")
     case 403:
-      return t("auth:errors.accountBanned")
+      return t("auth:errors.shopBanned")
     case 409:
       return t(
         action === "register"

@@ -22,10 +22,10 @@ import {
   getShopProfile,
   type Dashboard,
   type ShopProfile,
-} from "@/lib/merchant-console-api"
-import { useDocumentTitle } from "@/lib/use-document-title"
-import { useMerchantSession } from "@/lib/use-merchant-session"
-import { useRequest, type RequestState } from "@/lib/use-request"
+} from "@/api/merchant-console"
+import { useDocumentTitle } from "@/hooks/use-document-title"
+import { useMerchantSession } from "@/hooks/use-merchant-session"
+import { useRequest, type RequestState } from "@/hooks/use-request"
 
 export default function MerchantConsoleDashboardPage() {
   const { t } = useTranslation("console")

@@ -27,9 +27,9 @@ import {
   updateProductSKU,
   type ProductSKU,
   type ProductSKUInput,
-} from "@/lib/merchant-console-api"
-import { describeConsoleError } from "@/lib/merchant-console-errors"
-import { useMerchantSession } from "@/lib/use-merchant-session"
+} from "@/api/merchant-console"
+import { describeConsoleError } from "@/merchant-console/errors"
+import { useMerchantSession } from "@/hooks/use-merchant-session"
 
 const MAX_SPECS = 5
 const PRICE_PATTERN = /^\d+(\.\d{1,2})?$/

@@ -13,10 +13,10 @@ import {
   signInSchema,
   translateAuthValidationMessage,
   type SignInValues,
-} from "@/lib/auth-schemas"
-import { describeMerchantAuthError } from "@/lib/merchant-auth-errors"
-import { useMerchantAuth } from "@/lib/merchant-auth-context"
-import { MERCHANT_CONSOLE_HOME_PATH } from "@/lib/merchant-console-nav"
+} from "@/auth/schemas"
+import { describeMerchantAuthError } from "@/auth/merchant/errors"
+import { useMerchantAuth } from "@/auth/merchant/context"
+import { MERCHANT_CONSOLE_HOME_PATH } from "@/merchant-console/nav"
 
 const INITIAL_VALUES: SignInValues = {
   username: "",

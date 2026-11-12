@@ -1,5 +1,5 @@
 import type { ParseKeys, TFunction } from "i18next"
-import { ApiError } from "@/lib/api"
+import { ApiError } from "@/api/client"
 
 type ConsoleKey = ParseKeys<"console">
 

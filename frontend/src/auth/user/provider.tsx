@@ -5,12 +5,12 @@ import {
   register as userRegister,
   type LoginRequest,
   type RegisterRequest,
-} from "@/lib/api"
+} from "@/api/auth"
 import {
   UserAuthContext,
   type UserAuthContextValue,
   type UserSession,
-} from "@/lib/user-auth-context"
+} from "@/auth/user/context"
 
 const USER_SESSION_STORAGE_KEY = "pinshaoshao.session"
 

@@ -3,7 +3,7 @@ import { SiteHeader } from "@/components/site-header"
 import {
   UserAuthContext,
   type UserAuthContextValue,
-} from "@/lib/user-auth-context"
+} from "@/auth/user/context"
 
 const MOCK_AUTH: UserAuthContextValue = {
   session: {
