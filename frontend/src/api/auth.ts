@@ -1,4 +1,4 @@
-import { requestJson } from "@/api/client"
+import { apiClient } from "@/api/client"
 
 export type LoginRequest = {
   username: string
@@ -22,44 +22,34 @@ export type TokenResponse = {
   token: string
 }
 
-export function login(body: LoginRequest) {
-  return requestJson<TokenResponse>("/login", {
-    method: "POST",
-    body: JSON.stringify(body),
-  })
+export async function login(body: LoginRequest) {
+  const { data } = await apiClient.post<TokenResponse>("/login", body)
+  return data
 }
 
-export function register(body: RegisterRequest) {
-  return requestJson<TokenResponse>("/register", {
-    method: "POST",
-    body: JSON.stringify(body),
-  })
+export async function register(body: RegisterRequest) {
+  const { data } = await apiClient.post<TokenResponse>("/register", body)
+  return data
 }
 
-export function logout(token: string) {
-  return requestJson<void>("/logout", {
-    method: "POST",
+export async function logout(token: string) {
+  await apiClient.post("/logout", undefined, {
     headers: { Authorization: `Bearer ${token}` },
   })
 }
 
-export function merchantLogin(body: LoginRequest) {
-  return requestJson<TokenResponse>("/merchant/login", {
-    method: "POST",
-    body: JSON.stringify(body),
-  })
+export async function merchantLogin(body: LoginRequest) {
+  const { data } = await apiClient.post<TokenResponse>("/merchant/login", body)
+  return data
 }
 
-export function merchantRegister(body: MerchantRegisterRequest) {
-  return requestJson<TokenResponse>("/merchant/register", {
-    method: "POST",
-    body: JSON.stringify(body),
-  })
+export async function merchantRegister(body: MerchantRegisterRequest) {
+  const { data } = await apiClient.post<TokenResponse>("/merchant/register", body)
+  return data
 }
 
-export function merchantLogout(token: string) {
-  return requestJson<void>("/merchant/logout", {
-    method: "POST",
+export async function merchantLogout(token: string) {
+  await apiClient.post("/merchant/logout", undefined, {
     headers: { Authorization: `Bearer ${token}` },
   })
 }
