@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { ParseKeys, TFunction } from "i18next"
 import { AlertCircle, LoaderCircle } from "lucide-react"
@@ -30,12 +30,14 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  createProduct,
-  updateProduct,
   type Product,
   type ProductCategory,
   type ProductInput,
 } from "@/api/merchant-console"
+import {
+  useCreateProduct,
+  useUpdateProduct,
+} from "@/merchant-console/mutations"
 import { describeConsoleError } from "@/merchant-console/errors"
 import { useMerchantSession } from "@/hooks/use-merchant-session"
 
@@ -94,7 +96,6 @@ export type ProductFormDialogProps = {
   onOpenChange: (open: boolean) => void
   product?: Product
   categories: ProductCategory[]
-  onSaved?: () => void
 }
 
 export function ProductFormDialog({
@@ -102,11 +103,14 @@ export function ProductFormDialog({
   onOpenChange,
   product,
   categories,
-  onSaved,
 }: ProductFormDialogProps) {
   const { t } = useTranslation("console")
   const { token } = useMerchantSession()
-  const [serverError, setServerError] = useState<unknown>(null)
+  const createProductMutation = useCreateProduct(token)
+  const updateProductMutation = useUpdateProduct(token)
+  const saveError = product
+    ? updateProductMutation.error
+    : createProductMutation.error
 
   const {
     register,
@@ -127,7 +131,8 @@ export function ProductFormDialog({
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen) {
-      setServerError(null)
+      createProductMutation.reset()
+      updateProductMutation.reset()
     }
     onOpenChange(nextOpen)
   }
@@ -145,7 +150,6 @@ export function ProductFormDialog({
   ]
 
   async function onSubmit(values: FormValues) {
-    setServerError(null)
     const input: ProductInput = {
       name: values.name,
       description: values.description,
@@ -156,14 +160,16 @@ export function ProductFormDialog({
 
     try {
       if (product) {
-        await updateProduct(token, product.id, input)
+        await updateProductMutation.mutateAsync({
+          productID: product.id,
+          input,
+        })
       } else {
-        await createProduct(token, input)
+        await createProductMutation.mutateAsync(input)
       }
       handleOpenChange(false)
-      onSaved?.()
-    } catch (error) {
-      setServerError(error)
+    } catch {
+      // the mutation state renders the error
     }
   }
 
@@ -184,12 +190,12 @@ export function ProductFormDialog({
           onSubmit={handleSubmit(onSubmit)}
           className="flex flex-col gap-4"
         >
-          {serverError ? (
+          {saveError ? (
             <Alert variant="destructive">
               <AlertCircle aria-hidden />
               <AlertTitle>{t("common.saveError")}</AlertTitle>
               <AlertDescription>
-                {describeConsoleError(serverError, t)}
+                {describeConsoleError(saveError, t)}
               </AlertDescription>
             </Alert>
           ) : null}
