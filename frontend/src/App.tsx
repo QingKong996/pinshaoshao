@@ -6,13 +6,13 @@ import {
   createBrowserRouter,
 } from "react-router"
 import { MerchantConsoleLayout } from "@/components/merchant-console-layout"
-import { MerchantAuthProvider } from "@/lib/merchant-auth"
+import { MerchantAuthProvider } from "@/auth/merchant/provider"
 import {
   MERCHANT_CONSOLE_BASE_PATH,
   MERCHANT_CONSOLE_HOME_PATH,
   MERCHANT_CONSOLE_SECTIONS,
-} from "@/lib/merchant-console-nav"
-import { UserAuthProvider } from "@/lib/user-auth"
+} from "@/merchant-console/nav"
+import { UserAuthProvider } from "@/auth/user/provider"
 import HomePage from "@/pages/home"
 import MerchantConsoleDashboardPage from "@/pages/merchant-console/dashboard"
 import MerchantConsoleProductDetailPage from "@/pages/merchant-console/product-detail"

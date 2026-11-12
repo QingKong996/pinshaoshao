@@ -5,12 +5,12 @@ import {
   merchantRegister,
   type LoginRequest,
   type MerchantRegisterRequest,
-} from "@/lib/api"
+} from "@/api/auth"
 import {
   MerchantAuthContext,
   type MerchantAuthContextValue,
   type MerchantSession,
-} from "@/lib/merchant-auth-context"
+} from "@/auth/merchant/context"
 
 const MERCHANT_SESSION_STORAGE_KEY = "pinshaoshao.merchant-session"
 

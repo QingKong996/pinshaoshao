@@ -1,4 +1,4 @@
-import { requestJson } from "@/lib/api"
+import { requestJson } from "@/api/client"
 
 export type Dashboard = {
   product_count: number

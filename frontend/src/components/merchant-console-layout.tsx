@@ -33,8 +33,8 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { onUnauthorized } from "@/lib/api"
-import { useMerchantAuth } from "@/lib/merchant-auth-context"
+import { onUnauthorized } from "@/api/client"
+import { useMerchantAuth } from "@/auth/merchant/context"
 import {
   findMerchantConsoleSection,
   findMerchantConsoleSectionBySlug,
@@ -43,7 +43,7 @@ import {
   MERCHANT_CONSOLE_SECTIONS,
   merchantConsoleChildSections,
   merchantConsoleSectionPath,
-} from "@/lib/merchant-console-nav"
+} from "@/merchant-console/nav"
 import { cn } from "@/lib/utils"
 
 export function MerchantConsoleLayout() {

@@ -19,9 +19,9 @@ import {
   signUpSchema,
   translateAuthValidationMessage,
   type SignUpValues,
-} from "@/lib/auth-schemas"
-import { describeUserAuthError } from "@/lib/user-auth-errors"
-import { useAuth } from "@/lib/user-auth-context"
+} from "@/auth/schemas"
+import { describeUserAuthError } from "@/auth/user/errors"
+import { useAuth } from "@/auth/user/context"
 
 const INITIAL_VALUES: SignUpValues = {
   username: "",

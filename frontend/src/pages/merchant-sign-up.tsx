@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router"
 import { AuthLayout } from "@/components/auth-layout"
 import { MerchantSignUpForm } from "@/components/auth/merchant-sign-up-form"
-import { useDocumentTitle } from "@/lib/use-document-title"
+import { useDocumentTitle } from "@/hooks/use-document-title"
 
 export default function MerchantSignUpPage() {
   const { t } = useTranslation()
