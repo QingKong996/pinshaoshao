@@ -1,7 +1,7 @@
 import {
   useMerchantAuth,
   type MerchantSession,
-} from "@/lib/merchant-auth-context"
+} from "@/auth/merchant/context"
 
 export function useMerchantSession(): MerchantSession {
   const { session } = useMerchantAuth()

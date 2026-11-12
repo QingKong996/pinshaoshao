@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router"
 import { BrandMark } from "@/components/brand-mark"
 import { buttonVariants } from "@/components/ui/button"
-import { useDocumentTitle } from "@/lib/use-document-title"
+import { useDocumentTitle } from "@/hooks/use-document-title"
 
 export default function NotFoundPage() {
   const { t } = useTranslation()

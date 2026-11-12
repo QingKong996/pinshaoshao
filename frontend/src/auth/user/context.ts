@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react"
-import type { LoginRequest, RegisterRequest } from "@/lib/api"
+import type { LoginRequest, RegisterRequest } from "@/api/auth"
 
 export type UserSession = {
   token: string

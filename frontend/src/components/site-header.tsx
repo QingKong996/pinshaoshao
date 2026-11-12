@@ -6,7 +6,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { UserMenu } from "@/components/user-menu"
 import { buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useAuth } from "@/lib/user-auth-context"
+import { useAuth } from "@/auth/user/context"
 
 export function SiteHeader() {
   const { session } = useAuth()

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
-import type { ProductStatus } from "@/lib/merchant-console-api"
+import type { ProductStatus } from "@/api/merchant-console"
 
 export function ProductStatusBadge({ status }: { status: ProductStatus }) {
   const { t } = useTranslation("console")

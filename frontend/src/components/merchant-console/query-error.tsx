@@ -7,7 +7,7 @@ import {
   AlertTitle,
 } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { describeConsoleError } from "@/lib/merchant-console-errors"
+import { describeConsoleError } from "@/merchant-console/errors"
 
 type QueryErrorProps = {
   error: unknown

@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react"
-import type { LoginRequest, MerchantRegisterRequest } from "@/lib/api"
+import type { LoginRequest, MerchantRegisterRequest } from "@/api/auth"
 
 export type MerchantSession = {
   token: string

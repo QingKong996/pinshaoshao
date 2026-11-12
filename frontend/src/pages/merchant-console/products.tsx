@@ -61,12 +61,12 @@ import {
   updateProduct,
   type Product,
   type ProductStatus,
-} from "@/lib/merchant-console-api"
-import { describeConsoleError } from "@/lib/merchant-console-errors"
-import { merchantConsoleProductPath } from "@/lib/merchant-console-nav"
-import { useDocumentTitle } from "@/lib/use-document-title"
-import { useMerchantSession } from "@/lib/use-merchant-session"
-import { useRequest } from "@/lib/use-request"
+} from "@/api/merchant-console"
+import { describeConsoleError } from "@/merchant-console/errors"
+import { merchantConsoleProductPath } from "@/merchant-console/nav"
+import { useDocumentTitle } from "@/hooks/use-document-title"
+import { useMerchantSession } from "@/hooks/use-merchant-session"
+import { useRequest } from "@/hooks/use-request"
 
 const COLUMN_COUNT = 7
 const ALL = "all"

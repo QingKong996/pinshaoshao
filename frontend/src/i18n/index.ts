@@ -16,7 +16,7 @@ import zhCNAuth from "@/i18n/locales/zh-CN/auth.json"
 import zhCNCommon from "@/i18n/locales/zh-CN/common.json"
 import zhCNConsole from "@/i18n/locales/zh-CN/console.json"
 import zhCNHome from "@/i18n/locales/zh-CN/home.json"
-import { BRAND } from "@/lib/brand"
+import { BRAND } from "@/config/brand"
 
 export const NAMESPACES = ["common", "home", "auth", "console"] as const
 
