@@ -1,18 +1,16 @@
 import type { Preview } from "@storybook/react-vite"
 import { MemoryRouter } from "react-router"
-import "@/i18n"
-import { AuthProvider, MerchantAuthProvider } from "@/lib/auth"
-import "../src/index.css"
+import "@/app/i18n"
+import { AppProviders } from "@/app/providers"
+import "../src/app/styles.css"
 
 const preview: Preview = {
   decorators: [
     (Story) => (
       <MemoryRouter>
-        <AuthProvider>
-          <MerchantAuthProvider>
-            <Story />
-          </MerchantAuthProvider>
-        </AuthProvider>
+        <AppProviders>
+          <Story />
+        </AppProviders>
       </MemoryRouter>
     ),
   ],
