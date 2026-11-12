@@ -11,6 +11,7 @@ import {
   type MerchantAuthContextValue,
   type MerchantSession,
 } from "@/auth/merchant/context"
+import { queryClient } from "@/lib/query-client"
 
 const MERCHANT_SESSION_STORAGE_KEY = "pinshaoshao.merchant-session"
 
@@ -54,6 +55,7 @@ export function MerchantAuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (credentials: LoginRequest) => {
     const { token } = await merchantLogin(credentials)
     const next: MerchantSession = { token, username: credentials.username }
+    queryClient.clear()
     writeStoredSession(next)
     setSession(next)
   }, [])
@@ -61,12 +63,14 @@ export function MerchantAuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(async (details: MerchantRegisterRequest) => {
     const { token } = await merchantRegister(details)
     const next: MerchantSession = { token, username: details.username }
+    queryClient.clear()
     writeStoredSession(next)
     setSession(next)
   }, [])
 
   const signOut = useCallback(async () => {
     const token = session?.token
+    queryClient.clear()
     writeStoredSession(null)
     setSession(null)
     if (!token) {
