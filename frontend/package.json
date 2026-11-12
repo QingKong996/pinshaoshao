@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "lint": "oxlint && npm run lint:architecture",
+    "lint:architecture": "depcruise src .storybook --config .dependency-cruiser.cjs",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
@@ -35,10 +36,12 @@
   "devDependencies": {
     "@storybook/addon-docs": "^10.6.5",
     "@storybook/react-vite": "^10.6.5",
+    "@swc/core": "^1.16.22",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "dependency-cruiser": "^18.7.2",
     "oxlint": "^1.89.0",
     "storybook": "^10.6.5",
     "typescript": "~7.0.2",
