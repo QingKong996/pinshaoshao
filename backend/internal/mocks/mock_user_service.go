@@ -11,7 +11,7 @@ package mocks
 
 import (
 	context "context"
-	dto "pinshaoshao/internal/dto"
+	service "pinshaoshao/internal/service"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -42,18 +42,18 @@ func (m *MockUserService) EXPECT() *MockUserServiceMockRecorder {
 }
 
 // Login mocks base method.
-func (m *MockUserService) Login(ctx context.Context, req *dto.LoginRequest) (string, error) {
+func (m *MockUserService) Login(ctx context.Context, input service.LoginInput) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Login", ctx, req)
+	ret := m.ctrl.Call(m, "Login", ctx, input)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Login indicates an expected call of Login.
-func (mr *MockUserServiceMockRecorder) Login(ctx, req any) *gomock.Call {
+func (mr *MockUserServiceMockRecorder) Login(ctx, input any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Login", reflect.TypeOf((*MockUserService)(nil).Login), ctx, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Login", reflect.TypeOf((*MockUserService)(nil).Login), ctx, input)
 }
 
 // Logout mocks base method.
@@ -71,16 +71,16 @@ func (mr *MockUserServiceMockRecorder) Logout(ctx, token any) *gomock.Call {
 }
 
 // Register mocks base method.
-func (m *MockUserService) Register(ctx context.Context, req *dto.RegisterRequest) (string, error) {
+func (m *MockUserService) Register(ctx context.Context, input service.RegisterUserInput) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Register", ctx, req)
+	ret := m.ctrl.Call(m, "Register", ctx, input)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Register indicates an expected call of Register.
-func (mr *MockUserServiceMockRecorder) Register(ctx, req any) *gomock.Call {
+func (mr *MockUserServiceMockRecorder) Register(ctx, input any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockUserService)(nil).Register), ctx, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockUserService)(nil).Register), ctx, input)
 }

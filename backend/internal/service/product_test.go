@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
 	"pinshaoshao/internal/service"
@@ -115,7 +114,7 @@ func TestCreateProduct(t *testing.T) {
 		})
 		productRepository.EXPECT().GetProductSummaryByID(ctx, 1, created.ID).Return(created, nil)
 
-		got, err := productService.Create(ctx, 1, &dto.CreateProductRequest{
+		got, err := productService.Create(ctx, 1, service.CreateProductInput{
 			Name:        "T-shirt",
 			Description: "Cotton T-shirt",
 		})
@@ -145,9 +144,9 @@ func TestCreateProduct(t *testing.T) {
 		})
 		productRepository.EXPECT().GetProductSummaryByID(ctx, 1, created.ID).Return(created, nil)
 
-		_, err := productService.Create(ctx, 1, &dto.CreateProductRequest{
+		_, err := productService.Create(ctx, 1, service.CreateProductInput{
 			Name:       "T-shirt",
-			Status:     "on_shelf",
+			Status:     model.ProductStatusOnShelf,
 			CategoryID: &categoryID,
 		})
 		if err != nil {
@@ -163,7 +162,7 @@ func TestCreateProduct(t *testing.T) {
 			GetProductCategoryByID(ctx, 1, categoryID).
 			Return(nil, fmt.Errorf("category repository: %w", apperr.ErrCategoryNotFound))
 
-		_, err := productService.Create(ctx, 1, &dto.CreateProductRequest{Name: "T-shirt", CategoryID: &categoryID})
+		_, err := productService.Create(ctx, 1, service.CreateProductInput{Name: "T-shirt", CategoryID: &categoryID})
 		requireErrorIs(t, err, apperr.ErrInvalidCategoryID)
 	})
 
@@ -173,7 +172,7 @@ func TestCreateProduct(t *testing.T) {
 
 		productRepository.EXPECT().CreateProduct(ctx, gomock.Any()).Return(dbErr)
 
-		_, err := productService.Create(ctx, 1, &dto.CreateProductRequest{Name: "T-shirt"})
+		_, err := productService.Create(ctx, 1, service.CreateProductInput{Name: "T-shirt"})
 		requireErrorIs(t, err, dbErr)
 	})
 }
@@ -196,9 +195,9 @@ func TestUpdateProduct(t *testing.T) {
 		})
 		productRepository.EXPECT().GetProductSummaryByID(ctx, 1, 2).Return(updated, nil)
 
-		got, err := productService.Update(ctx, 1, 2, &dto.UpdateProductRequest{
+		got, err := productService.Update(ctx, 1, 2, service.UpdateProductInput{
 			Name:   "Hoodie",
-			Status: "on_shelf",
+			Status: model.ProductStatusOnShelf,
 		})
 		if err != nil {
 			t.Fatalf("update product: %v", err)
@@ -215,7 +214,7 @@ func TestUpdateProduct(t *testing.T) {
 			UpdateProduct(ctx, gomock.Any()).
 			Return(fmt.Errorf("product repository: %w", apperr.ErrProductNotFound))
 
-		_, err := productService.Update(ctx, 1, 99, &dto.UpdateProductRequest{Name: "Hoodie", Status: "on_shelf"})
+		_, err := productService.Update(ctx, 1, 99, service.UpdateProductInput{Name: "Hoodie", Status: model.ProductStatusOnShelf})
 		requireErrorIs(t, err, apperr.ErrProductNotFound)
 	})
 
@@ -227,9 +226,9 @@ func TestUpdateProduct(t *testing.T) {
 			GetProductCategoryByID(ctx, 1, categoryID).
 			Return(nil, fmt.Errorf("category repository: %w", apperr.ErrCategoryNotFound))
 
-		_, err := productService.Update(ctx, 1, 2, &dto.UpdateProductRequest{
+		_, err := productService.Update(ctx, 1, 2, service.UpdateProductInput{
 			Name:       "Hoodie",
-			Status:     "on_shelf",
+			Status:     model.ProductStatusOnShelf,
 			CategoryID: &categoryID,
 		})
 		requireErrorIs(t, err, apperr.ErrInvalidCategoryID)

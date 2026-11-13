@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
 	"pinshaoshao/internal/security"
@@ -165,7 +164,7 @@ func TestLogin(t *testing.T) {
 				return nil
 			})
 
-		token, err := userService.Login(ctx, &dto.LoginRequest{
+		token, err := userService.Login(ctx, service.LoginInput{
 			Username: testUsername,
 			Password: testPassword,
 		})
@@ -190,7 +189,7 @@ func TestLogin(t *testing.T) {
 			GetUserByUsername(ctx, testUsername).
 			Return(user, nil)
 
-		_, err := userService.Login(ctx, &dto.LoginRequest{
+		_, err := userService.Login(ctx, service.LoginInput{
 			Username: testUsername,
 			Password: "WrongPassword123",
 		})
@@ -204,7 +203,7 @@ func TestLogin(t *testing.T) {
 			GetUserByUsername(ctx, testUsername).
 			Return(nil, fmt.Errorf("user repository: %w", apperr.ErrUserNotFound))
 
-		_, err := userService.Login(ctx, &dto.LoginRequest{
+		_, err := userService.Login(ctx, service.LoginInput{
 			Username: testUsername,
 			Password: testPassword,
 		})
@@ -224,7 +223,7 @@ func TestLogin(t *testing.T) {
 			GetUserByUsername(ctx, testUsername).
 			Return(user, nil)
 
-		_, err := userService.Login(ctx, &dto.LoginRequest{
+		_, err := userService.Login(ctx, service.LoginInput{
 			Username: testUsername,
 			Password: testPassword,
 		})
@@ -242,7 +241,7 @@ func TestRegister(t *testing.T) {
 			CreateUserWithSession(ctx, gomock.Any(), gomock.Any()).
 			Return(fmt.Errorf("user repository: %w", apperr.ErrUsernameTaken))
 
-		_, err := userService.Register(ctx, &dto.RegisterRequest{
+		_, err := userService.Register(ctx, service.RegisterUserInput{
 			Username: testUsername,
 			Password: testPassword,
 		})

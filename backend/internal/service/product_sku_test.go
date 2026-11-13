@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
 	"pinshaoshao/internal/service"
@@ -38,7 +37,7 @@ func TestCreateProductSKU(t *testing.T) {
 			return nil
 		})
 
-		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, &dto.CreateProductSKURequest{
+		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
 			Specs:      map[string]string{"color": "black", "size": "M"},
 			PriceCents: 1999,
 			Stock:      100,
@@ -67,7 +66,7 @@ func TestCreateProductSKU(t *testing.T) {
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
 		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).Return(nil)
 
-		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, &dto.CreateProductSKURequest{
+		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
 			Specs:     map[string]string{"color": "black"},
 			IsEnabled: &disabled,
 		})
@@ -85,7 +84,7 @@ func TestCreateProductSKU(t *testing.T) {
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
 		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).Return(nil)
 
-		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, &dto.CreateProductSKURequest{})
+		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{})
 		if err != nil {
 			t.Fatalf("create sku: %v", err)
 		}
@@ -103,7 +102,7 @@ func TestCreateProductSKU(t *testing.T) {
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
 		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).Return(nil)
 
-		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, &dto.CreateProductSKURequest{
+		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
 			Specs: map[string]string{" color ": " black "},
 		})
 		if err != nil {
@@ -134,7 +133,7 @@ func TestCreateProductSKU(t *testing.T) {
 
 				productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
 
-				_, err := skuService.Create(ctx, testProduct.ShopID, 1, &dto.CreateProductSKURequest{Specs: specs})
+				_, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{Specs: specs})
 				requireErrorIs(t, err, apperr.ErrInvalidProductSKUSpecs)
 			})
 		}
@@ -147,7 +146,7 @@ func TestCreateProductSKU(t *testing.T) {
 			GetProductByID(ctx, 99).
 			Return(nil, fmt.Errorf("product repository: %w", apperr.ErrProductNotFound))
 
-		_, err := skuService.Create(ctx, testProduct.ShopID, 99, &dto.CreateProductSKURequest{
+		_, err := skuService.Create(ctx, testProduct.ShopID, 99, service.CreateProductSKUInput{
 			Specs: map[string]string{"color": "black"},
 		})
 		requireErrorIs(t, err, apperr.ErrProductNotFound)
@@ -159,7 +158,7 @@ func TestCreateProductSKU(t *testing.T) {
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(otherShopProduct, nil)
 
-		_, err := skuService.Create(ctx, testProduct.ShopID, 1, &dto.CreateProductSKURequest{
+		_, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
 			Specs: map[string]string{"color": "black"},
 		})
 		requireErrorIs(t, err, apperr.ErrProductNotFound)
@@ -173,7 +172,7 @@ func TestCreateProductSKU(t *testing.T) {
 			CreateProductSKU(ctx, gomock.Any()).
 			Return(fmt.Errorf("sku repository: %w", apperr.ErrProductSKUAlreadyExists))
 
-		_, err := skuService.Create(ctx, testProduct.ShopID, 1, &dto.CreateProductSKURequest{
+		_, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
 			Specs:      map[string]string{"color": "black", "size": "M"},
 			PriceCents: 1999,
 		})
@@ -188,7 +187,7 @@ func TestCreateProductSKU(t *testing.T) {
 			CreateProductSKU(ctx, gomock.Any()).
 			Return(fmt.Errorf("sku repository: %w", apperr.ErrProductSKUSpecsMismatch))
 
-		_, err := skuService.Create(ctx, testProduct.ShopID, 1, &dto.CreateProductSKURequest{
+		_, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
 			Specs: map[string]string{"colour": "white", "size": "L"},
 		})
 		requireErrorIs(t, err, apperr.ErrProductSKUSpecsMismatch)
@@ -274,7 +273,7 @@ func TestUpdateProductSKU(t *testing.T) {
 				return &model.ProductSKU{ID: 5, ProductID: 1, Specs: map[string]string{"color": "black"}, PriceCents: 1999, Stock: 42, IsEnabled: true}, nil
 			})
 
-		got, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &dto.UpdateProductSKURequest{Stock: &stock})
+		got, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{Stock: &stock})
 		if err != nil {
 			t.Fatalf("update sku: %v", err)
 		}
@@ -302,7 +301,7 @@ func TestUpdateProductSKU(t *testing.T) {
 				return &model.ProductSKU{ID: 5, ProductID: 1, Specs: update.Specs}, nil
 			})
 
-		if _, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &dto.UpdateProductSKURequest{
+		if _, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{
 			Specs: map[string]string{" color ": " black "},
 		}); err != nil {
 			t.Fatalf("update sku: %v", err)
@@ -334,7 +333,7 @@ func TestUpdateProductSKU(t *testing.T) {
 				return &model.ProductSKU{ID: 5, ProductID: 1, Specs: update.Specs, PriceCents: 2999, Stock: 0, IsEnabled: false}, nil
 			})
 
-		got, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &dto.UpdateProductSKURequest{
+		got, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{
 			Specs:      map[string]string{"size": "L"},
 			PriceCents: &price,
 			Stock:      &stock,
@@ -352,7 +351,7 @@ func TestUpdateProductSKU(t *testing.T) {
 		skuService, productReader, _ := newTestProductSKUService(t)
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
 
-		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &dto.UpdateProductSKURequest{})
+		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{})
 		requireErrorIs(t, err, apperr.ErrInvalidProductSKUUpdate)
 	})
 
@@ -361,7 +360,7 @@ func TestUpdateProductSKU(t *testing.T) {
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
 
-		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &dto.UpdateProductSKURequest{
+		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{
 			Specs: map[string]string{"": "black"},
 		})
 		requireErrorIs(t, err, apperr.ErrInvalidProductSKUSpecs)
@@ -376,7 +375,7 @@ func TestUpdateProductSKU(t *testing.T) {
 			Return(nil, fmt.Errorf("sku repository: %w", apperr.ErrProductSKUNotFound))
 
 		stock := 1
-		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 99, &dto.UpdateProductSKURequest{Stock: &stock})
+		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 99, &model.ProductSKUUpdate{Stock: &stock})
 		requireErrorIs(t, err, apperr.ErrProductSKUNotFound)
 	})
 
@@ -387,7 +386,7 @@ func TestUpdateProductSKU(t *testing.T) {
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(otherShopProduct, nil)
 
 		stock := 1
-		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &dto.UpdateProductSKURequest{Stock: &stock})
+		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{Stock: &stock})
 		requireErrorIs(t, err, apperr.ErrProductNotFound)
 	})
 
@@ -399,7 +398,7 @@ func TestUpdateProductSKU(t *testing.T) {
 			UpdateProductSKU(ctx, 1, 5, gomock.Any()).
 			Return(nil, fmt.Errorf("sku repository: %w", apperr.ErrProductSKUSpecsMismatch))
 
-		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &dto.UpdateProductSKURequest{
+		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{
 			Specs: map[string]string{"size": "L"},
 		})
 		requireErrorIs(t, err, apperr.ErrProductSKUSpecsMismatch)
@@ -414,7 +413,7 @@ func TestUpdateProductSKU(t *testing.T) {
 			Return(nil, fmt.Errorf("sku repository: %w", apperr.ErrProductSKUAlreadyExists))
 
 		stock := 0
-		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &dto.UpdateProductSKURequest{Stock: &stock})
+		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{Stock: &stock})
 		requireErrorIs(t, err, apperr.ErrProductSKUAlreadyExists)
 	})
 }

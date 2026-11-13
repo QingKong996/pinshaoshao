@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
 	"pinshaoshao/internal/security"
@@ -148,7 +147,7 @@ func TestShopLogin(t *testing.T) {
 				return nil
 			})
 
-		token, err := shopService.Login(ctx, &dto.LoginRequest{
+		token, err := shopService.Login(ctx, service.LoginInput{
 			Username: testShopUsername,
 			Password: testShopPassword,
 		})
@@ -173,7 +172,7 @@ func TestShopLogin(t *testing.T) {
 			GetShopByUsername(ctx, testShopUsername).
 			Return(shop, nil)
 
-		_, err := shopService.Login(ctx, &dto.LoginRequest{
+		_, err := shopService.Login(ctx, service.LoginInput{
 			Username: testShopUsername,
 			Password: "WrongPassword123",
 		})
@@ -187,7 +186,7 @@ func TestShopLogin(t *testing.T) {
 			GetShopByUsername(ctx, testShopUsername).
 			Return(nil, fmt.Errorf("shop repository: %w", apperr.ErrShopNotFound))
 
-		_, err := shopService.Login(ctx, &dto.LoginRequest{
+		_, err := shopService.Login(ctx, service.LoginInput{
 			Username: testShopUsername,
 			Password: testShopPassword,
 		})
@@ -207,7 +206,7 @@ func TestShopLogin(t *testing.T) {
 			GetShopByUsername(ctx, testShopUsername).
 			Return(shop, nil)
 
-		_, err := shopService.Login(ctx, &dto.LoginRequest{
+		_, err := shopService.Login(ctx, service.LoginInput{
 			Username: testShopUsername,
 			Password: testShopPassword,
 		})
@@ -231,7 +230,7 @@ func TestShopRegister(t *testing.T) {
 				return nil
 			})
 
-		if _, err := shopService.Register(ctx, &dto.ShopRegisterRequest{
+		if _, err := shopService.Register(ctx, service.RegisterShopInput{
 			Username: testShopUsername,
 			Name:     "Test Shop",
 			Password: testShopPassword,
@@ -248,7 +247,7 @@ func TestShopRegister(t *testing.T) {
 			CreateShopWithSession(ctx, gomock.Any(), gomock.Any()).
 			Return(fmt.Errorf("shop repository: %w", apperr.ErrShopUsernameTaken))
 
-		_, err := shopService.Register(ctx, &dto.ShopRegisterRequest{
+		_, err := shopService.Register(ctx, service.RegisterShopInput{
 			Username: testShopUsername,
 			Name:     "Test Shop",
 			Password: testShopPassword,
@@ -264,7 +263,7 @@ func TestShopRegister(t *testing.T) {
 			CreateShopWithSession(ctx, gomock.Any(), gomock.Any()).
 			Return(fmt.Errorf("shop repository: %w", apperr.ErrShopEmailTaken))
 
-		_, err := shopService.Register(ctx, &dto.ShopRegisterRequest{
+		_, err := shopService.Register(ctx, service.RegisterShopInput{
 			Username: "shop02",
 			Name:     "Test Shop",
 			Password: testShopPassword,
@@ -331,9 +330,9 @@ func TestShopUpdateProfile(t *testing.T) {
 			return updated, nil
 		})
 
-		got, err := shopService.UpdateProfile(ctx, 1, &dto.UpdateShopProfileRequest{
+		got, err := shopService.UpdateProfile(ctx, 1, service.UpdateShopProfileInput{
 			Name:        "First shop",
-			Description: &description,
+			Description: description,
 		})
 		if err != nil {
 			t.Fatalf("update profile: %v", err)
@@ -351,9 +350,9 @@ func TestShopUpdateProfile(t *testing.T) {
 			UpdateShopProfile(ctx, gomock.Any()).
 			Return(nil, errors.New("database is down"))
 
-		_, err := shopService.UpdateProfile(ctx, 1, &dto.UpdateShopProfileRequest{
+		_, err := shopService.UpdateProfile(ctx, 1, service.UpdateShopProfileInput{
 			Name:        "First shop",
-			Description: &description,
+			Description: description,
 		})
 		if err == nil {
 			t.Fatal("update profile: expected an error")

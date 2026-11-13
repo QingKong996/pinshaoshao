@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
+	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,7 +14,7 @@ import (
 // login handles a login request and maps a banned account to 403.
 func login(
 	c *gin.Context,
-	authenticate func(ctx context.Context, req *dto.LoginRequest) (string, error),
+	authenticate func(ctx context.Context, input service.LoginInput) (string, error),
 	banned error,
 ) {
 	var req dto.LoginRequest
@@ -24,7 +25,10 @@ func login(
 		return
 	}
 
-	token, err := authenticate(c.Request.Context(), &req)
+	token, err := authenticate(c.Request.Context(), service.LoginInput{
+		Username: req.Username,
+		Password: req.Password,
+	})
 	if err != nil {
 		switch {
 		case errors.Is(err, apperr.ErrInvalidCredentials):

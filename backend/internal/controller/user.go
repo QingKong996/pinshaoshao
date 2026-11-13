@@ -7,14 +7,15 @@ import (
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/middleware"
+	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
 // UserService is the user service surface the controller depends on.
 type UserService interface {
-	Login(ctx context.Context, req *dto.LoginRequest) (string, error)
-	Register(ctx context.Context, req *dto.RegisterRequest) (string, error)
+	Login(ctx context.Context, input service.LoginInput) (string, error)
+	Register(ctx context.Context, input service.RegisterUserInput) (string, error)
 	Logout(ctx context.Context, token string) error
 }
 
@@ -66,7 +67,11 @@ func (c *UserController) Register(ctx *gin.Context) {
 		return
 	}
 
-	token, err := c.userService.Register(ctx.Request.Context(), &req)
+	token, err := c.userService.Register(ctx.Request.Context(), service.RegisterUserInput{
+		Username: req.Username,
+		Password: req.Password,
+		Email:    req.Email,
+	})
 	if err != nil {
 		if errors.Is(err, apperr.ErrUsernameTaken) {
 			ctx.JSON(http.StatusConflict, dto.ErrorResponse{

@@ -173,8 +173,8 @@ func TestProductCategoryUpdate(t *testing.T) {
 		categoryController, categoryService := newTestProductCategoryController(t)
 		categoryService.EXPECT().
 			Update(gomock.Any(), activeShop.ID, 3, gomock.Any()).
-			DoAndReturn(func(_ context.Context, _ int, _ int, req *dto.UpdateProductCategoryRequest) (*model.ProductCategory, error) {
-				return &model.ProductCategory{ID: 3, ShopID: activeShop.ID, Name: req.Name, ProductCount: 2}, nil
+			DoAndReturn(func(_ context.Context, _ int, _ int, name string) (*model.ProductCategory, error) {
+				return &model.ProductCategory{ID: 3, ShopID: activeShop.ID, Name: name, ProductCount: 2}, nil
 			})
 
 		rec := doRequest(newCategoryRouter(t, categoryController, activeShop), http.MethodPatch, "/categories/3", "Bearer session-token", body)

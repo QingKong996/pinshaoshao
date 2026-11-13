@@ -15,6 +15,7 @@ import (
 	"pinshaoshao/internal/middleware"
 	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/mock/gomock"
@@ -318,15 +319,15 @@ func TestShopUpdateProfile(t *testing.T) {
 		shopController, shopService := newTestShopController(t)
 		shopService.EXPECT().
 			UpdateProfile(gomock.Any(), activeShop.ID, gomock.Any()).
-			DoAndReturn(func(_ context.Context, _ int, req *dto.UpdateShopProfileRequest) (*model.Shop, error) {
-				if req.Description == nil || *req.Description != "Intro" {
-					t.Fatalf("description = %v, want %q", req.Description, "Intro")
+			DoAndReturn(func(_ context.Context, _ int, input service.UpdateShopProfileInput) (*model.Shop, error) {
+				if input.Description != "Intro" {
+					t.Fatalf("description = %q, want %q", input.Description, "Intro")
 				}
 				return &model.Shop{
 					ID:          activeShop.ID,
 					Username:    testShopUsername,
 					Name:        "First shop",
-					Description: *req.Description,
+					Description: input.Description,
 					Status:      model.ShopStatusActive,
 				}, nil
 			})
