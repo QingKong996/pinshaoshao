@@ -2,12 +2,15 @@ import {
   Navigate,
   createBrowserRouter,
 } from "react-router"
-import { MerchantConsoleLayout } from "./layouts/merchant-console-layout"
+import {
+  MerchantConsoleLayout,
+  type MerchantConsoleRouteHandle,
+} from "./layouts/merchant-console-layout"
 import { RootLayout } from "./layouts/root-layout"
 import {
   MERCHANT_CONSOLE_BASE_PATH,
   MERCHANT_CONSOLE_HOME_PATH,
-  MERCHANT_CONSOLE_SECTIONS,
+  MERCHANT_CONSOLE_PATHS,
 } from "./merchant-navigation"
 import HomePage from "./pages/home"
 import NotFoundPage from "./pages/not-found"
@@ -44,19 +47,73 @@ export const router = createBrowserRouter([
             index: true,
             element: <Navigate to={MERCHANT_CONSOLE_HOME_PATH} replace />,
           },
-          // Remaining console sections stay empty until their pages land.
-          ...MERCHANT_CONSOLE_SECTIONS.map(({ slug }) => {
-            if (slug === "dashboard") {
-              return { path: slug, element: <MerchantDashboardRoute /> }
-            }
-            if (slug === "products") {
-              return { path: slug, element: <MerchantProductsRoute /> }
-            }
-            return { path: slug }
-          }),
           {
-            path: "products/:productID",
-            element: <MerchantProductDetailRoute />,
+            path: MERCHANT_CONSOLE_PATHS.dashboard,
+            element: <MerchantDashboardRoute />,
+            handle: {
+              breadcrumbs: [
+                {
+                  to: MERCHANT_CONSOLE_PATHS.dashboard,
+                  labelKey: "console:nav.dashboard",
+                },
+              ],
+            } satisfies MerchantConsoleRouteHandle,
+          },
+          {
+            path: MERCHANT_CONSOLE_PATHS.products,
+            handle: {
+              breadcrumbs: [
+                {
+                  to: MERCHANT_CONSOLE_PATHS.products,
+                  labelKey: "console:nav.products",
+                },
+              ],
+            } satisfies MerchantConsoleRouteHandle,
+            children: [
+              { index: true, element: <MerchantProductsRoute /> },
+              { path: ":productID", element: <MerchantProductDetailRoute /> },
+            ],
+          },
+          {
+            path: MERCHANT_CONSOLE_PATHS.categories,
+            handle: {
+              breadcrumbs: [
+                {
+                  to: MERCHANT_CONSOLE_PATHS.products,
+                  labelKey: "console:nav.products",
+                },
+                {
+                  to: MERCHANT_CONSOLE_PATHS.categories,
+                  labelKey: "console:nav.categories",
+                },
+              ],
+            } satisfies MerchantConsoleRouteHandle,
+          },
+          {
+            path: MERCHANT_CONSOLE_PATHS.inventory,
+            handle: {
+              breadcrumbs: [
+                {
+                  to: MERCHANT_CONSOLE_PATHS.products,
+                  labelKey: "console:nav.products",
+                },
+                {
+                  to: MERCHANT_CONSOLE_PATHS.inventory,
+                  labelKey: "console:nav.inventory",
+                },
+              ],
+            } satisfies MerchantConsoleRouteHandle,
+          },
+          {
+            path: MERCHANT_CONSOLE_PATHS.shop,
+            handle: {
+              breadcrumbs: [
+                {
+                  to: MERCHANT_CONSOLE_PATHS.shop,
+                  labelKey: "console:nav.shop",
+                },
+              ],
+            } satisfies MerchantConsoleRouteHandle,
           },
         ],
       },
