@@ -2,10 +2,9 @@ import { Fragment, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import {
   Link,
+  NavLink,
   Navigate,
   Outlet,
-  matchPath,
-  useLocation,
   useMatches,
   useNavigate,
 } from "react-router"
@@ -88,7 +87,6 @@ export function MerchantConsoleLayout() {
 
 function MerchantConsoleSidebar() {
   const { t } = useTranslation()
-  const { pathname } = useLocation()
 
   return (
     <Sidebar
@@ -109,17 +107,13 @@ function MerchantConsoleSidebar() {
               {MERCHANT_CONSOLE_NAV.map(
                 ({ to, icon: Icon, labelKey, children = [] }) => {
                   const label = t(labelKey)
-                  const isActive = [to, ...children.map((child) => child.to)].some(
-                    (path) => matchPath({ path, end: false }, pathname),
-                  )
 
                   return (
                     <SidebarMenuItem key={to}>
                       <SidebarMenuButton
-                        isActive={isActive}
                         tooltip={label}
-                        className="h-10 text-lg [&_svg]:size-4"
-                        render={<Link to={to} />}
+                        className="h-10 text-lg group-has-[[aria-current=page]]/menu-item:bg-sidebar-accent group-has-[[aria-current=page]]/menu-item:font-medium group-has-[[aria-current=page]]/menu-item:text-sidebar-accent-foreground [&_svg]:size-4"
+                        render={<NavLink to={to} />}
                       >
                         <Icon />
                         <span>{label}</span>
@@ -129,11 +123,8 @@ function MerchantConsoleSidebar() {
                           {children.map((child) => (
                             <SidebarMenuSubItem key={child.to}>
                               <SidebarMenuSubButton
-                                isActive={
-                                  !!matchPath({ path: child.to, end: false }, pathname)
-                                }
-                                className="h-9 text-lg"
-                                render={<Link to={child.to} />}
+                                className="h-9 text-lg aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground"
+                                render={<NavLink to={child.to} />}
                               >
                                 <span>{t(child.labelKey)}</span>
                               </SidebarMenuSubButton>
