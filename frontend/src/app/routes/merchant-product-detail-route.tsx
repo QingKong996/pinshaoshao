@@ -3,7 +3,7 @@ import { useParams } from "react-router"
 import { useMerchantSession } from "@/features/auth"
 import { MerchantProductDetailPage } from "@/features/merchant-products"
 import { invalidateMerchantDashboard } from "@/features/merchant-dashboard"
-import { merchantConsoleSectionPath } from "../merchant-navigation"
+import { MERCHANT_CONSOLE_PATHS } from "../merchant-navigation"
 
 export function MerchantProductDetailRoute() {
   const { token } = useMerchantSession()
@@ -13,7 +13,7 @@ export function MerchantProductDetailRoute() {
     <MerchantProductDetailPage
       token={token}
       productID={Number(productID)}
-      backHref={merchantConsoleSectionPath("products")}
+      backHref={MERCHANT_CONSOLE_PATHS.products}
       onCatalogChanged={() => invalidateMerchantDashboard(queryClient)}
     />
   )
