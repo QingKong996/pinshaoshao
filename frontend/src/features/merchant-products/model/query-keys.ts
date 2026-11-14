@@ -1,5 +1,9 @@
+import type { ProductListQuery } from "../types"
+
 export const productQueryKeys = {
   products: () => ["merchant", "products"] as const,
+  productList: (query: ProductListQuery) =>
+    [...productQueryKeys.products(), "list", query] as const,
   product: (productID: number) =>
     [...productQueryKeys.products(), productID] as const,
   productSKUs: (productID: number) =>

@@ -1,5 +1,36 @@
 export type ProductStatus = "on_shelf" | "off_shelf"
 
+export type ProductSort =
+  | "created_at"
+  | "updated_at"
+  | "name"
+  | "category"
+  | "status"
+  | "sku_count"
+  | "total_stock"
+  | "min_price"
+
+export type SortOrder = "asc" | "desc"
+
+export type ProductListQuery = {
+  page: number
+  page_size: number
+  sort: ProductSort
+  order: SortOrder
+  search?: string
+  status?: ProductStatus
+  category_id?: number
+  uncategorized?: boolean
+}
+
+export type ProductListResult = {
+  items: Product[]
+  page: number
+  page_size: number
+  total: number
+  total_pages: number
+}
+
 export type Product = {
   id: number
   name: string

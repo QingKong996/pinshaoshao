@@ -84,19 +84,19 @@ func (mr *MockProductRepositoryMockRecorder) GetProductSummaryByID(ctx, shopID, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProductSummaryByID", reflect.TypeOf((*MockProductRepository)(nil).GetProductSummaryByID), ctx, shopID, productID)
 }
 
-// ListProductSummariesByShopID mocks base method.
-func (m *MockProductRepository) ListProductSummariesByShopID(ctx context.Context, shopID int) ([]model.ProductSummary, error) {
+// ListProductSummaries mocks base method.
+func (m *MockProductRepository) ListProductSummaries(ctx context.Context, shopID int, filter model.ProductListFilter) (*model.ProductListResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListProductSummariesByShopID", ctx, shopID)
-	ret0, _ := ret[0].([]model.ProductSummary)
+	ret := m.ctrl.Call(m, "ListProductSummaries", ctx, shopID, filter)
+	ret0, _ := ret[0].(*model.ProductListResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListProductSummariesByShopID indicates an expected call of ListProductSummariesByShopID.
-func (mr *MockProductRepositoryMockRecorder) ListProductSummariesByShopID(ctx, shopID any) *gomock.Call {
+// ListProductSummaries indicates an expected call of ListProductSummaries.
+func (mr *MockProductRepositoryMockRecorder) ListProductSummaries(ctx, shopID, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProductSummariesByShopID", reflect.TypeOf((*MockProductRepository)(nil).ListProductSummariesByShopID), ctx, shopID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProductSummaries", reflect.TypeOf((*MockProductRepository)(nil).ListProductSummaries), ctx, shopID, filter)
 }
 
 // UpdateProduct mocks base method.

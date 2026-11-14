@@ -40,28 +40,81 @@ func testProductSummary() *model.ProductSummary {
 func TestListProducts(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("returns the products of the shop", func(t *testing.T) {
+	t.Run("returns a page of products with defaults", func(t *testing.T) {
 		productService, productRepository, _ := newTestProductService(t)
 		products := []model.ProductSummary{*testProductSummary()}
 
-		productRepository.EXPECT().ListProductSummariesByShopID(ctx, 1).Return(products, nil)
+		productRepository.EXPECT().
+			ListProductSummaries(ctx, 1, model.ProductListFilter{
+				Sort:     model.ProductSortCreatedAt,
+				Order:    model.ProductSortOrderDesc,
+				Page:     1,
+				PageSize: 10,
+			}).
+			Return(&model.ProductListResult{Products: products, Total: 1}, nil)
 
-		got, err := productService.List(ctx, 1)
+		got, err := productService.List(ctx, 1, model.ProductListFilter{})
 		if err != nil {
 			t.Fatalf("list products: %v", err)
 		}
-		if len(got) != 1 {
-			t.Fatalf("product count = %d, want 1", len(got))
+		if len(got.Products) != 1 {
+			t.Fatalf("product count = %d, want 1", len(got.Products))
 		}
+		if got.Page != 1 || got.PageSize != 10 || got.Total != 1 {
+			t.Fatalf("page metadata = %+v, want page 1 size 10 total 1", got)
+		}
+	})
+
+	t.Run("forwards filters and sorting", func(t *testing.T) {
+		productService, productRepository, _ := newTestProductService(t)
+		categoryID := 2
+		input := model.ProductListFilter{
+			Search:     "  shirt  ",
+			Status:     model.ProductStatusOnShelf,
+			CategoryID: &categoryID,
+			Sort:       model.ProductSortTotalStock,
+			Order:      model.ProductSortOrderAsc,
+			Page:       3,
+			PageSize:   5,
+		}
+		want := input
+		want.Search = "shirt"
+
+		productRepository.EXPECT().
+			ListProductSummaries(ctx, 1, want).
+			DoAndReturn(func(_ context.Context, _ int, got model.ProductListFilter) (*model.ProductListResult, error) {
+				if got.Search != "shirt" {
+					t.Fatalf("search = %q, want trimmed search", got.Search)
+				}
+				return &model.ProductListResult{Products: []model.ProductSummary{}, Total: 0}, nil
+			})
+
+		if _, err := productService.List(ctx, 1, input); err != nil {
+			t.Fatalf("list products: %v", err)
+		}
+	})
+
+	t.Run("rejects an invalid sort", func(t *testing.T) {
+		productService, _, _ := newTestProductService(t)
+
+		_, err := productService.List(ctx, 1, model.ProductListFilter{Sort: "price"})
+		requireErrorIs(t, err, apperr.ErrInvalidProductListQuery)
 	})
 
 	t.Run("repository failure", func(t *testing.T) {
 		productService, productRepository, _ := newTestProductService(t)
 		dbErr := errors.New("database is down")
 
-		productRepository.EXPECT().ListProductSummariesByShopID(ctx, 1).Return(nil, dbErr)
+		productRepository.EXPECT().
+			ListProductSummaries(ctx, 1, model.ProductListFilter{
+				Sort:     model.ProductSortCreatedAt,
+				Order:    model.ProductSortOrderDesc,
+				Page:     1,
+				PageSize: 10,
+			}).
+			Return(nil, dbErr)
 
-		_, err := productService.List(ctx, 1)
+		_, err := productService.List(ctx, 1, model.ProductListFilter{})
 		requireErrorIs(t, err, dbErr)
 	})
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/model"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -68,13 +69,36 @@ func (r *ProductRepository) GetProductSummaryByID(ctx context.Context, shopID in
 	return summary, nil
 }
 
-// ListProductSummariesByShopID returns the products of the shop with their aggregates, newest first.
-func (r *ProductRepository) ListProductSummariesByShopID(ctx context.Context, shopID int) ([]model.ProductSummary, error) {
-	query := productSummarySelect + ` WHERE p.shop_id = $1 GROUP BY p.id, pc.name ORDER BY p.id DESC`
+// ListProductSummaries returns a filtered and sorted page of products with their aggregates.
+func (r *ProductRepository) ListProductSummaries(ctx context.Context, shopID int, filter model.ProductListFilter) (*model.ProductListResult, error) {
+	where, args := productSummaryFilter(shopID, filter)
 
-	rows, err := r.pool.Query(ctx, query, shopID)
+	var total int64
+	countQuery := `SELECT COUNT(*)::BIGINT FROM products p ` + where
+	if err := r.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, fmt.Errorf("repository.ListProductSummaries: count: %w", err)
+	}
+
+	orderBy, err := productSummaryOrderBy(filter.Sort, filter.Order)
 	if err != nil {
-		return nil, fmt.Errorf("repository.ListProductSummariesByShopID: %w", err)
+		return nil, fmt.Errorf("repository.ListProductSummaries: %w", err)
+	}
+
+	limitIndex := len(args) + 1
+	offsetIndex := len(args) + 2
+	query := fmt.Sprintf(
+		"%s %s GROUP BY p.id, pc.name ORDER BY %s LIMIT $%d OFFSET $%d",
+		productSummarySelect,
+		where,
+		orderBy,
+		limitIndex,
+		offsetIndex,
+	)
+	listArgs := append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
+
+	rows, err := r.pool.Query(ctx, query, listArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("repository.ListProductSummaries: %w", err)
 	}
 	defer rows.Close()
 
@@ -82,14 +106,77 @@ func (r *ProductRepository) ListProductSummariesByShopID(ctx context.Context, sh
 	for rows.Next() {
 		summary, err := scanProductSummary(rows)
 		if err != nil {
-			return nil, fmt.Errorf("repository.ListProductSummariesByShopID: %w", err)
+			return nil, fmt.Errorf("repository.ListProductSummaries: %w", err)
 		}
 		summaries = append(summaries, *summary)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("repository.ListProductSummariesByShopID: %w", err)
+		return nil, fmt.Errorf("repository.ListProductSummaries: %w", err)
 	}
-	return summaries, nil
+	return &model.ProductListResult{Products: summaries, Total: total}, nil
+}
+
+func productSummaryFilter(shopID int, filter model.ProductListFilter) (string, []any) {
+	conditions := []string{"p.shop_id = $1"}
+	args := []any{shopID}
+
+	if filter.Search != "" {
+		args = append(args, "%"+filter.Search+"%")
+		conditions = append(conditions, fmt.Sprintf(
+			"(p.name ILIKE $%d OR p.description ILIKE $%d)",
+			len(args),
+			len(args),
+		))
+	}
+	if filter.Status != "" {
+		args = append(args, filter.Status)
+		conditions = append(conditions, fmt.Sprintf("p.status = $%d", len(args)))
+	}
+	if filter.CategoryID != nil {
+		args = append(args, *filter.CategoryID)
+		conditions = append(conditions, fmt.Sprintf("p.category_id = $%d", len(args)))
+	}
+	if filter.Uncategorized {
+		conditions = append(conditions, "p.category_id IS NULL")
+	}
+
+	return "WHERE " + strings.Join(conditions, " AND "), args
+}
+
+func productSummaryOrderBy(sort model.ProductSort, order model.ProductSortOrder) (string, error) {
+	var expression string
+	switch sort {
+	case model.ProductSortCreatedAt:
+		expression = "p.created_at"
+	case model.ProductSortUpdatedAt:
+		expression = "p.updated_at"
+	case model.ProductSortName:
+		expression = "LOWER(p.name)"
+	case model.ProductSortCategory:
+		expression = "LOWER(pc.name)"
+	case model.ProductSortStatus:
+		expression = "p.status"
+	case model.ProductSortSKUCount:
+		expression = "COUNT(ps.id)"
+	case model.ProductSortTotalStock:
+		expression = "COALESCE(SUM(ps.stock), 0)"
+	case model.ProductSortMinPrice:
+		expression = "MIN(ps.price_cents)"
+	default:
+		return "", apperr.ErrInvalidProductListQuery
+	}
+
+	var direction string
+	switch order {
+	case model.ProductSortOrderAsc:
+		direction = "ASC"
+	case model.ProductSortOrderDesc:
+		direction = "DESC"
+	default:
+		return "", apperr.ErrInvalidProductListQuery
+	}
+
+	return fmt.Sprintf("%s %s NULLS LAST, p.id %s", expression, direction, direction), nil
 }
 
 func (r *ProductRepository) ListProductsByShopID(ctx context.Context, shopID int) ([]model.Product, error) {

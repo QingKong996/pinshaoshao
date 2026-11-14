@@ -69,52 +69,150 @@ func newTestProductSummary() *model.ProductSummary {
 func TestProductList(t *testing.T) {
 	activeShop := &model.Shop{ID: 7, Username: testShopUsername, Status: model.ShopStatusActive}
 
-	t.Run("returns the products", func(t *testing.T) {
+	t.Run("returns a paginated response", func(t *testing.T) {
 		productController, productService := newTestProductController(t)
 		productService.EXPECT().
-			List(gomock.Any(), activeShop.ID).
-			Return([]model.ProductSummary{*newTestProductSummary()}, nil)
+			List(gomock.Any(), activeShop.ID, gomock.Any()).
+			Return(&model.ProductListResult{
+				Products: []model.ProductSummary{*newTestProductSummary()},
+				Page:     1,
+				PageSize: 10,
+				Total:    11,
+			}, nil)
 
 		rec := doRequest(newProductRouter(t, productController, activeShop), http.MethodGet, "/products", "Bearer session-token", "")
 
 		requireStatus(t, rec, http.StatusOK)
 
-		var body []dto.ProductResponse
+		var body dto.ProductListResponse
 		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 			t.Fatalf("decode product list: %v", err)
 		}
-		if len(body) != 1 {
-			t.Fatalf("product count = %d, want 1", len(body))
+		if len(body.Items) != 1 {
+			t.Fatalf("product count = %d, want 1", len(body.Items))
 		}
-		if body[0].Status != string(model.ProductStatusOnShelf) || body[0].SKUCount != 3 || body[0].TotalStock != 120 {
-			t.Fatalf("product = %+v, want aggregates", body[0])
+		if body.Items[0].Status != string(model.ProductStatusOnShelf) || body.Items[0].SKUCount != 3 || body.Items[0].TotalStock != 120 {
+			t.Fatalf("product = %+v, want aggregates", body.Items[0])
 		}
-		if body[0].CategoryID == nil || *body[0].CategoryID != 2 {
-			t.Fatalf("category ID = %v, want 2", body[0].CategoryID)
+		if body.Items[0].CategoryID == nil || *body.Items[0].CategoryID != 2 {
+			t.Fatalf("category ID = %v, want 2", body.Items[0].CategoryID)
 		}
-		if body[0].CategoryName == nil || *body[0].CategoryName != "clothes" {
-			t.Fatalf("category name = %v, want clothes", body[0].CategoryName)
+		if body.Items[0].CategoryName == nil || *body.Items[0].CategoryName != "clothes" {
+			t.Fatalf("category name = %v, want clothes", body.Items[0].CategoryName)
 		}
-		if body[0].MinPriceCents == nil || *body[0].MinPriceCents != 1999 {
-			t.Fatalf("min price = %v, want 1999", body[0].MinPriceCents)
+		if body.Items[0].MinPriceCents == nil || *body.Items[0].MinPriceCents != 1999 {
+			t.Fatalf("min price = %v, want 1999", body.Items[0].MinPriceCents)
+		}
+		if body.Page != 1 || body.PageSize != 10 || body.Total != 11 || body.TotalPages != 2 {
+			t.Fatalf("page metadata = %+v, want page 1 size 10 total 11 pages 2", body)
 		}
 	})
 
-	t.Run("returns an empty array", func(t *testing.T) {
+	t.Run("forwards list query parameters", func(t *testing.T) {
 		productController, productService := newTestProductController(t)
-		productService.EXPECT().List(gomock.Any(), activeShop.ID).Return([]model.ProductSummary{}, nil)
+		productService.EXPECT().
+			List(gomock.Any(), activeShop.ID, gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ int, filter model.ProductListFilter) (*model.ProductListResult, error) {
+				if filter.Page != 2 || filter.PageSize != 5 {
+					t.Fatalf("pagination = %d/%d, want 2/5", filter.Page, filter.PageSize)
+				}
+				if filter.Sort != model.ProductSortTotalStock || filter.Order != model.ProductSortOrderAsc {
+					t.Fatalf("sort = %s %s, want total_stock asc", filter.Sort, filter.Order)
+				}
+				if filter.Search != "shirt" || filter.Status != model.ProductStatusOnShelf {
+					t.Fatalf("filters = %+v, want shirt on shelf", filter)
+				}
+				if filter.CategoryID == nil || *filter.CategoryID != 2 {
+					t.Fatalf("category ID = %v, want 2", filter.CategoryID)
+				}
+				return &model.ProductListResult{
+					Page:     filter.Page,
+					PageSize: filter.PageSize,
+					Total:    6,
+				}, nil
+			})
+
+		rec := doRequest(
+			newProductRouter(t, productController, activeShop),
+			http.MethodGet,
+			"/products?page=2&page_size=5&sort=total_stock&order=asc&search=shirt&status=on_shelf&category_id=2",
+			"Bearer session-token",
+			"",
+		)
+
+		requireStatus(t, rec, http.StatusOK)
+
+		var body dto.ProductListResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode product list: %v", err)
+		}
+		if body.Page != 2 || body.PageSize != 5 || body.TotalPages != 2 {
+			t.Fatalf("page metadata = %+v, want page 2 size 5 pages 2", body)
+		}
+	})
+
+	t.Run("returns an empty page", func(t *testing.T) {
+		productController, productService := newTestProductController(t)
+		productService.EXPECT().
+			List(gomock.Any(), activeShop.ID, gomock.Any()).
+			Return(&model.ProductListResult{
+				Products: []model.ProductSummary{},
+				Page:     1,
+				PageSize: 10,
+				Total:    0,
+			}, nil)
 
 		rec := doRequest(newProductRouter(t, productController, activeShop), http.MethodGet, "/products", "Bearer session-token", "")
 
 		requireStatus(t, rec, http.StatusOK)
-		if got := strings.TrimSpace(rec.Body.String()); got != "[]" {
-			t.Fatalf("body = %q, want []", got)
+
+		var body dto.ProductListResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode product list: %v", err)
 		}
+		if body.Items == nil || len(body.Items) != 0 {
+			t.Fatalf("items = %v, want an empty array", body.Items)
+		}
+		if body.TotalPages != 0 {
+			t.Fatalf("total pages = %d, want 0", body.TotalPages)
+		}
+	})
+
+	t.Run("rejects invalid query parameters", func(t *testing.T) {
+		for _, path := range []string{
+			"/products?page=0",
+			"/products?page_size=101",
+			"/products?sort=price",
+			"/products?order=up",
+			"/products?status=sold_out",
+			"/products?category_id=0",
+		} {
+			t.Run(path, func(t *testing.T) {
+				productController, _ := newTestProductController(t)
+
+				rec := doRequest(newProductRouter(t, productController, activeShop), http.MethodGet, path, "Bearer session-token", "")
+
+				requireStatus(t, rec, http.StatusBadRequest)
+				requireError(t, rec, apperr.ErrInvalidProductListQuery)
+			})
+		}
+	})
+
+	t.Run("rejects a category and uncategorized together", func(t *testing.T) {
+		productController, productService := newTestProductController(t)
+		productService.EXPECT().
+			List(gomock.Any(), activeShop.ID, gomock.Any()).
+			Return(nil, apperr.ErrInvalidProductListQuery)
+
+		rec := doRequest(newProductRouter(t, productController, activeShop), http.MethodGet, "/products?category_id=2&uncategorized=true", "Bearer session-token", "")
+
+		requireStatus(t, rec, http.StatusBadRequest)
+		requireError(t, rec, apperr.ErrInvalidProductListQuery)
 	})
 
 	t.Run("returns 500 on service failure", func(t *testing.T) {
 		productController, productService := newTestProductController(t)
-		productService.EXPECT().List(gomock.Any(), activeShop.ID).Return(nil, errors.New("database is down"))
+		productService.EXPECT().List(gomock.Any(), activeShop.ID, gomock.Any()).Return(nil, errors.New("database is down"))
 
 		rec := doRequest(newProductRouter(t, productController, activeShop), http.MethodGet, "/products", "Bearer session-token", "")
 
