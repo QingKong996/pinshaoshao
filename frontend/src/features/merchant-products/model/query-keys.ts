@@ -9,4 +9,5 @@ export const productQueryKeys = {
   productSKUs: (productID: number) =>
     [...productQueryKeys.product(productID), "skus"] as const,
   categories: () => ["merchant", "categories"] as const,
+  inventory: () => ["merchant", "inventory"] as const,
 }

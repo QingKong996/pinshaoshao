@@ -8,8 +8,23 @@ import {
   deleteProduct,
   updateProduct,
 } from "../api/products"
-import { createProductSKU, deleteProductSKU, updateProductSKU } from "../api/skus"
-import type { ProductInput, ProductSKUInput, CatalogChanged } from "../types"
+import {
+  createProductCategory,
+  deleteProductCategory,
+  updateProductCategory,
+} from "../api/categories"
+import {
+  createProductSKU,
+  deleteProductSKU,
+  updateProductSKU,
+  updateProductSKUStock,
+} from "../api/skus"
+import type {
+  CatalogChanged,
+  ProductCategoryInput,
+  ProductInput,
+  ProductSKUInput,
+} from "../types"
 import { productQueryKeys } from "./query-keys"
 
 type UpdateProductVariables = {
@@ -31,6 +46,17 @@ type DeleteProductSKUVariables = {
   skuID: number
 }
 
+type UpdateCategoryVariables = {
+  categoryID: number
+  input: ProductCategoryInput
+}
+
+type UpdateInventoryStockVariables = {
+  productID: number
+  skuID: number
+  stock: number
+}
+
 function invalidateProductData(
   queryClient: QueryClient,
   onCatalogChanged: CatalogChanged,
@@ -43,6 +69,9 @@ function invalidateProductData(
     queryClient.invalidateQueries({
       queryKey: productQueryKeys.categories(),
     }),
+    queryClient.invalidateQueries({
+      queryKey: productQueryKeys.inventory(),
+    }),
     onCatalogChanged(),
   ])
 }
@@ -54,6 +83,9 @@ function invalidateSKUData(
   return Promise.all([
     queryClient.invalidateQueries({
       queryKey: productQueryKeys.products(),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: productQueryKeys.inventory(),
     }),
     onCatalogChanged(),
   ])
@@ -117,5 +149,66 @@ export function useDeleteProductSKU(
     mutationFn: ({ productID, skuID }: DeleteProductSKUVariables) =>
       deleteProductSKU(token, productID, skuID),
     onSuccess: () => invalidateSKUData(queryClient, onCatalogChanged),
+  })
+}
+
+export function useCreateProductCategory(
+  token: string,
+  onCatalogChanged: CatalogChanged,
+) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: ProductCategoryInput) =>
+      createProductCategory(token, input),
+    onSuccess: () => invalidateProductData(queryClient, onCatalogChanged),
+  })
+}
+
+export function useUpdateProductCategory(
+  token: string,
+  onCatalogChanged: CatalogChanged,
+) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ categoryID, input }: UpdateCategoryVariables) =>
+      updateProductCategory(token, categoryID, input),
+    onSuccess: () => invalidateProductData(queryClient, onCatalogChanged),
+  })
+}
+
+export function useDeleteProductCategory(
+  token: string,
+  onCatalogChanged: CatalogChanged,
+) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (categoryID: number) =>
+      deleteProductCategory(token, categoryID),
+    onSuccess: () => invalidateProductData(queryClient, onCatalogChanged),
+  })
+}
+
+export function useUpdateInventoryStock(
+  token: string,
+  onCatalogChanged: CatalogChanged,
+) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      productID,
+      skuID,
+      stock,
+    }: UpdateInventoryStockVariables) =>
+      updateProductSKUStock(token, productID, skuID, stock),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: productQueryKeys.inventory(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: productQueryKeys.products(),
+        }),
+        onCatalogChanged(),
+      ]),
   })
 }

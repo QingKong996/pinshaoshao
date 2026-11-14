@@ -14,7 +14,9 @@ import {
 } from "./merchant-navigation"
 import HomePage from "./pages/home"
 import NotFoundPage from "./pages/not-found"
+import { MerchantCategoriesRoute } from "./routes/merchant-categories-route"
 import { MerchantDashboardRoute } from "./routes/merchant-dashboard-route"
+import { MerchantInventoryRoute } from "./routes/merchant-inventory-route"
 import { MerchantProductDetailRoute } from "./routes/merchant-product-detail-route"
 import { MerchantProductsRoute } from "./routes/merchant-products-route"
 import {
@@ -76,6 +78,7 @@ export const router = createBrowserRouter([
           },
           {
             path: MERCHANT_CONSOLE_PATHS.categories,
+            element: <MerchantCategoriesRoute />,
             handle: {
               breadcrumbs: [
                 {
@@ -91,6 +94,7 @@ export const router = createBrowserRouter([
           },
           {
             path: MERCHANT_CONSOLE_PATHS.inventory,
+            element: <MerchantInventoryRoute />,
             handle: {
               breadcrumbs: [
                 {
