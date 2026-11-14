@@ -65,7 +65,7 @@ export const router = createBrowserRouter([
               breadcrumbs: [
                 {
                   to: MERCHANT_CONSOLE_PATHS.products,
-                  labelKey: "console:nav.products",
+                  labelKey: "console:nav.productInfo",
                 },
               ],
             } satisfies MerchantConsoleRouteHandle,

@@ -17,25 +17,43 @@ export const MERCHANT_CONSOLE_PATHS = {
 
 export const MERCHANT_CONSOLE_HOME_PATH = MERCHANT_CONSOLE_PATHS.dashboard
 
+type MerchantConsoleNavKey =
+  | keyof typeof MERCHANT_CONSOLE_PATHS
+  | "productInfo"
+
 export type MerchantConsoleNavLink = {
   to: string
-  labelKey: `console:nav.${keyof typeof MERCHANT_CONSOLE_PATHS}`
+  labelKey: `console:nav.${MerchantConsoleNavKey}`
 }
 
-export const MERCHANT_CONSOLE_NAV: (MerchantConsoleNavLink & {
+export type MerchantConsoleNavItem = {
   icon: LucideIcon
-  children?: MerchantConsoleNavLink[]
-})[] = [
+  labelKey: `console:nav.${MerchantConsoleNavKey}`
+} & (
+  | {
+      to: string
+      children?: never
+    }
+  | {
+      to?: never
+      children: MerchantConsoleNavLink[]
+    }
+)
+
+export const MERCHANT_CONSOLE_NAV: MerchantConsoleNavItem[] = [
   {
     to: MERCHANT_CONSOLE_PATHS.dashboard,
     icon: LayoutDashboard,
     labelKey: "console:nav.dashboard",
   },
   {
-    to: MERCHANT_CONSOLE_PATHS.products,
     icon: Package,
     labelKey: "console:nav.products",
     children: [
+      {
+        to: MERCHANT_CONSOLE_PATHS.products,
+        labelKey: "console:nav.productInfo",
+      },
       { to: MERCHANT_CONSOLE_PATHS.categories, labelKey: "console:nav.categories" },
       { to: MERCHANT_CONSOLE_PATHS.inventory, labelKey: "console:nav.inventory" },
     ],

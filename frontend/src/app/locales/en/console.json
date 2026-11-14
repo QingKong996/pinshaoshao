@@ -4,13 +4,14 @@
   "nav": {
     "dashboard": "Overview",
     "products": "Products",
+    "productInfo": "Product info",
     "categories": "Categories",
     "inventory": "Inventory",
     "shop": "Shop settings"
   },
   "documentTitle": {
     "dashboard": "Overview · Merchant center · {{brand}}",
-    "products": "Products · Merchant center · {{brand}}",
+    "products": "Product info · Merchant center · {{brand}}",
     "productDetail": "{{name}} · Merchant center · {{brand}}"
   },
   "common": {
@@ -63,8 +64,7 @@
     }
   },
   "products": {
-    "title": "Products",
-    "description": "Manage the products of your shop, their shelf status, and purchasable SKUs.",
+    "title": "Product info",
     "new": "New product",
     "searchPlaceholder": "Search products by name",
     "filters": {
@@ -83,7 +83,6 @@
     },
     "actions": {
       "edit": "Edit",
-      "manageSkus": "Manage SKUs",
       "putOnShelf": "Put on shelf",
       "takeOffShelf": "Take off shelf",
       "delete": "Delete"

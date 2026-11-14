@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/shared/ui/table"
 import type { Product } from "../types"
-import { ProductActionsMenu } from "./product-actions-menu"
+import { ProductActions } from "./product-actions"
 import { ProductStatusBadge } from "./product-status-badge"
 
 const COLUMN_COUNT = 7
@@ -123,9 +123,8 @@ export function ProductsTable({
                 ) ?? "—"}
               </TableCell>
               <TableCell className="px-4 py-3 text-right">
-                <ProductActionsMenu
+                <ProductActions
                   product={product}
-                  productHref={productHref(product.id)}
                   onEdit={onEdit}
                   onToggleShelfStatus={onToggleShelfStatus}
                   onDelete={onDelete}
@@ -166,7 +165,11 @@ function ProductTableSkeleton() {
             <Skeleton className="h-4 w-24" />
           </TableCell>
           <TableCell className="px-4 py-3">
-            <Skeleton className="ml-auto size-7" />
+            <div className="flex justify-end gap-2">
+              <Skeleton className="size-7" />
+              <Skeleton className="size-7" />
+              <Skeleton className="size-7" />
+            </div>
           </TableCell>
         </TableRow>
       ))}

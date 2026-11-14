@@ -4,13 +4,14 @@
   "nav": {
     "dashboard": "概览",
     "products": "商品",
-    "categories": "分类",
-    "inventory": "库存",
+    "productInfo": "商品信息",
+    "categories": "分类管理",
+    "inventory": "库存管理",
     "shop": "店铺设置"
   },
   "documentTitle": {
     "dashboard": "概览 · 商户中心 · {{brand}}",
-    "products": "商品 · 商户中心 · {{brand}}",
+    "products": "商品信息 · 商户中心 · {{brand}}",
     "productDetail": "{{name}} · 商户中心 · {{brand}}"
   },
   "common": {
@@ -63,8 +64,7 @@
     }
   },
   "products": {
-    "title": "商品",
-    "description": "管理店铺商品、上下架状态与可售 SKU。",
+    "title": "商品信息",
     "new": "新建商品",
     "searchPlaceholder": "搜索商品名称",
     "filters": {
@@ -83,7 +83,6 @@
     },
     "actions": {
       "edit": "编辑",
-      "manageSkus": "管理 SKU",
       "putOnShelf": "上架",
       "takeOffShelf": "下架",
       "delete": "删除"
