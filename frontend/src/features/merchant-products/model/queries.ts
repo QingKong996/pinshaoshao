@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { getProduct, listProducts } from "../api/products"
 import { listProductCategories } from "../api/categories"
+import { listInventory } from "../api/inventory"
 import { listProductSKUs } from "../api/skus"
 import type { ProductListQuery } from "../types"
 import { productQueryKeys } from "./query-keys"
@@ -34,5 +35,12 @@ export function useProductSKUs(token: string, productID: number) {
     queryKey: productQueryKeys.productSKUs(productID),
     queryFn: () => listProductSKUs(token, productID),
     enabled: Number.isInteger(productID) && productID > 0,
+  })
+}
+
+export function useInventory(token: string) {
+  return useQuery({
+    queryKey: productQueryKeys.inventory(),
+    queryFn: () => listInventory(token),
   })
 }

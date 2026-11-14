@@ -54,6 +54,23 @@ export type ProductCategory = {
   updated_at: string
 }
 
+export type ProductCategoryInput = {
+  name: string
+}
+
+export type InventoryItem = {
+  sku_id: number
+  product_id: number
+  product_name: string
+  category_id: number | null
+  category_name: string | null
+  specs: Record<string, string>
+  price_cents: number
+  stock: number
+  is_enabled: boolean
+  updated_at: string
+}
+
 export type ProductSKU = {
   id: number
   product_id: number

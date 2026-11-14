@@ -12,6 +12,8 @@
   "documentTitle": {
     "dashboard": "Overview · Merchant center · {{brand}}",
     "products": "Product info · Merchant center · {{brand}}",
+    "categories": "Categories · Merchant center · {{brand}}",
+    "inventory": "Inventory · Merchant center · {{brand}}",
     "productDetail": "{{name}} · Merchant center · {{brand}}"
   },
   "common": {
@@ -25,6 +27,7 @@
     "unauthorized": "Your session has expired. Please sign in again.",
     "banned": "This shop has been banned.",
     "notFound": "The resource does not exist or was deleted.",
+    "categoryNameTaken": "A category with this name already exists. Choose another name.",
     "network": "Cannot reach the server. Check your connection and try again.",
     "server": "Something went wrong on the server. Please try again later.",
     "unknown": "Something went wrong. Please try again later.",
@@ -117,6 +120,106 @@
       "title": "Delete product?",
       "description": "Delete “{{name}}” and all of its SKUs. This cannot be undone.",
       "confirm": "Delete"
+    }
+  },
+  "categories": {
+    "title": "Categories",
+    "new": "New category",
+    "searchPlaceholder": "Search categories by name",
+    "count": "Categories: {{count}}",
+    "table": {
+      "name": "Category",
+      "productCount": "Products",
+      "createdAt": "Created",
+      "updatedAt": "Updated",
+      "actions": "Actions"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "empty": {
+      "title": "No categories yet",
+      "description": "Create categories to keep your products organized.",
+      "filtered": "No categories match your search."
+    },
+    "deleteDialog": {
+      "title": "Delete category?",
+      "description_one": "Delete “{{name}}”? {{count}} product will become uncategorized. This cannot be undone.",
+      "description_other": "Delete “{{name}}”? {{count}} products will become uncategorized. This cannot be undone.",
+      "confirm": "Delete"
+    }
+  },
+  "categoryForm": {
+    "createTitle": "New category",
+    "editTitle": "Edit category",
+    "fields": {
+      "name": "Category name",
+      "namePlaceholder": "e.g. Clothing"
+    },
+    "submit": {
+      "create": "Create",
+      "save": "Save",
+      "saving": "Saving…"
+    },
+    "errors": {
+      "nameRequired": "Enter a category name.",
+      "nameLength": "The category name must be at most {{max}} characters."
+    }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "searchPlaceholder": "Search products or specs",
+    "filters": {
+      "allCategories": "All categories",
+      "allStock": "All stock",
+      "inStock": "In stock",
+      "outOfStock": "Out of stock"
+    },
+    "table": {
+      "product": "Product",
+      "specs": "Specs",
+      "category": "Category",
+      "price": "Price",
+      "stock": "Stock",
+      "status": "Status",
+      "updatedAt": "Updated",
+      "actions": "Actions"
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "defaultSpecs": "Default",
+    "uncategorized": "Uncategorized",
+    "actions": {
+      "adjustStock": "Adjust stock"
+    },
+    "empty": {
+      "title": "No inventory records yet",
+      "description": "Inventory appears here after you add SKUs to a product.",
+      "filtered": "No inventory records match the current filters."
+    },
+    "pagination": {
+      "summary": "{{start}}–{{end}} of {{total}}",
+      "rowsPerPage": "Rows per page",
+      "previous": "Previous page",
+      "next": "Next page",
+      "pageOf": "Page {{page}} of {{totalPages}}"
+    }
+  },
+  "stockForm": {
+    "title": "Adjust stock",
+    "description": "{{product}} · {{specs}}",
+    "fields": {
+      "stock": "Stock quantity"
+    },
+    "currentStock": "Current stock: {{stock}}",
+    "submit": {
+      "save": "Save",
+      "saving": "Saving…"
+    },
+    "errors": {
+      "stockRequired": "Enter the stock quantity.",
+      "stockInvalid": "Stock must be a valid non-negative whole number."
     }
   },
   "productForm": {

@@ -21,6 +21,10 @@ export function describeConsoleError(
       return t("errors.banned")
     case 404:
       return t("errors.notFound")
+    case 409:
+      return error.message === "category name already exists"
+        ? t("errors.categoryNameTaken")
+        : t("errors.unknown")
     case 500:
       return t("errors.server")
     default:

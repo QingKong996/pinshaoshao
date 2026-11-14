@@ -37,6 +37,20 @@ export async function updateProductSKU(
   return data
 }
 
+export async function updateProductSKUStock(
+  token: string,
+  productID: number,
+  skuID: number,
+  stock: number,
+) {
+  const { data } = await apiClient.patch<ProductSKU>(
+    `/merchant/products/${productID}/skus/${skuID}`,
+    { stock },
+    authorized(token),
+  )
+  return data
+}
+
 export async function deleteProductSKU(
   token: string,
   productID: number,
