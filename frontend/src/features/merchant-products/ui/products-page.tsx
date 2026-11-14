@@ -96,7 +96,6 @@ export default function MerchantConsoleProductsPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t("products.title")}
-        description={t("products.description")}
         actions={
           <Button onClick={openCreateDialog}>
             <Plus aria-hidden />

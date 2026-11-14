@@ -104,38 +104,48 @@ function MerchantConsoleSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {MERCHANT_CONSOLE_NAV.map(
-                ({ to, icon: Icon, labelKey, children = [] }) => {
-                  const label = t(labelKey)
+              {MERCHANT_CONSOLE_NAV.map((item) => {
+                const { icon: Icon, labelKey, children } = item
+                const label = t(labelKey)
 
-                  return (
-                    <SidebarMenuItem key={to}>
+                return (
+                  <SidebarMenuItem key={item.to ?? labelKey}>
+                    {children ? (
                       <SidebarMenuButton
                         tooltip={label}
-                        className="h-10 text-lg group-has-[[aria-current=page]]/menu-item:bg-sidebar-accent group-has-[[aria-current=page]]/menu-item:font-medium group-has-[[aria-current=page]]/menu-item:text-sidebar-accent-foreground [&_svg]:size-4"
-                        render={<NavLink to={to} />}
+                        className="h-10 cursor-default text-base hover:bg-transparent hover:text-sidebar-foreground group-has-[[aria-current=page]]/menu-item:bg-sidebar-accent group-has-[[aria-current=page]]/menu-item:font-medium group-has-[[aria-current=page]]/menu-item:text-sidebar-accent-foreground [&_svg]:size-4"
+                        render={<div />}
                       >
                         <Icon />
                         <span>{label}</span>
                       </SidebarMenuButton>
-                      {children.length > 0 ? (
-                        <SidebarMenuSub>
-                          {children.map((child) => (
-                            <SidebarMenuSubItem key={child.to}>
-                              <SidebarMenuSubButton
-                                className="h-9 text-lg aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground"
-                                render={<NavLink to={child.to} />}
-                              >
-                                <span>{t(child.labelKey)}</span>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      ) : null}
-                    </SidebarMenuItem>
-                  )
-                },
-              )}
+                    ) : (
+                      <SidebarMenuButton
+                        tooltip={label}
+                        className="h-10 text-base group-has-[[aria-current=page]]/menu-item:bg-sidebar-accent group-has-[[aria-current=page]]/menu-item:font-medium group-has-[[aria-current=page]]/menu-item:text-sidebar-accent-foreground [&_svg]:size-4"
+                        render={<NavLink to={item.to} />}
+                      >
+                        <Icon />
+                        <span>{label}</span>
+                      </SidebarMenuButton>
+                    )}
+                    {children ? (
+                      <SidebarMenuSub>
+                        {children.map((child) => (
+                          <SidebarMenuSubItem key={child.to}>
+                            <SidebarMenuSubButton
+                              className="h-9 text-lg aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground"
+                              render={<NavLink to={child.to} />}
+                            >
+                              <span>{t(child.labelKey)}</span>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    ) : null}
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
