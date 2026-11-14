@@ -1,13 +1,5 @@
-import type { ParseKeys, TFunction } from "i18next"
+import type { TFunction } from "i18next"
 import { ApiError } from "@/shared/api/client"
-
-const SERVER_MESSAGE_KEYS: Record<string, ParseKeys<"console">> = {
-  "authentication required": "errors.unauthorized",
-  "invalid or expired shop session": "errors.unauthorized",
-  "shop is banned": "errors.banned",
-  "shop not found": "errors.notFound",
-  "internal server error": "errors.server",
-}
 
 export function describeDashboardError(
   error: unknown,
@@ -19,10 +11,7 @@ export function describeDashboardError(
   if (error.status === 0) {
     return translate("errors.network")
   }
-  const key = SERVER_MESSAGE_KEYS[error.message]
-  if (key) {
-    return translate(key)
-  }
+
   switch (error.status) {
     case 401:
       return translate("errors.unauthorized")
