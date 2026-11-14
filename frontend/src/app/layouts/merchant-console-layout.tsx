@@ -35,7 +35,7 @@ import {
   SidebarTrigger,
 } from "@/shared/ui/sidebar"
 import { onUnauthorized } from "@/shared/api/client"
-import { useMerchantAuth } from "@/features/auth"
+import { UserMenu, useMerchantAuth } from "@/features/auth"
 import {
   MERCHANT_CONSOLE_HOME_PATH,
   MERCHANT_CONSOLE_NAV,
@@ -76,6 +76,13 @@ export function MerchantConsoleLayout() {
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl md:px-6">
           <MerchantConsoleBreadcrumb />
+          <div className="ml-auto">
+            <UserMenu
+              session={session}
+              signOut={signOut}
+              menuAlign="end"
+            />
+          </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
           <Outlet />

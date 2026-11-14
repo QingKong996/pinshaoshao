@@ -7,17 +7,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
-import { useAuth } from "../model/user-context"
 import type { UserSession } from "../types"
 import { cn } from "@/shared/lib/utils"
 
 type UserMenuProps = {
   session: UserSession
+  signOut: () => void | Promise<void>
+  menuAlign?: "start" | "end"
   className?: string
 }
 
-export function UserMenu({ session, className }: UserMenuProps) {
-  const { signOut } = useAuth()
+export function UserMenu({
+  session,
+  signOut,
+  menuAlign = "start",
+  className,
+}: UserMenuProps) {
   const { t } = useTranslation()
 
   return (
@@ -40,7 +45,11 @@ export function UserMenu({ session, className }: UserMenuProps) {
           {session.username}
         </span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" sideOffset={8} className="w-44">
+      <DropdownMenuContent
+        align={menuAlign}
+        sideOffset={8}
+        className="w-44"
+      >
         <DropdownMenuItem onClick={() => void signOut()}>
           <LogOut aria-hidden />
           {t("common:auth.signOut")}
