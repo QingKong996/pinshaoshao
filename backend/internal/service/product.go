@@ -66,9 +66,12 @@ func (s *ProductService) List(ctx context.Context, shopID int, filter model.Prod
 	if err != nil {
 		return nil, fmt.Errorf("service.ListProducts: %w", err)
 	}
-	result.Page = normalized.Page
-	result.PageSize = normalized.PageSize
-	return result, nil
+	return &model.ProductListResult{
+		Products: result.Products,
+		Page:     normalized.Page,
+		PageSize: normalized.PageSize,
+		Total:    result.Total,
+	}, nil
 }
 
 // Get returns a product of the shop with its aggregates.

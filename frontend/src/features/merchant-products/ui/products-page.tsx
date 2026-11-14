@@ -133,6 +133,12 @@ export default function MerchantConsoleProductsPage({
     setForm({ open: true, product })
   }
 
+  function goToPreviousPageIfLastItem() {
+    if (items.length === 1 && page > 1) {
+      setPage(page - 1)
+    }
+  }
+
   function confirmShelfStatusChange() {
     if (!shelfStatusTarget) {
       return
@@ -151,8 +157,8 @@ export default function MerchantConsoleProductsPage({
       },
       {
         onSuccess: () => {
-          if (statusFilter !== ALL && items.length === 1 && page > 1) {
-            setPage(page - 1)
+          if (statusFilter !== ALL) {
+            goToPreviousPageIfLastItem()
           }
         },
         onSettled: () => setShelfStatusTarget(null),
@@ -160,7 +166,7 @@ export default function MerchantConsoleProductsPage({
     )
   }
 
-  function toggleShelfStatus(product: Product) {
+  function openShelfStatusDialog(product: Product) {
     setShelfStatusTarget(product)
   }
 
@@ -170,9 +176,7 @@ export default function MerchantConsoleProductsPage({
     }
     deleteProductMutation.mutate(deleteTarget.id, {
       onSuccess: () => {
-        if (items.length === 1 && page > 1) {
-          setPage(page - 1)
-        }
+        goToPreviousPageIfLastItem()
       },
       onSettled: () => setDeleteTarget(null),
     })
@@ -204,6 +208,15 @@ export default function MerchantConsoleProductsPage({
             categories={categories.data ?? []}
           />
 
+          {products.error ? (
+            <div className="px-4 pt-4">
+              <QueryError
+                error={products.error}
+                onRetry={products.refetch}
+              />
+            </div>
+          ) : null}
+
           {actionError ? (
             <div className="px-4 pt-4">
               <Alert variant="destructive">
@@ -225,7 +238,7 @@ export default function MerchantConsoleProductsPage({
             onSort={changeSort}
             productHref={productHref}
             onEdit={openEditDialog}
-            onToggleShelfStatus={toggleShelfStatus}
+            onToggleShelfStatus={openShelfStatusDialog}
             onDelete={setDeleteTarget}
           />
 

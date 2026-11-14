@@ -26,9 +26,11 @@ export function ProductsPagination({
   onPageSizeChange: (pageSize: number) => void
 }) {
   const { t } = useTranslation("console")
-  const firstItem = total === 0 ? 0 : (page - 1) * pageSize + 1
-  const lastItem = Math.min(page * pageSize, total)
   const visibleTotalPages = Math.max(1, totalPages)
+  const visiblePage = Math.min(page, visibleTotalPages)
+  const firstItem =
+    total === 0 ? 0 : (visiblePage - 1) * pageSize + 1
+  const lastItem = Math.min(visiblePage * pageSize, total)
   const pageSizeItems = PAGE_SIZE_OPTIONS.map((size) => ({
     value: String(size),
     label: String(size),
@@ -73,14 +75,14 @@ export function ProductsPagination({
           variant="outline"
           size="icon-sm"
           aria-label={t("products.pagination.previous")}
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
+          disabled={visiblePage <= 1}
+          onClick={() => onPageChange(visiblePage - 1)}
         >
           <ChevronLeftIcon aria-hidden />
         </Button>
         <span className="min-w-16 text-center tabular-nums">
           {t("products.pagination.pageOf", {
-            page: Math.min(page, visibleTotalPages),
+            page: visiblePage,
             totalPages: visibleTotalPages,
           })}
         </span>
@@ -88,8 +90,8 @@ export function ProductsPagination({
           variant="outline"
           size="icon-sm"
           aria-label={t("products.pagination.next")}
-          disabled={totalPages === 0 || page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
+          disabled={totalPages === 0 || visiblePage >= totalPages}
+          onClick={() => onPageChange(visiblePage + 1)}
         >
           <ChevronRightIcon aria-hidden />
         </Button>
