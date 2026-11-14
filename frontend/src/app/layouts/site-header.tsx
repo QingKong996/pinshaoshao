@@ -8,7 +8,7 @@ import { buttonVariants } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 
 export function SiteHeader() {
-  const { session } = useAuth()
+  const { session, signOut } = useAuth()
   const { t } = useTranslation()
 
   return (
@@ -35,6 +35,7 @@ export function SiteHeader() {
           {session ? (
             <UserMenu
               session={session}
+              signOut={signOut}
               className="lg:col-span-1 lg:col-start-11 lg:p-0"
             />
           ) : (

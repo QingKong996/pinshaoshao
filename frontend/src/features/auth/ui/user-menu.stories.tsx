@@ -10,6 +10,7 @@ const meta = {
       token: "storybook-token",
       username: "alice01",
     },
+    signOut: async () => {},
   },
 } satisfies Meta<typeof UserMenu>
 
