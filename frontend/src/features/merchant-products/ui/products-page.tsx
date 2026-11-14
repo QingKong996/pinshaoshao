@@ -1,4 +1,5 @@
-import { useDeferredValue, useState } from "react"
+import { useCallback, useDeferredValue, useState } from "react"
+import type { OnChangeFn, SortingState } from "@tanstack/react-table"
 import { AlertCircle, Plus } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { PageHeader } from "@/shared/ui/page-header"
@@ -30,10 +31,11 @@ import {
   DEFAULT_ORDER,
   DEFAULT_PAGE_SIZE,
   DEFAULT_SORT,
-  defaultOrderForSort,
   type StatusFilter,
 } from "../model/filters"
 import { useDocumentTitle } from "@/shared/hooks/use-document-title"
+
+const EMPTY_PRODUCTS: Product[] = []
 
 type ProductFormState = {
   open: boolean
@@ -57,8 +59,9 @@ export default function MerchantConsoleProductsPage({
   const [categoryFilter, setCategoryFilter] = useState(ALL)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
-  const [sort, setSort] = useState<ProductSort>(DEFAULT_SORT)
-  const [order, setOrder] = useState<SortOrder>(DEFAULT_ORDER)
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: DEFAULT_SORT, desc: DEFAULT_ORDER === "desc" },
+  ])
   const [form, setForm] = useState<ProductFormState>({
     open: false,
     product: null,
@@ -68,6 +71,13 @@ export default function MerchantConsoleProductsPage({
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
 
   const deferredSearch = useDeferredValue(search)
+  const activeSort = sorting[0]
+  const sort = (activeSort?.id ?? DEFAULT_SORT) as ProductSort
+  const order: SortOrder = activeSort
+    ? activeSort.desc
+      ? "desc"
+      : "asc"
+    : DEFAULT_ORDER
   const products = useProducts(
     token,
     buildProductListQuery({
@@ -87,7 +97,7 @@ export default function MerchantConsoleProductsPage({
   const actionError =
     updateProductMutation.error ?? deleteProductMutation.error
 
-  const items = products.data?.items ?? []
+  const items = products.data?.items ?? EMPTY_PRODUCTS
   const total = products.data?.total ?? 0
   const totalPages = products.data?.total_pages ?? 0
   const hasFilters =
@@ -110,13 +120,8 @@ export default function MerchantConsoleProductsPage({
     setPage(1)
   }
 
-  function changeSort(nextSort: ProductSort) {
-    if (nextSort === sort) {
-      setOrder((current) => (current === "asc" ? "desc" : "asc"))
-    } else {
-      setSort(nextSort)
-      setOrder(defaultOrderForSort(nextSort))
-    }
+  const changeSorting: OnChangeFn<SortingState> = (updater) => {
+    setSorting(updater)
     setPage(1)
   }
 
@@ -129,9 +134,9 @@ export default function MerchantConsoleProductsPage({
     setForm({ open: true, product: null })
   }
 
-  function openEditDialog(product: Product) {
+  const openEditDialog = useCallback((product: Product) => {
     setForm({ open: true, product })
-  }
+  }, [])
 
   function goToPreviousPageIfLastItem() {
     if (items.length === 1 && page > 1) {
@@ -166,9 +171,9 @@ export default function MerchantConsoleProductsPage({
     )
   }
 
-  function openShelfStatusDialog(product: Product) {
+  const openShelfStatusDialog = useCallback((product: Product) => {
     setShelfStatusTarget(product)
-  }
+  }, [])
 
   function confirmDelete() {
     if (!deleteTarget) {
@@ -233,9 +238,8 @@ export default function MerchantConsoleProductsPage({
             products={items}
             isPending={products.isPending}
             isCatalogEmpty={!hasFilters && total === 0}
-            sort={sort}
-            order={order}
-            onSort={changeSort}
+            sorting={sorting}
+            onSortingChange={changeSorting}
             productHref={productHref}
             onEdit={openEditDialog}
             onToggleShelfStatus={openShelfStatusDialog}
