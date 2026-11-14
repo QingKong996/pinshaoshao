@@ -1,4 +1,10 @@
-import { useState } from "react"
+import { useCallback, useMemo, useState } from "react"
+import {
+  createColumnHelper,
+  tableFeatures,
+  useTable,
+} from "@tanstack/react-table"
+import { cn } from "cn"
 import { AlertCircle, Pencil, Plus, Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
@@ -31,6 +37,18 @@ import { formatSpecsLabel } from "./format-specs"
 import { QueryError } from "./query-error"
 import { SKUFormDialog } from "./sku-form-dialog"
 
+const EMPTY_SKUS: ProductSKU[] = []
+const skuFeatures = tableFeatures({
+  columnMeta: {} as {
+    cellClassName?: string
+    headerClassName?: string
+  },
+})
+const skuColumnHelper = createColumnHelper<
+  typeof skuFeatures,
+  ProductSKU
+>()
+
 export function SKUSection({
   token,
   productID,
@@ -56,10 +74,10 @@ export function SKUSection({
     setSkuDialogOpen(true)
   }
 
-  function openEditSKU(sku: ProductSKU) {
+  const openEditSKU = useCallback((sku: ProductSKU) => {
     setEditingSKU(sku)
     setSkuDialogOpen(true)
-  }
+  }, [])
 
   function closeSKUDialog() {
     setSkuDialogOpen(false)
@@ -75,6 +93,82 @@ export function SKUSection({
       { onSettled: () => setDeletingSKU(null) },
     )
   }
+
+  const columns = useMemo(
+    () =>
+      skuColumnHelper.columns([
+        skuColumnHelper.accessor("id", {
+          id: "specs",
+          header: t("productDetail.skus.table.specs"),
+          meta: { cellClassName: "whitespace-normal" },
+          cell: ({ row }) =>
+            formatSpecsLabel(
+              row.original,
+              t("productDetail.skus.defaultSpecs"),
+            ),
+        }),
+        skuColumnHelper.accessor("price_cents", {
+          header: t("productDetail.skus.table.price"),
+          meta: { cellClassName: "tabular-nums" },
+          cell: ({ getValue }) => formatPriceCents(getValue()),
+        }),
+        skuColumnHelper.accessor("stock", {
+          header: t("productDetail.skus.table.stock"),
+          meta: { cellClassName: "tabular-nums" },
+        }),
+        skuColumnHelper.accessor("is_enabled", {
+          header: t("productDetail.skus.table.enabled"),
+          cell: ({ getValue }) => {
+            const isEnabled = getValue()
+            return (
+              <Badge variant={isEnabled ? "secondary" : "outline"}>
+                {isEnabled
+                  ? t("productDetail.skus.enabled")
+                  : t("productDetail.skus.disabled")}
+              </Badge>
+            )
+          },
+        }),
+        skuColumnHelper.display({
+          id: "actions",
+          header: t("productDetail.skus.table.actions"),
+          meta: {
+            headerClassName: "text-right",
+            cellClassName: "text-right",
+          },
+          cell: ({ row }) => (
+            <div className="flex justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t("productDetail.skus.actions.edit")}
+                onClick={() => openEditSKU(row.original)}
+              >
+                <Pencil aria-hidden />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t("productDetail.skus.actions.delete")}
+                onClick={() => setDeletingSKU(row.original)}
+              >
+                <Trash2 aria-hidden />
+              </Button>
+            </div>
+          ),
+        }),
+      ]),
+    [t, openEditSKU],
+  )
+
+  const table = useTable({
+    features: skuFeatures,
+    columns,
+    data: skus.data ?? EMPTY_SKUS,
+    getRowId: (row) => String(row.id),
+  })
+  const rows = table.getRowModel().rows
+  const columnCount = table.getAllLeafColumns().length
 
   return (
     <>
@@ -112,22 +206,29 @@ export function SKUSection({
 
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>{t("productDetail.skus.table.specs")}</TableHead>
-                <TableHead>{t("productDetail.skus.table.price")}</TableHead>
-                <TableHead>{t("productDetail.skus.table.stock")}</TableHead>
-                <TableHead>{t("productDetail.skus.table.enabled")}</TableHead>
-                <TableHead className="text-right">
-                  {t("productDetail.skus.table.actions")}
-                </TableHead>
-              </TableRow>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className={cn(
+                        header.column.columnDef.meta?.headerClassName,
+                      )}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <table.FlexRender header={header} />
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
               {skus.isPending ? <SKUTableSkeleton /> : null}
 
-              {skus.data && skus.data.length === 0 ? (
+              {skus.data && rows.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={5} className="py-8">
+                  <TableCell colSpan={columnCount} className="py-8">
                     <div className="flex flex-col items-center gap-1 text-center">
                       <span className="font-medium">
                         {t("productDetail.skus.empty.title")}
@@ -140,45 +241,18 @@ export function SKUSection({
                 </TableRow>
               ) : null}
 
-              {skus.data?.map((sku) => (
-                <TableRow key={sku.id}>
-                  <TableCell className="whitespace-normal">
-                    {formatSpecsLabel(
-                      sku,
-                      t("productDetail.skus.defaultSpecs"),
-                    )}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {formatPriceCents(sku.price_cents)}
-                  </TableCell>
-                  <TableCell className="tabular-nums">{sku.stock}</TableCell>
-                  <TableCell>
-                    <Badge variant={sku.is_enabled ? "secondary" : "outline"}>
-                      {sku.is_enabled
-                        ? t("productDetail.skus.enabled")
-                        : t("productDetail.skus.disabled")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={t("productDetail.skus.actions.edit")}
-                        onClick={() => openEditSKU(sku)}
-                      >
-                        <Pencil aria-hidden />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={t("productDetail.skus.actions.delete")}
-                        onClick={() => setDeletingSKU(sku)}
-                      >
-                        <Trash2 aria-hidden />
-                      </Button>
-                    </div>
-                  </TableCell>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getAllCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        cell.column.columnDef.meta?.cellClassName,
+                      )}
+                    >
+                      <table.FlexRender cell={cell} />
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))}
             </TableBody>
