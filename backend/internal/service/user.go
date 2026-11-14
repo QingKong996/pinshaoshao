@@ -5,10 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/model"
 	"pinshaoshao/internal/security"
 )
+
+type LoginInput struct {
+	Username string
+	Password string
+}
+
+type RegisterUserInput struct {
+	Username string
+	Password string
+	Email    string
+}
 
 // UserRepository is the persistence the user service depends on.
 type UserRepository interface {
@@ -27,17 +37,17 @@ func NewUserService(userRepository UserRepository) *UserService {
 	return &UserService{userRepository: userRepository}
 }
 
-func (s *UserService) Login(ctx context.Context, req *dto.LoginRequest) (string, error) {
-	user, err := s.userRepository.GetUserByUsername(ctx, req.Username)
+func (s *UserService) Login(ctx context.Context, input LoginInput) (string, error) {
+	user, err := s.userRepository.GetUserByUsername(ctx, input.Username)
 	if err != nil {
 		if errors.Is(err, apperr.ErrUserNotFound) {
-			security.DummyVerify(req.Password)
+			security.DummyVerify(input.Password)
 			return "", fmt.Errorf("service.Login: %w", apperr.ErrInvalidCredentials)
 		}
 		return "", fmt.Errorf("service.Login: get user by username: %w", err)
 	}
 
-	res, err := security.VerifyPassword(req.Password, user.PasswordHash)
+	res, err := security.VerifyPassword(input.Password, user.PasswordHash)
 	if err != nil {
 		return "", fmt.Errorf("service.Login: verify password: %w: %w", apperr.ErrInvalidCredentials, err)
 	}
@@ -62,16 +72,16 @@ func (s *UserService) Login(ctx context.Context, req *dto.LoginRequest) (string,
 	return token, nil
 }
 
-func (s *UserService) Register(ctx context.Context, req *dto.RegisterRequest) (string, error) {
-	passwordHash, err := security.HashPassword(req.Password)
+func (s *UserService) Register(ctx context.Context, input RegisterUserInput) (string, error) {
+	passwordHash, err := security.HashPassword(input.Password)
 	if err != nil {
 		return "", fmt.Errorf("service.Register: hash password: %w", err)
 	}
 
 	user := &model.User{
-		Username:     req.Username,
+		Username:     input.Username,
 		PasswordHash: passwordHash,
-		Email:        req.Email,
+		Email:        input.Email,
 	}
 
 	token, tokenHash, err := security.GenerateSessionToken()

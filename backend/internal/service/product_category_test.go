@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
 	"pinshaoshao/internal/service"
@@ -64,7 +63,7 @@ func TestCreateProductCategory(t *testing.T) {
 			return nil
 		})
 
-		got, err := categoryService.Create(ctx, 1, &dto.CreateProductCategoryRequest{Name: "clothes"})
+		got, err := categoryService.Create(ctx, 1, "clothes")
 		if err != nil {
 			t.Fatalf("create category: %v", err)
 		}
@@ -83,7 +82,7 @@ func TestCreateProductCategory(t *testing.T) {
 			CreateProductCategory(ctx, gomock.Any()).
 			Return(fmt.Errorf("category repository: %w", apperr.ErrCategoryNameTaken))
 
-		_, err := categoryService.Create(ctx, 1, &dto.CreateProductCategoryRequest{Name: "clothes"})
+		_, err := categoryService.Create(ctx, 1, "clothes")
 		requireErrorIs(t, err, apperr.ErrCategoryNameTaken)
 	})
 }
@@ -103,7 +102,7 @@ func TestUpdateProductCategory(t *testing.T) {
 		})
 		repository.EXPECT().GetProductCategoryByID(ctx, 1, 3).Return(updated, nil)
 
-		got, err := categoryService.Update(ctx, 1, 3, &dto.UpdateProductCategoryRequest{Name: "shoes"})
+		got, err := categoryService.Update(ctx, 1, 3, "shoes")
 		if err != nil {
 			t.Fatalf("update category: %v", err)
 		}
@@ -119,7 +118,7 @@ func TestUpdateProductCategory(t *testing.T) {
 			UpdateProductCategory(ctx, gomock.Any()).
 			Return(fmt.Errorf("category repository: %w", apperr.ErrCategoryNotFound))
 
-		_, err := categoryService.Update(ctx, 1, 99, &dto.UpdateProductCategoryRequest{Name: "shoes"})
+		_, err := categoryService.Update(ctx, 1, 99, "shoes")
 		requireErrorIs(t, err, apperr.ErrCategoryNotFound)
 	})
 
@@ -130,7 +129,7 @@ func TestUpdateProductCategory(t *testing.T) {
 			UpdateProductCategory(ctx, gomock.Any()).
 			Return(fmt.Errorf("category repository: %w", apperr.ErrCategoryNameTaken))
 
-		_, err := categoryService.Update(ctx, 1, 3, &dto.UpdateProductCategoryRequest{Name: "shoes"})
+		_, err := categoryService.Update(ctx, 1, 3, "shoes")
 		requireErrorIs(t, err, apperr.ErrCategoryNameTaken)
 	})
 }

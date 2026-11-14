@@ -9,6 +9,7 @@ import (
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/middleware"
 	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,8 +18,8 @@ import (
 type ProductService interface {
 	List(ctx context.Context, shopID int) ([]model.ProductSummary, error)
 	Get(ctx context.Context, shopID int, productID int) (*model.ProductSummary, error)
-	Create(ctx context.Context, shopID int, req *dto.CreateProductRequest) (*model.ProductSummary, error)
-	Update(ctx context.Context, shopID int, productID int, req *dto.UpdateProductRequest) (*model.ProductSummary, error)
+	Create(ctx context.Context, shopID int, input service.CreateProductInput) (*model.ProductSummary, error)
+	Update(ctx context.Context, shopID int, productID int, input service.UpdateProductInput) (*model.ProductSummary, error)
 	Delete(ctx context.Context, shopID int, productID int) error
 }
 
@@ -125,7 +126,16 @@ func (c *ProductController) Create(ctx *gin.Context) {
 		return
 	}
 
-	product, err := c.productService.Create(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, &req)
+	product, err := c.productService.Create(
+		ctx.Request.Context(),
+		middleware.MustCurrentShop(ctx).ID,
+		service.CreateProductInput{
+			Name:        req.Name,
+			Description: req.Description,
+			CategoryID:  req.CategoryID,
+			Status:      model.ProductStatus(req.Status),
+		},
+	)
 	if err != nil {
 		if errors.Is(err, apperr.ErrInvalidCategoryID) {
 			ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
@@ -177,7 +187,17 @@ func (c *ProductController) Update(ctx *gin.Context) {
 		return
 	}
 
-	product, err := c.productService.Update(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, productID, &req)
+	product, err := c.productService.Update(
+		ctx.Request.Context(),
+		middleware.MustCurrentShop(ctx).ID,
+		productID,
+		service.UpdateProductInput{
+			Name:        req.Name,
+			Description: req.Description,
+			CategoryID:  req.CategoryID,
+			Status:      model.ProductStatus(req.Status),
+		},
+	)
 	if err != nil {
 		switch {
 		case errors.Is(err, apperr.ErrProductNotFound):

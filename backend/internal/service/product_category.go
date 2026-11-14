@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/model"
 )
 
@@ -34,10 +33,10 @@ func (s *ProductCategoryService) List(ctx context.Context, shopID int) ([]model.
 }
 
 // Create adds a category to the shop.
-func (s *ProductCategoryService) Create(ctx context.Context, shopID int, req *dto.CreateProductCategoryRequest) (*model.ProductCategory, error) {
+func (s *ProductCategoryService) Create(ctx context.Context, shopID int, name string) (*model.ProductCategory, error) {
 	category := &model.ProductCategory{
 		ShopID: shopID,
-		Name:   req.Name,
+		Name:   name,
 	}
 
 	if err := s.categoryRepository.CreateProductCategory(ctx, category); err != nil {
@@ -47,11 +46,11 @@ func (s *ProductCategoryService) Create(ctx context.Context, shopID int, req *dt
 }
 
 // Update renames a category of the shop and returns it with its product count.
-func (s *ProductCategoryService) Update(ctx context.Context, shopID int, categoryID int, req *dto.UpdateProductCategoryRequest) (*model.ProductCategory, error) {
+func (s *ProductCategoryService) Update(ctx context.Context, shopID int, categoryID int, name string) (*model.ProductCategory, error) {
 	category := &model.ProductCategory{
 		ID:     categoryID,
 		ShopID: shopID,
-		Name:   req.Name,
+		Name:   name,
 	}
 
 	if err := s.categoryRepository.UpdateProductCategory(ctx, category); err != nil {

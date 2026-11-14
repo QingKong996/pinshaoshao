@@ -11,8 +11,8 @@ package mocks
 
 import (
 	context "context"
-	dto "pinshaoshao/internal/dto"
 	model "pinshaoshao/internal/model"
+	service "pinshaoshao/internal/service"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -58,18 +58,18 @@ func (mr *MockShopServiceMockRecorder) GetProfile(ctx, shopID any) *gomock.Call 
 }
 
 // Login mocks base method.
-func (m *MockShopService) Login(ctx context.Context, req *dto.LoginRequest) (string, error) {
+func (m *MockShopService) Login(ctx context.Context, input service.LoginInput) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Login", ctx, req)
+	ret := m.ctrl.Call(m, "Login", ctx, input)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Login indicates an expected call of Login.
-func (mr *MockShopServiceMockRecorder) Login(ctx, req any) *gomock.Call {
+func (mr *MockShopServiceMockRecorder) Login(ctx, input any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Login", reflect.TypeOf((*MockShopService)(nil).Login), ctx, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Login", reflect.TypeOf((*MockShopService)(nil).Login), ctx, input)
 }
 
 // Logout mocks base method.
@@ -87,31 +87,31 @@ func (mr *MockShopServiceMockRecorder) Logout(ctx, token any) *gomock.Call {
 }
 
 // Register mocks base method.
-func (m *MockShopService) Register(ctx context.Context, req *dto.ShopRegisterRequest) (string, error) {
+func (m *MockShopService) Register(ctx context.Context, input service.RegisterShopInput) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Register", ctx, req)
+	ret := m.ctrl.Call(m, "Register", ctx, input)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Register indicates an expected call of Register.
-func (mr *MockShopServiceMockRecorder) Register(ctx, req any) *gomock.Call {
+func (mr *MockShopServiceMockRecorder) Register(ctx, input any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockShopService)(nil).Register), ctx, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockShopService)(nil).Register), ctx, input)
 }
 
 // UpdateProfile mocks base method.
-func (m *MockShopService) UpdateProfile(ctx context.Context, shopID int, req *dto.UpdateShopProfileRequest) (*model.Shop, error) {
+func (m *MockShopService) UpdateProfile(ctx context.Context, shopID int, input service.UpdateShopProfileInput) (*model.Shop, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateProfile", ctx, shopID, req)
+	ret := m.ctrl.Call(m, "UpdateProfile", ctx, shopID, input)
 	ret0, _ := ret[0].(*model.Shop)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateProfile indicates an expected call of UpdateProfile.
-func (mr *MockShopServiceMockRecorder) UpdateProfile(ctx, shopID, req any) *gomock.Call {
+func (mr *MockShopServiceMockRecorder) UpdateProfile(ctx, shopID, input any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProfile", reflect.TypeOf((*MockShopService)(nil).UpdateProfile), ctx, shopID, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProfile", reflect.TypeOf((*MockShopService)(nil).UpdateProfile), ctx, shopID, input)
 }

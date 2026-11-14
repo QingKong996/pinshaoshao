@@ -9,15 +9,16 @@ import (
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/middleware"
 	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
 // ProductSKUService is the SKU service surface the controller depends on.
 type ProductSKUService interface {
-	Create(ctx context.Context, shopID int, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error)
+	Create(ctx context.Context, shopID int, productID int, input service.CreateProductSKUInput) (*model.ProductSKU, error)
 	List(ctx context.Context, shopID int, productID int) ([]model.ProductSKU, error)
-	Update(ctx context.Context, shopID int, productID int, skuID int, req *dto.UpdateProductSKURequest) (*model.ProductSKU, error)
+	Update(ctx context.Context, shopID int, productID int, skuID int, update *model.ProductSKUUpdate) (*model.ProductSKU, error)
 	Delete(ctx context.Context, shopID int, productID int, skuID int) error
 }
 
@@ -64,7 +65,17 @@ func (c *ProductSKUController) Create(ctx *gin.Context) {
 		return
 	}
 
-	sku, err := c.skuService.Create(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, productID, &req)
+	sku, err := c.skuService.Create(
+		ctx.Request.Context(),
+		middleware.MustCurrentShop(ctx).ID,
+		productID,
+		service.CreateProductSKUInput{
+			Specs:      req.Specs,
+			PriceCents: req.PriceCents,
+			Stock:      req.Stock,
+			IsEnabled:  req.IsEnabled,
+		},
+	)
 	if err != nil {
 		switch {
 		case errors.Is(err, apperr.ErrProductNotFound):
@@ -185,7 +196,18 @@ func (c *ProductSKUController) Update(ctx *gin.Context) {
 		return
 	}
 
-	sku, err := c.skuService.Update(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, productID, skuID, &req)
+	sku, err := c.skuService.Update(
+		ctx.Request.Context(),
+		middleware.MustCurrentShop(ctx).ID,
+		productID,
+		skuID,
+		&model.ProductSKUUpdate{
+			Specs:      req.Specs,
+			PriceCents: req.PriceCents,
+			Stock:      req.Stock,
+			IsEnabled:  req.IsEnabled,
+		},
+	)
 	if err != nil {
 		switch {
 		case errors.Is(err, apperr.ErrProductNotFound):

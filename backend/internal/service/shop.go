@@ -5,10 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/model"
 	"pinshaoshao/internal/security"
 )
+
+type RegisterShopInput struct {
+	Username string
+	Name     string
+	Password string
+	Email    string
+}
+
+type UpdateShopProfileInput struct {
+	Name        string
+	Description string
+}
 
 // ShopRepository is the persistence the shop service depends on.
 type ShopRepository interface {
@@ -29,17 +40,17 @@ func NewShopService(shopRepository ShopRepository) *ShopService {
 	return &ShopService{shopRepository: shopRepository}
 }
 
-func (s *ShopService) Login(ctx context.Context, req *dto.LoginRequest) (string, error) {
-	shop, err := s.shopRepository.GetShopByUsername(ctx, req.Username)
+func (s *ShopService) Login(ctx context.Context, input LoginInput) (string, error) {
+	shop, err := s.shopRepository.GetShopByUsername(ctx, input.Username)
 	if err != nil {
 		if errors.Is(err, apperr.ErrShopNotFound) {
-			security.DummyVerify(req.Password)
+			security.DummyVerify(input.Password)
 			return "", fmt.Errorf("service.ShopLogin: %w", apperr.ErrInvalidCredentials)
 		}
 		return "", fmt.Errorf("service.ShopLogin: get shop by username: %w", err)
 	}
 
-	res, err := security.VerifyPassword(req.Password, shop.PasswordHash)
+	res, err := security.VerifyPassword(input.Password, shop.PasswordHash)
 	if err != nil {
 		return "", fmt.Errorf("service.ShopLogin: verify password: %w: %w", apperr.ErrInvalidCredentials, err)
 	}
@@ -64,17 +75,17 @@ func (s *ShopService) Login(ctx context.Context, req *dto.LoginRequest) (string,
 	return token, nil
 }
 
-func (s *ShopService) Register(ctx context.Context, req *dto.ShopRegisterRequest) (string, error) {
-	passwordHash, err := security.HashPassword(req.Password)
+func (s *ShopService) Register(ctx context.Context, input RegisterShopInput) (string, error) {
+	passwordHash, err := security.HashPassword(input.Password)
 	if err != nil {
 		return "", fmt.Errorf("service.ShopRegister: hash password: %w", err)
 	}
 
 	shop := &model.Shop{
-		Username:     req.Username,
-		Name:         req.Name,
+		Username:     input.Username,
+		Name:         input.Name,
 		PasswordHash: passwordHash,
-		Email:        req.Email,
+		Email:        input.Email,
 	}
 
 	token, tokenHash, err := security.GenerateSessionToken()
@@ -131,16 +142,11 @@ func (s *ShopService) GetProfile(ctx context.Context, shopID int) (*model.Shop, 
 }
 
 // UpdateProfile updates the editable profile fields of the shop.
-func (s *ShopService) UpdateProfile(ctx context.Context, shopID int, req *dto.UpdateShopProfileRequest) (*model.Shop, error) {
-	description := ""
-	if req.Description != nil {
-		description = *req.Description
-	}
-
+func (s *ShopService) UpdateProfile(ctx context.Context, shopID int, input UpdateShopProfileInput) (*model.Shop, error) {
 	shop, err := s.shopRepository.UpdateShopProfile(ctx, &model.Shop{
 		ID:          shopID,
-		Name:        req.Name,
-		Description: description,
+		Name:        input.Name,
+		Description: input.Description,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("service.ShopUpdateProfile: %w", err)

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/model"
 	"strings"
 	"unicode/utf8"
@@ -16,6 +15,13 @@ const (
 	maxSKUSpecKeyLength = 20
 	maxSKUSpecValueLen  = 50
 )
+
+type CreateProductSKUInput struct {
+	Specs      map[string]string
+	PriceCents int64
+	Stock      int
+	IsEnabled  *bool
+}
 
 // ProductReader is the product lookup the SKU service depends on.
 type ProductReader interface {
@@ -43,26 +49,26 @@ func NewProductSKUService(productRepository ProductReader, skuRepository Product
 }
 
 // Create adds a SKU to a product owned by the shop.
-func (s *ProductSKUService) Create(ctx context.Context, shopID int, productID int, req *dto.CreateProductSKURequest) (*model.ProductSKU, error) {
+func (s *ProductSKUService) Create(ctx context.Context, shopID int, productID int, input CreateProductSKUInput) (*model.ProductSKU, error) {
 	if err := s.ensureOwnedProduct(ctx, shopID, productID); err != nil {
 		return nil, fmt.Errorf("service.CreateProductSKU: %w", err)
 	}
 
-	specs, err := normalizeSpecs(req.Specs)
+	specs, err := normalizeSpecs(input.Specs)
 	if err != nil {
 		return nil, fmt.Errorf("service.CreateProductSKU: %w", err)
 	}
 
 	isEnabled := true
-	if req.IsEnabled != nil {
-		isEnabled = *req.IsEnabled
+	if input.IsEnabled != nil {
+		isEnabled = *input.IsEnabled
 	}
 
 	sku := &model.ProductSKU{
 		ProductID:  productID,
 		Specs:      specs,
-		PriceCents: req.PriceCents,
-		Stock:      req.Stock,
+		PriceCents: input.PriceCents,
+		Stock:      input.Stock,
 		IsEnabled:  isEnabled,
 	}
 
@@ -86,29 +92,25 @@ func (s *ProductSKUService) List(ctx context.Context, shopID int, productID int)
 }
 
 // Update partially updates a SKU of a product owned by the shop.
-func (s *ProductSKUService) Update(ctx context.Context, shopID int, productID int, skuID int, req *dto.UpdateProductSKURequest) (*model.ProductSKU, error) {
+func (s *ProductSKUService) Update(ctx context.Context, shopID int, productID int, skuID int, update *model.ProductSKUUpdate) (*model.ProductSKU, error) {
 	if err := s.ensureOwnedProduct(ctx, shopID, productID); err != nil {
 		return nil, fmt.Errorf("service.UpdateProductSKU: %w", err)
 	}
 
-	if req.Specs == nil && req.PriceCents == nil && req.Stock == nil && req.IsEnabled == nil {
+	if update.Specs == nil && update.PriceCents == nil && update.Stock == nil && update.IsEnabled == nil {
 		return nil, fmt.Errorf("service.UpdateProductSKU: %w", apperr.ErrInvalidProductSKUUpdate)
 	}
 
-	update := &model.ProductSKUUpdate{
-		PriceCents: req.PriceCents,
-		Stock:      req.Stock,
-		IsEnabled:  req.IsEnabled,
-	}
-	if req.Specs != nil {
-		specs, err := normalizeSpecs(req.Specs)
+	normalized := *update
+	if update.Specs != nil {
+		specs, err := normalizeSpecs(update.Specs)
 		if err != nil {
 			return nil, fmt.Errorf("service.UpdateProductSKU: %w", err)
 		}
-		update.Specs = specs
+		normalized.Specs = specs
 	}
 
-	sku, err := s.skuRepository.UpdateProductSKU(ctx, productID, skuID, update)
+	sku, err := s.skuRepository.UpdateProductSKU(ctx, productID, skuID, &normalized)
 	if err != nil {
 		return nil, fmt.Errorf("service.UpdateProductSKU: %w", err)
 	}

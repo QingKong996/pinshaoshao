@@ -5,9 +5,22 @@ import (
 	"errors"
 	"fmt"
 	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/model"
 )
+
+type CreateProductInput struct {
+	Name        string
+	Description string
+	CategoryID  *int
+	Status      model.ProductStatus
+}
+
+type UpdateProductInput struct {
+	Name        string
+	Description string
+	CategoryID  *int
+	Status      model.ProductStatus
+}
 
 // ProductRepository is the persistence the product service depends on.
 type ProductRepository interface {
@@ -54,22 +67,22 @@ func (s *ProductService) Get(ctx context.Context, shopID int, productID int) (*m
 }
 
 // Create adds a product to the shop.
-func (s *ProductService) Create(ctx context.Context, shopID int, req *dto.CreateProductRequest) (*model.ProductSummary, error) {
-	if err := s.validateCategory(ctx, shopID, req.CategoryID); err != nil {
+func (s *ProductService) Create(ctx context.Context, shopID int, input CreateProductInput) (*model.ProductSummary, error) {
+	if err := s.validateCategory(ctx, shopID, input.CategoryID); err != nil {
 		return nil, fmt.Errorf("service.CreateProduct: %w", err)
 	}
 
-	status := req.Status
+	status := input.Status
 	if status == "" {
-		status = string(model.ProductStatusOffShelf)
+		status = model.ProductStatusOffShelf
 	}
 
 	product := &model.Product{
 		ShopID:      shopID,
-		Name:        req.Name,
-		Description: req.Description,
-		Status:      model.ProductStatus(status),
-		CategoryID:  req.CategoryID,
+		Name:        input.Name,
+		Description: input.Description,
+		Status:      status,
+		CategoryID:  input.CategoryID,
 	}
 
 	if err := s.productRepository.CreateProduct(ctx, product); err != nil {
@@ -84,18 +97,18 @@ func (s *ProductService) Create(ctx context.Context, shopID int, req *dto.Create
 }
 
 // Update replaces the editable fields of a product of the shop.
-func (s *ProductService) Update(ctx context.Context, shopID int, productID int, req *dto.UpdateProductRequest) (*model.ProductSummary, error) {
-	if err := s.validateCategory(ctx, shopID, req.CategoryID); err != nil {
+func (s *ProductService) Update(ctx context.Context, shopID int, productID int, input UpdateProductInput) (*model.ProductSummary, error) {
+	if err := s.validateCategory(ctx, shopID, input.CategoryID); err != nil {
 		return nil, fmt.Errorf("service.UpdateProduct: %w", err)
 	}
 
 	product := &model.Product{
 		ID:          productID,
 		ShopID:      shopID,
-		Name:        req.Name,
-		Description: req.Description,
-		Status:      model.ProductStatus(req.Status),
-		CategoryID:  req.CategoryID,
+		Name:        input.Name,
+		Description: input.Description,
+		Status:      input.Status,
+		CategoryID:  input.CategoryID,
 	}
 
 	if err := s.productRepository.UpdateProduct(ctx, product); err != nil {

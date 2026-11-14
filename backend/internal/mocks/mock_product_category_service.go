@@ -11,7 +11,6 @@ package mocks
 
 import (
 	context "context"
-	dto "pinshaoshao/internal/dto"
 	model "pinshaoshao/internal/model"
 	reflect "reflect"
 
@@ -43,18 +42,18 @@ func (m *MockProductCategoryService) EXPECT() *MockProductCategoryServiceMockRec
 }
 
 // Create mocks base method.
-func (m *MockProductCategoryService) Create(ctx context.Context, shopID int, req *dto.CreateProductCategoryRequest) (*model.ProductCategory, error) {
+func (m *MockProductCategoryService) Create(ctx context.Context, shopID int, name string) (*model.ProductCategory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, shopID, req)
+	ret := m.ctrl.Call(m, "Create", ctx, shopID, name)
 	ret0, _ := ret[0].(*model.ProductCategory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockProductCategoryServiceMockRecorder) Create(ctx, shopID, req any) *gomock.Call {
+func (mr *MockProductCategoryServiceMockRecorder) Create(ctx, shopID, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockProductCategoryService)(nil).Create), ctx, shopID, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockProductCategoryService)(nil).Create), ctx, shopID, name)
 }
 
 // Delete mocks base method.
@@ -87,16 +86,16 @@ func (mr *MockProductCategoryServiceMockRecorder) List(ctx, shopID any) *gomock.
 }
 
 // Update mocks base method.
-func (m *MockProductCategoryService) Update(ctx context.Context, shopID, categoryID int, req *dto.UpdateProductCategoryRequest) (*model.ProductCategory, error) {
+func (m *MockProductCategoryService) Update(ctx context.Context, shopID, categoryID int, name string) (*model.ProductCategory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, shopID, categoryID, req)
+	ret := m.ctrl.Call(m, "Update", ctx, shopID, categoryID, name)
 	ret0, _ := ret[0].(*model.ProductCategory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockProductCategoryServiceMockRecorder) Update(ctx, shopID, categoryID, req any) *gomock.Call {
+func (mr *MockProductCategoryServiceMockRecorder) Update(ctx, shopID, categoryID, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockProductCategoryService)(nil).Update), ctx, shopID, categoryID, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockProductCategoryService)(nil).Update), ctx, shopID, categoryID, name)
 }

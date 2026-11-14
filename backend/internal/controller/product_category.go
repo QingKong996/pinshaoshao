@@ -16,8 +16,8 @@ import (
 // ProductCategoryService is the category service surface the controller depends on.
 type ProductCategoryService interface {
 	List(ctx context.Context, shopID int) ([]model.ProductCategory, error)
-	Create(ctx context.Context, shopID int, req *dto.CreateProductCategoryRequest) (*model.ProductCategory, error)
-	Update(ctx context.Context, shopID int, categoryID int, req *dto.UpdateProductCategoryRequest) (*model.ProductCategory, error)
+	Create(ctx context.Context, shopID int, name string) (*model.ProductCategory, error)
+	Update(ctx context.Context, shopID int, categoryID int, name string) (*model.ProductCategory, error)
 	Delete(ctx context.Context, shopID int, categoryID int) error
 }
 
@@ -85,7 +85,7 @@ func (c *ProductCategoryController) Create(ctx *gin.Context) {
 		return
 	}
 
-	category, err := c.categoryService.Create(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, &req)
+	category, err := c.categoryService.Create(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, req.Name)
 	if err != nil {
 		if errors.Is(err, apperr.ErrCategoryNameTaken) {
 			ctx.JSON(http.StatusConflict, dto.ErrorResponse{
@@ -138,7 +138,7 @@ func (c *ProductCategoryController) Update(ctx *gin.Context) {
 		return
 	}
 
-	category, err := c.categoryService.Update(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, categoryID, &req)
+	category, err := c.categoryService.Update(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, categoryID, req.Name)
 	if err != nil {
 		switch {
 		case errors.Is(err, apperr.ErrCategoryNotFound):

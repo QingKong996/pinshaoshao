@@ -15,6 +15,7 @@ import (
 	"pinshaoshao/internal/middleware"
 	"pinshaoshao/internal/mocks"
 	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/mock/gomock"
@@ -189,9 +190,9 @@ func TestProductCreate(t *testing.T) {
 		productController, productService := newTestProductController(t)
 		productService.EXPECT().
 			Create(gomock.Any(), activeShop.ID, gomock.Any()).
-			DoAndReturn(func(_ context.Context, _ int, req *dto.CreateProductRequest) (*model.ProductSummary, error) {
-				if req.Status != "on_shelf" || req.CategoryID == nil || *req.CategoryID != 2 {
-					t.Fatalf("request = %+v, want on_shelf in category 2", req)
+			DoAndReturn(func(_ context.Context, _ int, input service.CreateProductInput) (*model.ProductSummary, error) {
+				if input.Status != model.ProductStatusOnShelf || input.CategoryID == nil || *input.CategoryID != 2 {
+					t.Fatalf("input = %+v, want on_shelf in category 2", input)
 				}
 				return newTestProductSummary(), nil
 			})
@@ -271,12 +272,12 @@ func TestProductUpdate(t *testing.T) {
 		productController, productService := newTestProductController(t)
 		productService.EXPECT().
 			Update(gomock.Any(), activeShop.ID, 1, gomock.Any()).
-			DoAndReturn(func(_ context.Context, _ int, _ int, req *dto.UpdateProductRequest) (*model.ProductSummary, error) {
-				if req.Status != "off_shelf" || req.CategoryID != nil {
-					t.Fatalf("request = %+v, want off_shelf without a category", req)
+			DoAndReturn(func(_ context.Context, _ int, _ int, input service.UpdateProductInput) (*model.ProductSummary, error) {
+				if input.Status != model.ProductStatusOffShelf || input.CategoryID != nil {
+					t.Fatalf("input = %+v, want off_shelf without a category", input)
 				}
 				updated := newTestProductSummary()
-				updated.Name = req.Name
+				updated.Name = input.Name
 				updated.Status = model.ProductStatusOffShelf
 				return updated, nil
 			})

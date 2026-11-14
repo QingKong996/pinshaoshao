@@ -9,17 +9,18 @@ import (
 	"pinshaoshao/internal/dto"
 	"pinshaoshao/internal/middleware"
 	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
 // ShopService is the shop service surface the controller depends on.
 type ShopService interface {
-	Login(ctx context.Context, req *dto.LoginRequest) (string, error)
-	Register(ctx context.Context, req *dto.ShopRegisterRequest) (string, error)
+	Login(ctx context.Context, input service.LoginInput) (string, error)
+	Register(ctx context.Context, input service.RegisterShopInput) (string, error)
 	Logout(ctx context.Context, token string) error
 	GetProfile(ctx context.Context, shopID int) (*model.Shop, error)
-	UpdateProfile(ctx context.Context, shopID int, req *dto.UpdateShopProfileRequest) (*model.Shop, error)
+	UpdateProfile(ctx context.Context, shopID int, input service.UpdateShopProfileInput) (*model.Shop, error)
 }
 
 type ShopController struct {
@@ -70,7 +71,12 @@ func (c *ShopController) Register(ctx *gin.Context) {
 		return
 	}
 
-	token, err := c.shopService.Register(ctx.Request.Context(), &req)
+	token, err := c.shopService.Register(ctx.Request.Context(), service.RegisterShopInput{
+		Username: req.Username,
+		Name:     req.Name,
+		Password: req.Password,
+		Email:    req.Email,
+	})
 	if err != nil {
 		switch {
 		case errors.Is(err, apperr.ErrShopUsernameTaken):
@@ -166,7 +172,19 @@ func (c *ShopController) UpdateProfile(ctx *gin.Context) {
 		return
 	}
 
-	shop, err := c.shopService.UpdateProfile(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, &req)
+	description := ""
+	if req.Description != nil {
+		description = *req.Description
+	}
+
+	shop, err := c.shopService.UpdateProfile(
+		ctx.Request.Context(),
+		middleware.MustCurrentShop(ctx).ID,
+		service.UpdateShopProfileInput{
+			Name:        req.Name,
+			Description: description,
+		},
+	)
 	if err != nil {
 		if errors.Is(err, apperr.ErrShopNotFound) {
 			ctx.JSON(http.StatusNotFound, dto.ErrorResponse{
