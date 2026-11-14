@@ -1,6 +1,14 @@
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronsUpDown,
+} from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router"
-import { formatPriceRange } from "@/shared/lib/format"
+import {
+  formatDateTimeSeconds,
+  formatPriceRange,
+} from "@/shared/lib/format"
 import { Skeleton } from "@/shared/ui/skeleton"
 import {
   Table,
@@ -10,16 +18,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table"
-import type { Product } from "../types"
+import type { Product, ProductSort, SortOrder } from "../types"
 import { ProductActions } from "./product-actions"
 import { ProductStatusBadge } from "./product-status-badge"
 
-const COLUMN_COUNT = 7
+const COLUMN_COUNT = 8
 
 export function ProductsTable({
   products,
   isPending,
   isCatalogEmpty,
+  sort,
+  order,
+  onSort,
   productHref,
   onEdit,
   onToggleShelfStatus,
@@ -28,6 +39,9 @@ export function ProductsTable({
   products: Product[]
   isPending: boolean
   isCatalogEmpty: boolean
+  sort: ProductSort
+  order: SortOrder
+  onSort: (sort: ProductSort) => void
   productHref: (productID: number) => string
   onEdit: (product: Product) => void
   onToggleShelfStatus: (product: Product) => void
@@ -39,24 +53,55 @@ export function ProductsTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="px-4">
-            {t("products.table.product")}
-          </TableHead>
-          <TableHead className="px-4">
-            {t("products.table.category")}
-          </TableHead>
-          <TableHead className="px-4">
-            {t("products.table.status")}
-          </TableHead>
-          <TableHead className="px-4">
-            {t("products.table.skus")}
-          </TableHead>
-          <TableHead className="px-4">
-            {t("products.table.stock")}
-          </TableHead>
-          <TableHead className="px-4">
-            {t("products.table.price")}
-          </TableHead>
+          <SortableTableHead
+            column="name"
+            label={t("products.table.product")}
+            sort={sort}
+            order={order}
+            onSort={onSort}
+          />
+          <SortableTableHead
+            column="category"
+            label={t("products.table.category")}
+            sort={sort}
+            order={order}
+            onSort={onSort}
+          />
+          <SortableTableHead
+            column="status"
+            label={t("products.table.status")}
+            sort={sort}
+            order={order}
+            onSort={onSort}
+          />
+          <SortableTableHead
+            column="sku_count"
+            label={t("products.table.skus")}
+            sort={sort}
+            order={order}
+            onSort={onSort}
+          />
+          <SortableTableHead
+            column="total_stock"
+            label={t("products.table.stock")}
+            sort={sort}
+            order={order}
+            onSort={onSort}
+          />
+          <SortableTableHead
+            column="min_price"
+            label={t("products.table.price")}
+            sort={sort}
+            order={order}
+            onSort={onSort}
+          />
+          <SortableTableHead
+            column="created_at"
+            label={t("products.table.createdAt")}
+            sort={sort}
+            order={order}
+            onSort={onSort}
+          />
           <TableHead className="px-4 text-right">
             {t("products.table.actions")}
           </TableHead>
@@ -122,6 +167,9 @@ export function ProductsTable({
                   product.max_price_cents,
                 ) ?? "—"}
               </TableCell>
+              <TableCell className="px-4 py-3 text-muted-foreground tabular-nums">
+                {formatDateTimeSeconds(product.created_at)}
+              </TableCell>
               <TableCell className="px-4 py-3 text-right">
                 <ProductActions
                   product={product}
@@ -135,6 +183,53 @@ export function ProductsTable({
         )}
       </TableBody>
     </Table>
+  )
+}
+
+function SortableTableHead({
+  column,
+  label,
+  sort,
+  order,
+  onSort,
+}: {
+  column: ProductSort
+  label: string
+  sort: ProductSort
+  order: SortOrder
+  onSort: (sort: ProductSort) => void
+}) {
+  const { t } = useTranslation("console")
+  const isActive = sort === column
+  const ariaSort = isActive
+    ? order === "asc"
+      ? "ascending"
+      : "descending"
+    : "none"
+
+  return (
+    <TableHead className="px-4" aria-sort={ariaSort}>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        aria-label={t("products.table.sortBy", { column: label })}
+        onClick={() => onSort(column)}
+      >
+        {label}
+        {isActive ? (
+          order === "asc" ? (
+            <ArrowUp className="size-3.5" aria-hidden />
+          ) : (
+            <ArrowDown className="size-3.5" aria-hidden />
+          )
+        ) : (
+          <ChevronsUpDown
+            className="size-3.5 text-muted-foreground/60"
+            aria-hidden
+          />
+        )}
+      </button>
+    </TableHead>
   )
 }
 
@@ -163,6 +258,9 @@ function ProductTableSkeleton() {
           </TableCell>
           <TableCell className="px-4 py-3">
             <Skeleton className="h-4 w-24" />
+          </TableCell>
+          <TableCell className="px-4 py-3">
+            <Skeleton className="h-4 w-32" />
           </TableCell>
           <TableCell className="px-4 py-3">
             <div className="flex justify-end gap-2">

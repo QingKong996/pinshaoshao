@@ -6,6 +6,13 @@ import (
 	"fmt"
 	"pinshaoshao/internal/apperr"
 	"pinshaoshao/internal/model"
+	"strings"
+)
+
+const (
+	defaultProductPageSize = 10
+	maxProductPageSize     = 100
+	maxProductPage         = 1_000_000
 )
 
 type CreateProductInput struct {
@@ -26,7 +33,7 @@ type UpdateProductInput struct {
 type ProductRepository interface {
 	CreateProduct(ctx context.Context, product *model.Product) error
 	GetProductSummaryByID(ctx context.Context, shopID int, productID int) (*model.ProductSummary, error)
-	ListProductSummariesByShopID(ctx context.Context, shopID int) ([]model.ProductSummary, error)
+	ListProductSummaries(ctx context.Context, shopID int, filter model.ProductListFilter) (*model.ProductListResult, error)
 	UpdateProduct(ctx context.Context, product *model.Product) error
 	DeleteProduct(ctx context.Context, shopID int, productID int) error
 }
@@ -48,13 +55,23 @@ func NewProductService(productRepository ProductRepository, categoryReader Produ
 	}
 }
 
-// List returns the products of the shop with their aggregates, newest first.
-func (s *ProductService) List(ctx context.Context, shopID int) ([]model.ProductSummary, error) {
-	products, err := s.productRepository.ListProductSummariesByShopID(ctx, shopID)
+// List returns a filtered and sorted page of products with their aggregates.
+func (s *ProductService) List(ctx context.Context, shopID int, filter model.ProductListFilter) (*model.ProductListResult, error) {
+	normalized, err := normalizeProductListFilter(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := s.productRepository.ListProductSummaries(ctx, shopID, normalized)
 	if err != nil {
 		return nil, fmt.Errorf("service.ListProducts: %w", err)
 	}
-	return products, nil
+	return &model.ProductListResult{
+		Products: result.Products,
+		Page:     normalized.Page,
+		PageSize: normalized.PageSize,
+		Total:    result.Total,
+	}, nil
 }
 
 // Get returns a product of the shop with its aggregates.
@@ -142,4 +159,52 @@ func (s *ProductService) validateCategory(ctx context.Context, shopID int, categ
 		return fmt.Errorf("get category: %w", err)
 	}
 	return nil
+}
+
+func normalizeProductListFilter(filter model.ProductListFilter) (model.ProductListFilter, error) {
+	if filter.Page == 0 {
+		filter.Page = 1
+	}
+	if filter.PageSize == 0 {
+		filter.PageSize = defaultProductPageSize
+	}
+	if filter.Page < 1 || filter.Page > maxProductPage || filter.PageSize < 1 || filter.PageSize > maxProductPageSize {
+		return model.ProductListFilter{}, apperr.ErrInvalidProductListQuery
+	}
+
+	if filter.Sort == "" {
+		filter.Sort = model.ProductSortCreatedAt
+	}
+	switch filter.Sort {
+	case model.ProductSortCreatedAt,
+		model.ProductSortUpdatedAt,
+		model.ProductSortName,
+		model.ProductSortCategory,
+		model.ProductSortStatus,
+		model.ProductSortSKUCount,
+		model.ProductSortTotalStock,
+		model.ProductSortMinPrice:
+	default:
+		return model.ProductListFilter{}, apperr.ErrInvalidProductListQuery
+	}
+
+	if filter.Order == "" {
+		filter.Order = model.ProductSortOrderDesc
+	}
+	if filter.Order != model.ProductSortOrderAsc && filter.Order != model.ProductSortOrderDesc {
+		return model.ProductListFilter{}, apperr.ErrInvalidProductListQuery
+	}
+
+	if filter.Status != "" && filter.Status != model.ProductStatusOnShelf && filter.Status != model.ProductStatusOffShelf {
+		return model.ProductListFilter{}, apperr.ErrInvalidProductListQuery
+	}
+	if filter.CategoryID != nil && *filter.CategoryID <= 0 {
+		return model.ProductListFilter{}, apperr.ErrInvalidProductListQuery
+	}
+	if filter.CategoryID != nil && filter.Uncategorized {
+		return model.ProductListFilter{}, apperr.ErrInvalidProductListQuery
+	}
+
+	filter.Search = strings.TrimSpace(filter.Search)
+	return filter, nil
 }

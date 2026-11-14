@@ -1,11 +1,16 @@
 import { apiClient } from "@/shared/api/client"
 import { authorized } from "@/shared/api/authorized"
-import type { Product, ProductInput } from "../types"
+import type {
+  Product,
+  ProductInput,
+  ProductListQuery,
+  ProductListResult,
+} from "../types"
 
-export async function listProducts(token: string) {
-  const { data } = await apiClient.get<Product[]>(
+export async function listProducts(token: string, query: ProductListQuery) {
+  const { data } = await apiClient.get<ProductListResult>(
     "/merchant/products",
-    authorized(token),
+    { ...authorized(token), params: query },
   )
   return data
 }

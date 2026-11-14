@@ -79,7 +79,9 @@
       "skus": "SKUs",
       "stock": "Stock",
       "price": "Price",
-      "actions": "Actions"
+      "createdAt": "Created",
+      "actions": "Actions",
+      "sortBy": "Sort by {{column}}"
     },
     "actions": {
       "edit": "Edit",
@@ -87,10 +89,29 @@
       "takeOffShelf": "Take off shelf",
       "delete": "Delete"
     },
+    "shelfStatusDialog": {
+      "putOn": {
+        "title": "Put “{{name}}” on shelf?",
+        "description": "Customers will be able to see and buy this product.",
+        "confirm": "Put on shelf"
+      },
+      "takeOff": {
+        "title": "Take “{{name}}” off shelf?",
+        "description": "Customers will no longer be able to see or buy this product.",
+        "confirm": "Take off shelf"
+      }
+    },
     "empty": {
       "title": "No products yet",
       "description": "Create your first product to start selling.",
       "filtered": "No products match the current filters."
+    },
+    "pagination": {
+      "summary": "{{start}}–{{end}} of {{total}}",
+      "rowsPerPage": "Rows per page",
+      "previous": "Previous page",
+      "next": "Next page",
+      "pageOf": "Page {{page}} of {{totalPages}}"
     },
     "deleteDialog": {
       "title": "Delete product?",

@@ -1,13 +1,15 @@
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { getProduct, listProducts } from "../api/products"
 import { listProductCategories } from "../api/categories"
 import { listProductSKUs } from "../api/skus"
+import type { ProductListQuery } from "../types"
 import { productQueryKeys } from "./query-keys"
 
-export function useProducts(token: string) {
+export function useProducts(token: string, query: ProductListQuery) {
   return useQuery({
-    queryKey: productQueryKeys.products(),
-    queryFn: () => listProducts(token),
+    queryKey: productQueryKeys.productList(query),
+    queryFn: () => listProducts(token, query),
+    placeholderData: keepPreviousData,
   })
 }
 

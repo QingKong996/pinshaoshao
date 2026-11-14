@@ -87,18 +87,18 @@ func (mr *MockProductServiceMockRecorder) Get(ctx, shopID, productID any) *gomoc
 }
 
 // List mocks base method.
-func (m *MockProductService) List(ctx context.Context, shopID int) ([]model.ProductSummary, error) {
+func (m *MockProductService) List(ctx context.Context, shopID int, filter model.ProductListFilter) (*model.ProductListResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", ctx, shopID)
-	ret0, _ := ret[0].([]model.ProductSummary)
+	ret := m.ctrl.Call(m, "List", ctx, shopID, filter)
+	ret0, _ := ret[0].(*model.ProductListResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockProductServiceMockRecorder) List(ctx, shopID any) *gomock.Call {
+func (mr *MockProductServiceMockRecorder) List(ctx, shopID, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockProductService)(nil).List), ctx, shopID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockProductService)(nil).List), ctx, shopID, filter)
 }
 
 // Update mocks base method.

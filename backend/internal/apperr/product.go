@@ -14,4 +14,5 @@ var (
 	ErrCategoryNotFound        = errors.New(`category not found`)
 	ErrCategoryNameTaken       = errors.New(`category name already exists`)
 	ErrInvalidCategoryID       = errors.New(`invalid category`)
+	ErrInvalidProductListQuery = errors.New(`invalid product list query`)
 )
