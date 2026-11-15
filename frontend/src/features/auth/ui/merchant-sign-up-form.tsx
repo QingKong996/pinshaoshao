@@ -39,7 +39,12 @@ export function MerchantSignUpForm({ redirectTo }: { redirectTo: string }) {
   async function onSubmit(values: MerchantSignUpValues) {
     setServerError(null)
     try {
-      await signUp(values)
+      await signUp({
+        name: values.name,
+        username: values.username,
+        email: values.email,
+        password: values.password,
+      })
     } catch (error) {
       setServerError(error)
     }
