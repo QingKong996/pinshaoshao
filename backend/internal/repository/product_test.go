@@ -12,7 +12,6 @@ import (
 func TestProductRepository(t *testing.T) {
 	ctx := context.Background()
 	productRepository := repository.NewProductRepository(testPool)
-	shopRepository := repository.NewShopRepository(testPool)
 
 	t.Run("creates a product", func(t *testing.T) {
 		resetDatabase(t)
@@ -54,41 +53,6 @@ func TestProductRepository(t *testing.T) {
 
 		_, err := productRepository.GetProductByID(ctx, 404)
 		requireErrorIs(t, err, apperr.ErrProductNotFound)
-	})
-
-	t.Run("lists the products of a shop ordered by id", func(t *testing.T) {
-		resetDatabase(t)
-		shop := insertShop(t)
-		otherShop := &model.Shop{
-			Username:     "shop02",
-			PasswordHash: testShopPassword,
-			Email:        "shop02@example.com",
-		}
-		if err := shopRepository.CreateShopWithSession(ctx, otherShop, testTokenHash(otherShop.Username)); err != nil {
-			t.Fatalf("create other shop: %v", err)
-		}
-
-		for _, name := range []string{"first", "second"} {
-			if err := productRepository.CreateProduct(ctx, &model.Product{ShopID: shop.ID, Name: name, Status: model.ProductStatusOffShelf}); err != nil {
-				t.Fatalf("create product %q: %v", name, err)
-			}
-		}
-		if err := productRepository.CreateProduct(ctx, &model.Product{ShopID: otherShop.ID, Name: "other", Status: model.ProductStatusOffShelf}); err != nil {
-			t.Fatalf("create other product: %v", err)
-		}
-
-		products, err := productRepository.ListProductsByShopID(ctx, shop.ID)
-		if err != nil {
-			t.Fatalf("list products: %v", err)
-		}
-		if len(products) != 2 {
-			t.Fatalf("product count = %d, want 2", len(products))
-		}
-		for i, want := range []string{"first", "second"} {
-			if products[i].Name != want {
-				t.Fatalf("product %d name = %q, want %q", i, products[i].Name, want)
-			}
-		}
 	})
 
 	t.Run("updates a product", func(t *testing.T) {

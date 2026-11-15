@@ -219,24 +219,45 @@ func TestShopRegister(t *testing.T) {
 
 	t.Run("stores the display name", func(t *testing.T) {
 		shopService, shopRepository := newTestShopService(t)
+		var storedShop *model.Shop
+		var sessionTokenHash []byte
 
 		shopRepository.EXPECT().
 			CreateShopWithSession(ctx, gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, shop *model.Shop, _ []byte) error {
-				if shop.Name != "Test Shop" {
-					t.Fatalf("display name = %q, want %q", shop.Name, "Test Shop")
-				}
+			DoAndReturn(func(_ context.Context, shop *model.Shop, tokenHash []byte) error {
+				storedShop = shop
+				sessionTokenHash = tokenHash
 				shop.ID = 1
 				return nil
 			})
 
-		if _, err := shopService.Register(ctx, service.RegisterShopInput{
+		token, err := shopService.Register(ctx, service.RegisterShopInput{
 			Username: testShopUsername,
 			Name:     "Test Shop",
 			Password: testShopPassword,
 			Email:    testShopEmail,
-		}); err != nil {
+		})
+		if err != nil {
 			t.Fatalf("register: %v", err)
+		}
+		if token == "" {
+			t.Fatal("register returned an empty session token")
+		}
+		if storedShop.Name != "Test Shop" {
+			t.Fatalf("display name = %q, want %q", storedShop.Name, "Test Shop")
+		}
+		if storedShop.PasswordHash == testShopPassword {
+			t.Fatal("stored password is plaintext")
+		}
+		ok, err := security.VerifyPassword(testShopPassword, storedShop.PasswordHash)
+		if err != nil {
+			t.Fatalf("verify stored password: %v", err)
+		}
+		if !ok {
+			t.Fatal("stored password hash does not match the registered password")
+		}
+		if !bytes.Equal(sessionTokenHash, security.HashSessionToken(token)) {
+			t.Fatal("stored session token hash does not match the issued token")
 		}
 	})
 

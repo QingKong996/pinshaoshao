@@ -234,6 +234,49 @@ func TestLogin(t *testing.T) {
 func TestRegister(t *testing.T) {
 	ctx := context.Background()
 
+	t.Run("registers a user with a hashed password and session", func(t *testing.T) {
+		userService, userRepository := newTestUserService(t)
+		var storedUser *model.User
+		var sessionTokenHash []byte
+
+		userRepository.EXPECT().
+			CreateUserWithSession(ctx, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, user *model.User, tokenHash []byte) error {
+				storedUser = user
+				sessionTokenHash = tokenHash
+				user.ID = 1
+				return nil
+			})
+
+		token, err := userService.Register(ctx, service.RegisterUserInput{
+			Username: testUsername,
+			Password: testPassword,
+			Email:    testUsername + "@example.com",
+		})
+		if err != nil {
+			t.Fatalf("register: %v", err)
+		}
+		if token == "" {
+			t.Fatal("register returned an empty session token")
+		}
+		if storedUser.Username != testUsername || storedUser.Email != testUsername+"@example.com" {
+			t.Fatalf("user = %+v, want the registered account fields", storedUser)
+		}
+		if storedUser.PasswordHash == testPassword {
+			t.Fatal("stored password is plaintext")
+		}
+		ok, err := security.VerifyPassword(testPassword, storedUser.PasswordHash)
+		if err != nil {
+			t.Fatalf("verify stored password: %v", err)
+		}
+		if !ok {
+			t.Fatal("stored password hash does not match the registered password")
+		}
+		if !bytes.Equal(sessionTokenHash, security.HashSessionToken(token)) {
+			t.Fatal("stored session token hash does not match the issued token")
+		}
+	})
+
 	t.Run("duplicate username", func(t *testing.T) {
 		userService, userRepository := newTestUserService(t)
 
