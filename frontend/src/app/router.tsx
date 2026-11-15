@@ -1,7 +1,4 @@
-import {
-  Navigate,
-  createBrowserRouter,
-} from "react-router"
+import { createBrowserRouter } from "react-router"
 import {
   MerchantConsoleLayout,
   type MerchantConsoleRouteHandle,
@@ -13,6 +10,7 @@ import {
   MERCHANT_CONSOLE_PATHS,
 } from "./merchant-navigation"
 import HomePage from "./pages/home"
+import MerchantHomePage from "./pages/merchant-home"
 import NotFoundPage from "./pages/not-found"
 import { MerchantCategoriesRoute } from "./routes/merchant-categories-route"
 import { MerchantDashboardRoute } from "./routes/merchant-dashboard-route"
@@ -43,12 +41,11 @@ export const router = createBrowserRouter([
       },
       {
         path: MERCHANT_CONSOLE_BASE_PATH,
+        element: <MerchantHomePage />,
+      },
+      {
         element: <MerchantConsoleLayout />,
         children: [
-          {
-            index: true,
-            element: <Navigate to={MERCHANT_CONSOLE_HOME_PATH} replace />,
-          },
           {
             path: MERCHANT_CONSOLE_PATHS.dashboard,
             element: <MerchantDashboardRoute />,
