@@ -190,3 +190,54 @@ func TestShopRepositorySessions(t *testing.T) {
 		requireErrorIs(t, err, apperr.ErrInvalidShopSession)
 	})
 }
+
+func TestShopRepositoryProfile(t *testing.T) {
+	ctx := context.Background()
+	shopRepository := repository.NewShopRepository(testPool)
+
+	t.Run("returns and updates the shop profile", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+
+		original, err := shopRepository.GetShopByID(ctx, shop.ID)
+		if err != nil {
+			t.Fatalf("get shop by ID: %v", err)
+		}
+		if original.Username != shop.Username || original.Email != shop.Email {
+			t.Fatalf("shop = %+v, want persisted account fields", original)
+		}
+
+		updated, err := shopRepository.UpdateShopProfile(ctx, &model.Shop{
+			ID:          shop.ID,
+			Name:        "Updated Shop",
+			Description: "Updated description",
+		})
+		if err != nil {
+			t.Fatalf("update shop profile: %v", err)
+		}
+		if updated.Name != "Updated Shop" || updated.Description != "Updated description" {
+			t.Fatalf("shop = %+v, want updated profile fields", updated)
+		}
+		if updated.Username != shop.Username || updated.Email != shop.Email {
+			t.Fatalf("shop = %+v, want preserved account fields", updated)
+		}
+
+		persisted, err := shopRepository.GetShopByID(ctx, shop.ID)
+		if err != nil {
+			t.Fatalf("get updated shop: %v", err)
+		}
+		if persisted.Name != "Updated Shop" || persisted.Description != "Updated description" {
+			t.Fatalf("shop = %+v, want persisted profile fields", persisted)
+		}
+	})
+
+	t.Run("returns not found for an unknown shop", func(t *testing.T) {
+		resetDatabase(t)
+
+		_, err := shopRepository.GetShopByID(ctx, 404)
+		requireErrorIs(t, err, apperr.ErrShopNotFound)
+
+		_, err = shopRepository.UpdateShopProfile(ctx, &model.Shop{ID: 404, Name: "Unknown"})
+		requireErrorIs(t, err, apperr.ErrShopNotFound)
+	})
+}
