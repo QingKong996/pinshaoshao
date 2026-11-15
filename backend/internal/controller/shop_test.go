@@ -309,6 +309,18 @@ func TestShopGetProfile(t *testing.T) {
 		requireStatus(t, rec, http.StatusInternalServerError)
 		requireError(t, rec, apperr.ErrInternalServer)
 	})
+
+	t.Run("returns 404 when the shop no longer exists", func(t *testing.T) {
+		shopController, shopService := newTestShopController(t)
+		shopService.EXPECT().
+			GetProfile(gomock.Any(), activeShop.ID).
+			Return(nil, fmt.Errorf("service: %w", apperr.ErrShopNotFound))
+
+		rec := doRequest(newShopProfileRouter(t, shopController, activeShop), http.MethodGet, "/shop", "Bearer session-token", "")
+
+		requireStatus(t, rec, http.StatusNotFound)
+		requireError(t, rec, apperr.ErrShopNotFound)
+	})
 }
 
 func TestShopUpdateProfile(t *testing.T) {
@@ -384,5 +396,17 @@ func TestShopUpdateProfile(t *testing.T) {
 
 		requireStatus(t, rec, http.StatusInternalServerError)
 		requireError(t, rec, apperr.ErrInternalServer)
+	})
+
+	t.Run("returns 404 when the shop no longer exists", func(t *testing.T) {
+		shopController, shopService := newTestShopController(t)
+		shopService.EXPECT().
+			UpdateProfile(gomock.Any(), activeShop.ID, gomock.Any()).
+			Return(nil, fmt.Errorf("service: %w", apperr.ErrShopNotFound))
+
+		rec := doRequest(newShopProfileRouter(t, shopController, activeShop), http.MethodPatch, "/shop", "Bearer session-token", validBody)
+
+		requireStatus(t, rec, http.StatusNotFound)
+		requireError(t, rec, apperr.ErrShopNotFound)
 	})
 }
