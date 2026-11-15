@@ -58,6 +58,7 @@ export function AuthLayout({
   const panel = variant === "merchant" ? MERCHANT_PANEL : USER_PANEL
   const highlights =
     variant === "merchant" ? MERCHANT_HIGHLIGHTS : USER_HIGHLIGHTS
+  const homePath = variant === "merchant" ? "/merchant" : "/"
 
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
@@ -69,7 +70,7 @@ export function AuthLayout({
         </div>
 
         <div className="relative">
-          <BrandMark inverted />
+          <BrandMark inverted to={homePath} />
         </div>
 
         <div className="relative max-w-md">
@@ -104,12 +105,12 @@ export function AuthLayout({
       <main className="flex min-h-svh flex-col bg-background">
         <div className="flex items-center justify-between px-5 py-5 sm:px-8">
           <div className="lg:hidden">
-            <BrandMark />
+            <BrandMark to={homePath} />
           </div>
           <div className="ml-auto flex items-center gap-3">
             <LanguageSwitcher />
             <Link
-              to="/"
+              to={homePath}
               aria-label={t("auth:layout.backHome")}
               className={cn(
                 buttonVariants({ variant: "outline", size: "icon" }),

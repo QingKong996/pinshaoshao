@@ -1,5 +1,135 @@
 {
   "documentTitle": "{{brand}} · 拼着买，少花钱",
+  "merchant": {
+    "documentTitle": "商家平台 · {{brand}}",
+    "header": {
+      "platform": "商家平台",
+      "features": "平台能力",
+      "howItWorks": "开店流程",
+      "signIn": "商家登录",
+      "signUp": "免费开店",
+      "console": "进入商户中心"
+    },
+    "hero": {
+      "badge": "拼少少商家平台",
+      "title": {
+        "lead": "把好货，",
+        "highlight": "拼成好生意"
+      },
+      "description": "在拼少少开一家店，触达爱拼团的买家。商品、SKU、库存与店铺资料统一管理，轻量起步，专心把好货卖好。",
+      "actions": {
+        "signUp": "免费开店",
+        "signIn": "已有店铺？商家登录"
+      },
+      "trustPoints": {
+        "free": "免费入驻",
+        "management": "商品与库存一站管理",
+        "insight": "经营数据随时掌握"
+      }
+    },
+    "preview": {
+      "label": "经营概览",
+      "active": "营业中",
+      "shopName": "山野杂货铺",
+      "shopMeta": "今天也在认真上新",
+      "status": "正常",
+      "stats": {
+        "products": "在售商品",
+        "skus": "SKU",
+        "stock": "库存总量"
+      },
+      "recent": {
+        "title": "最近上架",
+        "count": "本周 +2",
+        "items": {
+          "coffee": {
+            "name": "手冲咖啡豆",
+            "meta": "食品 · 2 个 SKU"
+          },
+          "bag": {
+            "name": "亚麻托特包",
+            "meta": "日用 · 3 个 SKU"
+          }
+        }
+      },
+      "stockAlert": {
+        "title": "库存提醒",
+        "description": "3 个 SKU 已售罄，记得补货"
+      }
+    },
+    "features": {
+      "eyebrow": "商家能力",
+      "title": "从选品到库存，一处打理",
+      "description": "不需要复杂的后台配置，先把商品和库存管好，把生意跑起来。",
+      "items": {
+        "reach": {
+          "title": "触达拼团买家",
+          "description": "商品面向爱拼团的买家展示，上架后即可被看见。"
+        },
+        "catalog": {
+          "title": "商品与 SKU",
+          "description": "多规格商品统一维护，按分类整理，上下架切换清晰。"
+        },
+        "inventory": {
+          "title": "清晰库存",
+          "description": "实时掌握 SKU 的售价与库存，售罄情况一目了然。"
+        },
+        "overview": {
+          "title": "经营概览",
+          "description": "商品数、SKU、库存与库存总值，打开商户中心即掌握。"
+        }
+      }
+    },
+    "howItWorks": {
+      "eyebrow": "开店流程",
+      "title": "三步，把店开起来",
+      "description": "从注册到上架，把精力留给选品和经营。",
+      "cta": "开始开店",
+      "steps": {
+        "register": {
+          "title": "注册开店",
+          "description": "填写店铺名称、用户名和邮箱，创建商家账号。"
+        },
+        "publish": {
+          "title": "创建商品",
+          "description": "录入商品信息，配置分类、SKU 售价与库存。"
+        },
+        "manage": {
+          "title": "管理经营",
+          "description": "在商户中心调整库存、维护商品与店铺资料。"
+        }
+      }
+    },
+    "closingCta": {
+      "badge": "准备好开店了吗",
+      "title": {
+        "lead": "下一件好物，",
+        "highlight": "交给更多拼友"
+      },
+      "description": "注册拼少少商家账号，把商品带到拼团买家面前。",
+      "actions": {
+        "signUp": "免费开店",
+        "signIn": "商家登录"
+      },
+      "assurances": {
+        "free": "免费创建商家账号",
+        "setup": "无需复杂配置",
+        "mobile": "桌面与移动端均可管理"
+      }
+    },
+    "footer": {
+      "tagline": "让好货被更多拼友看见。",
+      "links": {
+        "features": "平台能力",
+        "howItWorks": "开店流程",
+        "signIn": "商家登录",
+        "signUp": "免费开店",
+        "backToShop": "返回商城"
+      },
+      "copyright": "© {{year}} {{brand}} · 商家平台",
+      "disclaimer": "拼少少为虚构名称，仅用于学习实验。"
+    }
+  },
   "hero": {
     "badge": "拼团电商 · 学习实验项目",
     "title": {

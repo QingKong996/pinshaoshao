@@ -15,7 +15,7 @@ const FOOTER_SECTIONS = [
     titleKey: "common:footer.joinTitle",
     className: "md:col-span-1 md:col-start-10",
     links: [
-      { labelKey: "common:footer.join.merchants", to: "/merchant/signup" },
+      { labelKey: "common:footer.join.merchants", to: "/merchant" },
       { labelKey: "common:footer.join.partnership" },
       { labelKey: "common:footer.join.contact" },
     ],

@@ -1,5 +1,135 @@
 {
   "documentTitle": "{{brand}} · Buy together, pay less",
+  "merchant": {
+    "documentTitle": "Merchant platform · {{brand}}",
+    "header": {
+      "platform": "Merchant platform",
+      "features": "Platform",
+      "howItWorks": "How it works",
+      "signIn": "Merchant sign in",
+      "signUp": "Open a shop",
+      "console": "Merchant center"
+    },
+    "hero": {
+      "badge": "Sell on Pinshaoshao",
+      "title": {
+        "lead": "Great products,",
+        "highlight": "better business"
+      },
+      "description": "Open a shop on Pinshaoshao and reach shoppers who love group buys. Manage products, SKUs, inventory and your shop profile in one place, so you can focus on selling well.",
+      "actions": {
+        "signUp": "Open a shop free",
+        "signIn": "Already selling? Sign in"
+      },
+      "trustPoints": {
+        "free": "Free to join",
+        "management": "Products and inventory in one place",
+        "insight": "Know your store at a glance"
+      }
+    },
+    "preview": {
+      "label": "Business overview",
+      "active": "Open",
+      "shopName": "Wildwood Goods",
+      "shopMeta": "Always adding something new",
+      "status": "Active",
+      "stats": {
+        "products": "Live products",
+        "skus": "SKUs",
+        "stock": "Total stock"
+      },
+      "recent": {
+        "title": "Recently listed",
+        "count": "+2 this week",
+        "items": {
+          "coffee": {
+            "name": "Single-origin coffee",
+            "meta": "Food · 2 SKUs"
+          },
+          "bag": {
+            "name": "Linen tote",
+            "meta": "Everyday · 3 SKUs"
+          }
+        }
+      },
+      "stockAlert": {
+        "title": "Stock alert",
+        "description": "3 SKUs are sold out. Time to restock."
+      }
+    },
+    "features": {
+      "eyebrow": "Built for merchants",
+      "title": "Run your catalog and stock in one place",
+      "description": "No complicated setup. Get your products and inventory in order, then get down to business.",
+      "items": {
+        "reach": {
+          "title": "Reach group-buy shoppers",
+          "description": "Put your products in front of shoppers who love buying together."
+        },
+        "catalog": {
+          "title": "Products and SKUs",
+          "description": "Keep multi-variant products organized by category and switch shelf status with ease."
+        },
+        "inventory": {
+          "title": "Clear inventory",
+          "description": "See each SKU's price and stock at a glance, including anything sold out."
+        },
+        "overview": {
+          "title": "Business overview",
+          "description": "Products, SKUs, stock and inventory value — all ready when you open the merchant center."
+        }
+      }
+    },
+    "howItWorks": {
+      "eyebrow": "Get started",
+      "title": "Open your shop in three steps",
+      "description": "From sign-up to shelf, keep your time for products and growth.",
+      "cta": "Start selling",
+      "steps": {
+        "register": {
+          "title": "Create your shop",
+          "description": "Add your shop name, username and email to create a merchant account."
+        },
+        "publish": {
+          "title": "List a product",
+          "description": "Enter product details, then set categories, SKU prices and stock."
+        },
+        "manage": {
+          "title": "Keep it running",
+          "description": "Adjust stock, update products and maintain your shop profile in the merchant center."
+        }
+      }
+    },
+    "closingCta": {
+      "badge": "Ready to open your shop?",
+      "title": {
+        "lead": "Your next great product,",
+        "highlight": "deserves more shoppers"
+      },
+      "description": "Create a Pinshaoshao merchant account and bring your products to group-buy shoppers.",
+      "actions": {
+        "signUp": "Open a shop free",
+        "signIn": "Merchant sign in"
+      },
+      "assurances": {
+        "free": "Free merchant account",
+        "setup": "No complicated setup",
+        "mobile": "Manage from desktop or mobile"
+      }
+    },
+    "footer": {
+      "tagline": "Help more shoppers discover what you sell.",
+      "links": {
+        "features": "Platform",
+        "howItWorks": "How it works",
+        "signIn": "Merchant sign in",
+        "signUp": "Open a shop",
+        "backToShop": "Back to the shop"
+      },
+      "copyright": "© {{year}} {{brand}} · Merchant platform",
+      "disclaimer": "Pinshaoshao is a fictional name used for a learning project."
+    }
+  },
   "hero": {
     "badge": "Group-buy e-commerce · Learning project",
     "title": {
