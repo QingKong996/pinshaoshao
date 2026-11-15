@@ -17,6 +17,9 @@ const NAV_ITEMS = [
   },
 ] as const
 
+const NAV_LINK_CLASS =
+  "rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+
 export function MerchantSiteHeader() {
   const { session } = useMerchantAuth()
   const { t } = useTranslation()
@@ -34,7 +37,7 @@ export function MerchantSiteHeader() {
             <a
               key={item.href}
               href={item.href}
-              className="transition-colors hover:text-foreground"
+              className={NAV_LINK_CLASS}
             >
               {t(item.labelKey)}
             </a>

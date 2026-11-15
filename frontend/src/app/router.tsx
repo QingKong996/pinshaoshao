@@ -10,7 +10,7 @@ import {
   MERCHANT_CONSOLE_PATHS,
 } from "./merchant-navigation"
 import HomePage from "./pages/home"
-import MerchantHomePage from "./pages/merchant-home"
+import MerchantHomePage from "./pages/merchant-home/merchant-home-page"
 import NotFoundPage from "./pages/not-found"
 import { MerchantCategoriesRoute } from "./routes/merchant-categories-route"
 import { MerchantDashboardRoute } from "./routes/merchant-dashboard-route"

@@ -1,11 +1,11 @@
 import { useDeferredValue, useMemo, useState } from "react"
-import { AlertCircle, Plus, Search } from "lucide-react"
+import { AlertCircle, Plus } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Card } from "@/shared/ui/card"
-import { Input } from "@/shared/ui/input"
 import { PageHeader } from "@/shared/ui/page-header"
+import { SearchInput } from "@/shared/ui/search-input"
 import { useDocumentTitle } from "@/shared/hooks/use-document-title"
 import type { CatalogChanged, ProductCategory } from "../types"
 import { useDeleteProductCategory } from "../model/mutations"
@@ -92,19 +92,13 @@ export default function MerchantConsoleCategoriesPage({
       ) : (
         <Card className="gap-0 overflow-hidden p-0">
           <div className="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center">
-            <div className="relative w-full sm:max-w-xs">
-              <Search
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t("categories.searchPlaceholder")}
-                aria-label={t("categories.searchPlaceholder")}
-                className="pl-8"
-              />
-            </div>
+            <SearchInput
+              containerClassName="sm:max-w-xs"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("categories.searchPlaceholder")}
+              aria-label={t("categories.searchPlaceholder")}
+            />
             <p className="text-sm text-muted-foreground sm:ml-auto">
               {t("categories.count", { count: filteredCategories.length })}
             </p>

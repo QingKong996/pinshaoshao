@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useState } from "react"
+import { useCallback, useState } from "react"
 import type { OnChangeFn, SortingState } from "@tanstack/react-table"
 import { AlertCircle, Plus } from "lucide-react"
 import { useTranslation } from "react-i18next"
@@ -7,9 +7,9 @@ import { ProductFormDialog } from "./product-form-dialog"
 import { ProductDeleteDialog } from "./product-delete-dialog"
 import { ProductShelfStatusDialog } from "./product-shelf-status-dialog"
 import { ProductsFilters } from "./products-filters"
-import { ProductsPagination } from "./products-pagination"
 import { ProductsTable } from "./products-table"
 import { QueryError } from "./query-error"
+import { TablePagination } from "./table-pagination"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Card } from "@/shared/ui/card"
@@ -29,11 +29,12 @@ import {
   ALL,
   buildProductListQuery,
   DEFAULT_ORDER,
-  DEFAULT_PAGE_SIZE,
   DEFAULT_SORT,
   type StatusFilter,
 } from "../model/filters"
+import { DEFAULT_PAGE_SIZE } from "../model/pagination"
 import { useDocumentTitle } from "@/shared/hooks/use-document-title"
+import { useDebouncedValue } from "@/shared/hooks/use-debounced-value"
 
 const EMPTY_PRODUCTS: Product[] = []
 
@@ -70,7 +71,7 @@ export default function MerchantConsoleProductsPage({
     useState<Product | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
 
-  const deferredSearch = useDeferredValue(search)
+  const debouncedSearch = useDebouncedValue(search, 300)
   const activeSort = sorting[0]
   const sort = (activeSort?.id ?? DEFAULT_SORT) as ProductSort
   const order: SortOrder = activeSort
@@ -85,7 +86,7 @@ export default function MerchantConsoleProductsPage({
       pageSize,
       sort,
       order,
-      search: deferredSearch,
+      search: debouncedSearch,
       statusFilter,
       categoryFilter,
     }),
@@ -101,7 +102,7 @@ export default function MerchantConsoleProductsPage({
   const total = products.data?.total ?? 0
   const totalPages = products.data?.total_pages ?? 0
   const hasFilters =
-    deferredSearch.trim() !== "" ||
+    debouncedSearch.trim() !== "" ||
     statusFilter !== ALL ||
     categoryFilter !== ALL
 
@@ -246,7 +247,7 @@ export default function MerchantConsoleProductsPage({
             onDelete={setDeleteTarget}
           />
 
-          <ProductsPagination
+          <TablePagination
             page={page}
             pageSize={pageSize}
             total={total}

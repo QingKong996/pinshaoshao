@@ -9,8 +9,6 @@ export const ALL = "all"
 export const UNCATEGORIZED = "none"
 export type StatusFilter = typeof ALL | ProductStatus
 
-export const DEFAULT_PAGE_SIZE = 10
-export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const
 export const DEFAULT_SORT: ProductSort = "created_at"
 export const DEFAULT_ORDER: SortOrder = "desc"
 

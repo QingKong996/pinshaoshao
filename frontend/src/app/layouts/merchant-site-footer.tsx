@@ -3,6 +3,8 @@ import { Link } from "react-router"
 import { BrandMark } from "@/shared/ui/brand-mark"
 
 const CURRENT_YEAR = new Date().getFullYear()
+const LINK_CLASS =
+  "rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
 
 const FOOTER_LINKS = [
   {
@@ -33,24 +35,24 @@ export function MerchantSiteFooter() {
             <a
               key={link.href}
               href={link.href}
-              className="transition-colors hover:text-foreground"
+              className={LINK_CLASS}
             >
               {t(link.labelKey)}
             </a>
           ))}
           <Link
             to="/merchant/signin"
-            className="transition-colors hover:text-foreground"
+            className={LINK_CLASS}
           >
             {t("home:merchant.footer.links.signIn")}
           </Link>
           <Link
             to="/merchant/signup"
-            className="transition-colors hover:text-foreground"
+            className={LINK_CLASS}
           >
             {t("home:merchant.footer.links.signUp")}
           </Link>
-          <Link to="/" className="transition-colors hover:text-foreground">
+          <Link to="/" className={LINK_CLASS}>
             {t("home:merchant.footer.links.backToShop")}
           </Link>
         </div>

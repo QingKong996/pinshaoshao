@@ -1,6 +1,7 @@
 {
   "title": "商户中心",
   "sidebarDescription": "商户中心导航菜单",
+  "sidebarToggle": "打开导航菜单",
   "nav": {
     "dashboard": "概览",
     "products": "商品",
@@ -21,7 +22,15 @@
     "retry": "重试",
     "cancel": "取消",
     "saveError": "保存失败",
-    "actionError": "操作失败"
+    "actionError": "操作失败",
+    "close": "关闭",
+    "pagination": {
+      "summary": "{{start}}–{{end}} / 共 {{total}} 项",
+      "rowsPerPage": "每页",
+      "previous": "上一页",
+      "next": "下一页",
+      "pageOf": "第 {{page}} / {{totalPages}} 页"
+    }
   },
   "errors": {
     "unauthorized": "登录状态已失效，请重新登录。",
@@ -47,7 +56,6 @@
   },
   "dashboard": {
     "title": "概览",
-    "description": "快速了解店铺的商品、SKU 与库存状况。",
     "stats": {
       "products": "商品",
       "productsHint": "其中 {{onShelf}} 件已上架",
@@ -108,13 +116,6 @@
       "title": "还没有商品",
       "description": "创建第一个商品，开始销售。",
       "filtered": "没有符合筛选条件的商品。"
-    },
-    "pagination": {
-      "summary": "{{start}}–{{end}} / 共 {{total}} 项",
-      "rowsPerPage": "每页",
-      "previous": "上一页",
-      "next": "下一页",
-      "pageOf": "第 {{page}} / {{totalPages}} 页"
     },
     "deleteDialog": {
       "title": "删除商品？",
@@ -198,12 +199,10 @@
       "description": "为商品添加 SKU 后，库存会显示在这里。",
       "filtered": "没有符合筛选条件的库存记录。"
     },
-    "pagination": {
-      "summary": "{{start}}–{{end}} / 共 {{total}} 项",
-      "rowsPerPage": "每页",
-      "previous": "上一页",
-      "next": "下一页",
-      "pageOf": "第 {{page}} / {{totalPages}} 页"
+    "empty": {
+      "title": "还没有库存记录",
+      "description": "为商品添加 SKU 后，库存会显示在这里。",
+      "filtered": "没有符合筛选条件的库存记录。"
     }
   },
   "stockForm": {
@@ -256,7 +255,6 @@
     },
     "skus": {
       "title": "SKU 规格",
-      "description": "为每个可售规格配置价格与库存。",
       "add": "添加 SKU",
       "table": {
         "specs": "规格",

@@ -1,8 +1,7 @@
 {
   "nav": {
     "features": "Features",
-    "howItWorks": "How it works",
-    "search": "Search products"
+    "howItWorks": "How it works"
   },
   "auth": {
     "signIn": "Sign in",
@@ -22,18 +21,8 @@
   "footer": {
     "tagline": "The more you pool, the less you pay",
     "disclaimer": "Disclaimer: {{brand}} is a fictional name and is not affiliated with any real company, product, or organization.",
-    "exploreTitle": "Explore",
-    "joinTitle": "Join us",
     "join": {
-      "merchants": "Sell with us",
-      "partnership": "Partnerships",
-      "contact": "Contact us"
-    },
-    "helpTitle": "Help center",
-    "help": {
-      "faq": "FAQ",
-      "shipping": "Shipping",
-      "afterSales": "After-sales"
+      "merchants": "Sell with us"
     },
     "copyright": "© {{year}} {{brand}} · Learning project"
   },

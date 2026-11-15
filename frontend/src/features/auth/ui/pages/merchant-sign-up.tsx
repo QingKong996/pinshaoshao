@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
-import { Link } from "react-router"
 import { AuthLayout } from "../auth-layout"
+import { AuthSwitchPrompt } from "../auth-switch-prompt"
 import { MerchantSignUpForm } from "../merchant-sign-up-form"
 import { useDocumentTitle } from "@/shared/hooks/use-document-title"
 
@@ -14,15 +14,11 @@ export default function MerchantSignUpPage({ redirectTo }: { redirectTo: string 
       title={t("auth:merchant.signUp.title")}
       description={t("auth:merchant.signUp.description")}
       footer={
-        <>
-          {t("auth:merchant.signUp.switchPrompt")}
-          <Link
-            to="/merchant/signin"
-            className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
-          >
-            {t("auth:merchant.signUp.switchLink")}
-          </Link>
-        </>
+        <AuthSwitchPrompt
+          prompt={t("auth:merchant.signUp.switchPrompt")}
+          linkLabel={t("auth:merchant.signUp.switchLink")}
+          to="/merchant/signin"
+        />
       }
     >
       <MerchantSignUpForm redirectTo={redirectTo} />

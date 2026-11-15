@@ -1,14 +1,11 @@
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { LoaderCircle } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { Navigate } from "react-router"
 import { AuthErrorAlert } from "./auth-error-alert"
-import { PasswordInput } from "@/shared/ui/password-input"
-import { Button } from "@/shared/ui/button"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/ui/field"
-import { Input } from "@/shared/ui/input"
+import { AuthSubmitButton, AuthTextField } from "./auth-form-controls"
+import { FieldGroup } from "@/shared/ui/field"
 import {
   signInSchema,
   translateAuthValidationMessage,
@@ -67,73 +64,42 @@ export function SignInForm() {
       ) : null}
 
       <FieldGroup>
-        <Field data-invalid={errors.username ? true : undefined}>
-          <FieldLabel htmlFor="signin-username">
-            {t("auth:fields.username")}
-          </FieldLabel>
-          <Input
-            id="signin-username"
-            autoComplete="username"
-            autoCapitalize="none"
-            autoFocus
-            spellCheck={false}
-            required
-            aria-invalid={errors.username ? true : undefined}
-            aria-describedby={
-              errors.username ? "signin-username-error" : undefined
-            }
-            className="h-10"
-            {...register("username", { onChange: clearServerError })}
-          />
-          {errors.username ? (
-            <FieldError id="signin-username-error">
-              {translateAuthValidationMessage(errors.username.message, t)}
-            </FieldError>
-          ) : null}
-        </Field>
-
-        <Field data-invalid={errors.password ? true : undefined}>
-          <FieldLabel htmlFor="signin-password">
-            {t("auth:fields.password")}
-          </FieldLabel>
-          <PasswordInput
-            id="signin-password"
-            autoComplete="current-password"
-            required
-            aria-invalid={errors.password ? true : undefined}
-            aria-describedby={
-              errors.password ? "signin-password-error" : undefined
-            }
-            className="h-10"
-            {...register("password", { onChange: clearServerError })}
-          />
-          {errors.password ? (
-            <FieldError id="signin-password-error">
-              {translateAuthValidationMessage(errors.password.message, t)}
-            </FieldError>
-          ) : null}
-        </Field>
+        <AuthTextField
+          id="signin-username"
+          label={t("auth:fields.username")}
+          autoComplete="username"
+          autoCapitalize="none"
+          autoFocus
+          spellCheck={false}
+          error={translateAuthValidationMessage(
+            errors.username?.message,
+            t,
+          )}
+          registerProps={register("username", {
+            onChange: clearServerError,
+          })}
+        />
+        <AuthTextField
+          id="signin-password"
+          label={t("auth:fields.password")}
+          type="password"
+          autoComplete="current-password"
+          error={translateAuthValidationMessage(
+            errors.password?.message,
+            t,
+          )}
+          registerProps={register("password", {
+            onChange: clearServerError,
+          })}
+        />
       </FieldGroup>
 
-      <Button
-        type="submit"
-        size="lg"
-        disabled={isSubmitting}
-        className="h-10 w-full gap-2"
-      >
-        {isSubmitting ? (
-          <>
-            <LoaderCircle className="animate-spin" aria-hidden />
-            {t("auth:signIn.submitting")}
-          </>
-        ) : (
-          t("auth:signIn.submit")
-        )}
-      </Button>
-
-      <span role="status" className="sr-only">
-        {isSubmitting ? t("auth:signIn.status") : ""}
-      </span>
+      <AuthSubmitButton
+        isSubmitting={isSubmitting}
+        label={t("auth:signIn.submit")}
+        submittingLabel={t("auth:signIn.submitting")}
+        statusLabel={t("auth:signIn.status")}
+      />
     </form>
   )
 }

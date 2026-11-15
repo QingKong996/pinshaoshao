@@ -1,6 +1,7 @@
 {
   "title": "Merchant center",
   "sidebarDescription": "Merchant center navigation",
+  "sidebarToggle": "Open navigation",
   "nav": {
     "dashboard": "Overview",
     "products": "Products",
@@ -21,7 +22,15 @@
     "retry": "Retry",
     "cancel": "Cancel",
     "saveError": "Could not save changes",
-    "actionError": "The action could not be completed"
+    "actionError": "The action could not be completed",
+    "close": "Close",
+    "pagination": {
+      "summary": "{{start}}–{{end}} of {{total}}",
+      "rowsPerPage": "Rows per page",
+      "previous": "Previous page",
+      "next": "Next page",
+      "pageOf": "Page {{page}} of {{totalPages}}"
+    }
   },
   "errors": {
     "unauthorized": "Your session has expired. Please sign in again.",
@@ -47,7 +56,6 @@
   },
   "dashboard": {
     "title": "Overview",
-    "description": "A quick look at your products, SKUs, and stock.",
     "stats": {
       "products": "Products",
       "productsHint": "{{onShelf}} on shelf",
@@ -108,13 +116,6 @@
       "title": "No products yet",
       "description": "Create your first product to start selling.",
       "filtered": "No products match the current filters."
-    },
-    "pagination": {
-      "summary": "{{start}}–{{end}} of {{total}}",
-      "rowsPerPage": "Rows per page",
-      "previous": "Previous page",
-      "next": "Next page",
-      "pageOf": "Page {{page}} of {{totalPages}}"
     },
     "deleteDialog": {
       "title": "Delete product?",
@@ -198,12 +199,10 @@
       "description": "Inventory appears here after you add SKUs to a product.",
       "filtered": "No inventory records match the current filters."
     },
-    "pagination": {
-      "summary": "{{start}}–{{end}} of {{total}}",
-      "rowsPerPage": "Rows per page",
-      "previous": "Previous page",
-      "next": "Next page",
-      "pageOf": "Page {{page}} of {{totalPages}}"
+    "empty": {
+      "title": "No inventory records yet",
+      "description": "Inventory appears here after you add SKUs to a product.",
+      "filtered": "No inventory records match the current filters."
     }
   },
   "stockForm": {
@@ -256,7 +255,6 @@
     },
     "skus": {
       "title": "SKUs",
-      "description": "Set the specs, price, and stock of each purchasable variant.",
       "add": "Add SKU",
       "table": {
         "specs": "Specs",

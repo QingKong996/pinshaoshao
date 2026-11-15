@@ -1,8 +1,7 @@
 {
   "nav": {
     "features": "平台特色",
-    "howItWorks": "拼团玩法",
-    "search": "搜索商品"
+    "howItWorks": "拼团玩法"
   },
   "auth": {
     "signIn": "登录",
@@ -22,18 +21,8 @@
   "footer": {
     "tagline": "拼的越多花的越少",
     "disclaimer": "免责声明：{{brand}}为虚构名称，与任何真实公司、产品或组织无关。",
-    "exploreTitle": "了解平台",
-    "joinTitle": "加入我们",
     "join": {
-      "merchants": "商家入驻",
-      "partnership": "商务合作",
-      "contact": "联系我们"
-    },
-    "helpTitle": "帮助中心",
-    "help": {
-      "faq": "常见问题",
-      "shipping": "配送说明",
-      "afterSales": "售后服务"
+      "merchants": "商家入驻"
     },
     "copyright": "© {{year}} {{brand}} · 学习实验项目"
   },
