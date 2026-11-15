@@ -7,15 +7,15 @@ import type { CatalogChanged, InventoryItem } from "../types"
 import { useInventory } from "../model/queries"
 import {
   ALL,
-  DEFAULT_PAGE_SIZE,
   filterInventory,
   type StockFilter,
 } from "../model/inventory"
+import { DEFAULT_PAGE_SIZE } from "../model/pagination"
 import { InventoryFilters } from "./inventory-filters"
-import { InventoryPagination } from "./inventory-pagination"
 import { InventoryTable } from "./inventory-table"
 import { QueryError } from "./query-error"
 import { StockFormDialog } from "./stock-form-dialog"
+import { TablePagination } from "./table-pagination"
 
 const EMPTY_INVENTORY: InventoryItem[] = []
 
@@ -131,7 +131,7 @@ export default function MerchantConsoleInventoryPage({
             onAdjustStock={setStockTarget}
           />
 
-          <InventoryPagination
+          <TablePagination
             page={visiblePage}
             pageSize={pageSize}
             total={filteredItems.length}

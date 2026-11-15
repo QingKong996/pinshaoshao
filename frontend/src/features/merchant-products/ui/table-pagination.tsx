@@ -8,23 +8,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select"
-import { PAGE_SIZE_OPTIONS } from "../model/inventory"
+import { PAGE_SIZE_OPTIONS } from "../model/pagination"
 
-export function InventoryPagination({
-  page,
-  pageSize,
-  total,
-  totalPages,
-  onPageChange,
-  onPageSizeChange,
-}: {
+type TablePaginationProps = {
   page: number
   pageSize: number
   total: number
   totalPages: number
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
-}) {
+}
+
+export function TablePagination({
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+  onPageSizeChange,
+}: TablePaginationProps) {
   const { t } = useTranslation("console")
   const visibleTotalPages = Math.max(1, totalPages)
   const visiblePage = Math.min(page, visibleTotalPages)
@@ -38,14 +40,14 @@ export function InventoryPagination({
   return (
     <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center">
       <p aria-live="polite">
-        {t("inventory.pagination.summary", {
+        {t("common.pagination.summary", {
           start: firstItem,
           end: lastItem,
           total,
         })}
       </p>
       <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-        <span>{t("inventory.pagination.rowsPerPage")}</span>
+        <span>{t("common.pagination.rowsPerPage")}</span>
         <Select
           items={pageSizeItems}
           value={String(pageSize)}
@@ -58,7 +60,7 @@ export function InventoryPagination({
           <SelectTrigger
             size="sm"
             className="w-16"
-            aria-label={t("inventory.pagination.rowsPerPage")}
+            aria-label={t("common.pagination.rowsPerPage")}
           >
             <SelectValue />
           </SelectTrigger>
@@ -73,14 +75,14 @@ export function InventoryPagination({
         <Button
           variant="outline"
           size="icon-sm"
-          aria-label={t("inventory.pagination.previous")}
+          aria-label={t("common.pagination.previous")}
           disabled={visiblePage <= 1}
           onClick={() => onPageChange(visiblePage - 1)}
         >
           <ChevronLeftIcon aria-hidden />
         </Button>
         <span className="min-w-16 text-center tabular-nums">
-          {t("inventory.pagination.pageOf", {
+          {t("common.pagination.pageOf", {
             page: visiblePage,
             totalPages: visibleTotalPages,
           })}
@@ -88,7 +90,7 @@ export function InventoryPagination({
         <Button
           variant="outline"
           size="icon-sm"
-          aria-label={t("inventory.pagination.next")}
+          aria-label={t("common.pagination.next")}
           disabled={totalPages === 0 || visiblePage >= totalPages}
           onClick={() => onPageChange(visiblePage + 1)}
         >

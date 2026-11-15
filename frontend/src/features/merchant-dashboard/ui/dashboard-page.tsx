@@ -32,7 +32,6 @@ export default function MerchantConsoleDashboardPage({ token }: { token: string 
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t("dashboard.title")}
-        description={t("dashboard.description")}
       />
 
       {dashboard.error ? (

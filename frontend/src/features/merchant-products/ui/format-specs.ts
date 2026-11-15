@@ -1,7 +1,8 @@
-import type { ProductSKU } from "../types"
-
-export function formatSpecsLabel(sku: ProductSKU, emptyLabel: string) {
-  const entries = Object.entries(sku.specs).sort(([left], [right]) =>
+export function formatSpecs(
+  specs: Record<string, string>,
+  emptyLabel: string,
+) {
+  const entries = Object.entries(specs).sort(([left], [right]) =>
     left.localeCompare(right),
   )
   if (entries.length === 0) {

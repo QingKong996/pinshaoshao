@@ -1,18 +1,7 @@
 import { useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { AlertCircle, LoaderCircle } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
-import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
-import { Button } from "@/shared/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/ui/dialog"
 import {
   Field,
   FieldDescription,
@@ -23,13 +12,14 @@ import {
 import { Input } from "@/shared/ui/input"
 import type { CatalogChanged, InventoryItem } from "../types"
 import { useUpdateInventoryStock } from "../model/mutations"
-import { describeConsoleError } from "../model/errors"
 import {
   initialValues,
   stockFormSchema,
   translateValidationMessage,
   type FormValues,
 } from "../model/stock-form"
+import { formatSpecs } from "./format-specs"
+import { FormDialog } from "./form-dialog"
 
 export function StockFormDialog({
   token,
@@ -85,106 +75,60 @@ export function StockFormDialog({
   }
 
   return (
-    <Dialog
+    <FormDialog
       open={item !== null}
       onOpenChange={(open) => {
-        if (!open && !isSubmitting) {
+        if (!open) {
           closeDialog()
         }
       }}
+      title={t("stockForm.title")}
+      description={
+        item
+          ? t("stockForm.description", {
+              product: item.product_name,
+              specs: formatSpecs(
+                item.specs,
+                t("inventory.defaultSpecs"),
+              ),
+            })
+          : undefined
+      }
+      formId="stock-form"
+      onSubmit={handleSubmit(onSubmit)}
+      error={updateStockMutation.error}
+      isSubmitting={isSubmitting}
+      submitLabel={t("stockForm.submit.save")}
+      submittingLabel={t("stockForm.submit.saving")}
+      className="sm:max-w-sm"
     >
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{t("stockForm.title")}</DialogTitle>
-          <DialogDescription>
-            {item
-              ? t("stockForm.description", {
-                  product: item.product_name,
-                  specs: formatSpecs(item, t("inventory.defaultSpecs")),
-                })
-              : null}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form
-          id="stock-form"
-          noValidate
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
-          {updateStockMutation.error ? (
-            <Alert variant="destructive">
-              <AlertCircle aria-hidden />
-              <AlertTitle>{t("common.saveError")}</AlertTitle>
-              <AlertDescription>
-                {describeConsoleError(updateStockMutation.error, t)}
-              </AlertDescription>
-            </Alert>
+      <FieldGroup>
+        <Field data-invalid={errors.stock ? true : undefined}>
+          <FieldLabel htmlFor="stock-form-stock">
+            {t("stockForm.fields.stock")}
+          </FieldLabel>
+          <Input
+            id="stock-form-stock"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1}
+            autoFocus
+            aria-invalid={errors.stock ? true : undefined}
+            {...register("stock")}
+          />
+          {item ? (
+            <FieldDescription>
+              {t("stockForm.currentStock", { stock: item.stock })}
+            </FieldDescription>
           ) : null}
-
-          <FieldGroup>
-            <Field data-invalid={errors.stock ? true : undefined}>
-              <FieldLabel htmlFor="stock-form-stock">
-                {t("stockForm.fields.stock")}
-              </FieldLabel>
-              <Input
-                id="stock-form-stock"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={1}
-                autoFocus
-                aria-invalid={errors.stock ? true : undefined}
-                {...register("stock")}
-              />
-              {item ? (
-                <FieldDescription>
-                  {t("stockForm.currentStock", { stock: item.stock })}
-                </FieldDescription>
-              ) : null}
-              {errors.stock ? (
-                <FieldError>
-                  {translateValidationMessage(errors.stock.message, t)}
-                </FieldError>
-              ) : null}
-            </Field>
-          </FieldGroup>
-        </form>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isSubmitting}
-            onClick={closeDialog}
-          >
-            {t("common.cancel")}
-          </Button>
-          <Button type="submit" form="stock-form" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <LoaderCircle className="animate-spin" aria-hidden />
-                {t("stockForm.submit.saving")}
-              </>
-            ) : (
-              t("stockForm.submit.save")
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          {errors.stock ? (
+            <FieldError>
+              {translateValidationMessage(errors.stock.message, t)}
+            </FieldError>
+          ) : null}
+        </Field>
+      </FieldGroup>
+    </FormDialog>
   )
-}
-
-function formatSpecs(
-  item: InventoryItem,
-  emptyLabel: string,
-) {
-  const entries = Object.entries(item.specs).sort(([left], [right]) =>
-    left.localeCompare(right),
-  )
-  if (entries.length === 0) {
-    return emptyLabel
-  }
-  return entries.map(([key, value]) => `${key}: ${value}`).join(" / ")
 }

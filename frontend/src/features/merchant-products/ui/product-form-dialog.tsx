@@ -1,17 +1,7 @@
 import { useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { AlertCircle, LoaderCircle } from "lucide-react"
 import { Controller, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
-import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
-import { Button } from "@/shared/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/ui/dialog"
 import {
   Field,
   FieldError,
@@ -36,7 +26,6 @@ import {
   useCreateProduct,
   useUpdateProduct,
 } from "../model/mutations"
-import { describeConsoleError } from "../model/errors"
 import {
   productFormSchema,
   INITIAL_VALUES,
@@ -46,6 +35,7 @@ import {
   translateValidationMessage,
   type FormValues,
 } from "../model/product-form"
+import { FormDialog } from "./form-dialog"
 
 export type ProductFormDialogProps = {
   token: string
@@ -127,151 +117,119 @@ export function ProductFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {product
-              ? t("productForm.editTitle")
-              : t("productForm.createTitle")}
-          </DialogTitle>
-        </DialogHeader>
-
-        <form
-          id="product-form"
-          noValidate
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
-          {saveError ? (
-            <Alert variant="destructive">
-              <AlertCircle aria-hidden />
-              <AlertTitle>{t("common.saveError")}</AlertTitle>
-              <AlertDescription>
-                {describeConsoleError(saveError, t)}
-              </AlertDescription>
-            </Alert>
+    <FormDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={
+        product
+          ? t("productForm.editTitle")
+          : t("productForm.createTitle")
+      }
+      formId="product-form"
+      onSubmit={handleSubmit(onSubmit)}
+      error={saveError}
+      isSubmitting={isSubmitting}
+      submitLabel={
+        product ? t("productForm.submit.save") : t("productForm.submit.create")
+      }
+      submittingLabel={t("productForm.submit.saving")}
+      className="sm:max-w-md"
+    >
+      <FieldGroup>
+        <Field data-invalid={errors.name ? true : undefined}>
+          <FieldLabel htmlFor="product-form-name">
+            {t("productForm.fields.name")}
+          </FieldLabel>
+          <Input
+            id="product-form-name"
+            autoComplete="off"
+            placeholder={t("productForm.fields.namePlaceholder")}
+            aria-invalid={errors.name ? true : undefined}
+            {...register("name")}
+          />
+          {errors.name ? (
+            <FieldError>
+              {translateValidationMessage(errors.name.message, t)}
+            </FieldError>
           ) : null}
+        </Field>
 
-          <FieldGroup>
-            <Field data-invalid={errors.name ? true : undefined}>
-              <FieldLabel htmlFor="product-form-name">
-                {t("productForm.fields.name")}
-              </FieldLabel>
-              <Input
-                id="product-form-name"
-                autoComplete="off"
-                placeholder={t("productForm.fields.namePlaceholder")}
-                aria-invalid={errors.name ? true : undefined}
-                {...register("name")}
-              />
-              {errors.name ? (
-                <FieldError>
-                  {translateValidationMessage(errors.name.message, t)}
-                </FieldError>
-              ) : null}
-            </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="product-form-category">
+              {t("productForm.fields.category")}
+            </FieldLabel>
+            <Controller
+              control={control}
+              name="categoryId"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  items={categoryItems}
+                >
+                  <SelectTrigger
+                    id="product-form-category"
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoryItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="product-form-category">
-                  {t("productForm.fields.category")}
-                </FieldLabel>
-                <Controller
-                  control={control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      items={categoryItems}
-                    >
-                      <SelectTrigger
-                        id="product-form-category"
-                        className="w-full"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoryItems.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
+          <Field>
+            <FieldLabel htmlFor="product-form-status">
+              {t("productForm.fields.status")}
+            </FieldLabel>
+            <Controller
+              control={control}
+              name="status"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  items={statusItems}
+                >
+                  <SelectTrigger
+                    id="product-form-status"
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>
+        </div>
 
-              <Field>
-                <FieldLabel htmlFor="product-form-status">
-                  {t("productForm.fields.status")}
-                </FieldLabel>
-                <Controller
-                  control={control}
-                  name="status"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      items={statusItems}
-                    >
-                      <SelectTrigger
-                        id="product-form-status"
-                        className="w-full"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {statusItems.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            </div>
-
-            <Field>
-              <FieldLabel htmlFor="product-form-description">
-                {t("productForm.fields.description")}
-              </FieldLabel>
-              <Textarea
-                id="product-form-description"
-                rows={3}
-                placeholder={t("productForm.fields.descriptionPlaceholder")}
-                {...register("description")}
-              />
-            </Field>
-          </FieldGroup>
-        </form>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-          >
-            {t("common.cancel")}
-          </Button>
-          <Button type="submit" form="product-form" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <LoaderCircle className="animate-spin" aria-hidden />
-                {t("productForm.submit.saving")}
-              </>
-            ) : product ? (
-              t("productForm.submit.save")
-            ) : (
-              t("productForm.submit.create")
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <Field>
+          <FieldLabel htmlFor="product-form-description">
+            {t("productForm.fields.description")}
+          </FieldLabel>
+          <Textarea
+            id="product-form-description"
+            rows={3}
+            placeholder={t("productForm.fields.descriptionPlaceholder")}
+            {...register("description")}
+          />
+        </Field>
+      </FieldGroup>
+    </FormDialog>
   )
 }

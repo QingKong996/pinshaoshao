@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog"
 import type { ProductSKU } from "../types"
-import { formatSpecsLabel } from "./format-specs"
+import { formatSpecs } from "./format-specs"
 
 export function DeleteSKUDialog({
   sku,
@@ -26,7 +26,7 @@ export function DeleteSKUDialog({
 }) {
   const { t } = useTranslation("console")
   const specs = sku
-    ? formatSpecsLabel(sku, t("productDetail.skus.defaultSpecs"))
+    ? formatSpecs(sku.specs, t("productDetail.skus.defaultSpecs"))
     : ""
 
   return (

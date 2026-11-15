@@ -1,17 +1,7 @@
 import { useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { AlertCircle, LoaderCircle } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
-import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
-import { Button } from "@/shared/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/ui/dialog"
 import {
   Field,
   FieldError,
@@ -24,7 +14,6 @@ import {
   useCreateProductCategory,
   useUpdateProductCategory,
 } from "../model/mutations"
-import { describeConsoleError } from "../model/errors"
 import {
   categoryFormSchema,
   categoryToInput,
@@ -33,6 +22,7 @@ import {
   translateValidationMessage,
   type FormValues,
 } from "../model/category-form"
+import { FormDialog } from "./form-dialog"
 
 export function CategoryFormDialog({
   token,
@@ -103,76 +93,46 @@ export function CategoryFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>
-            {category
-              ? t("categoryForm.editTitle")
-              : t("categoryForm.createTitle")}
-          </DialogTitle>
-        </DialogHeader>
-
-        <form
-          id="category-form"
-          noValidate
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
-          {saveError ? (
-            <Alert variant="destructive">
-              <AlertCircle aria-hidden />
-              <AlertTitle>{t("common.saveError")}</AlertTitle>
-              <AlertDescription>
-                {describeConsoleError(saveError, t)}
-              </AlertDescription>
-            </Alert>
+    <FormDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={
+        category
+          ? t("categoryForm.editTitle")
+          : t("categoryForm.createTitle")
+      }
+      formId="category-form"
+      onSubmit={handleSubmit(onSubmit)}
+      error={saveError}
+      isSubmitting={isSubmitting}
+      submitLabel={
+        category
+          ? t("categoryForm.submit.save")
+          : t("categoryForm.submit.create")
+      }
+      submittingLabel={t("categoryForm.submit.saving")}
+      className="sm:max-w-sm"
+    >
+      <FieldGroup>
+        <Field data-invalid={errors.name ? true : undefined}>
+          <FieldLabel htmlFor="category-form-name">
+            {t("categoryForm.fields.name")}
+          </FieldLabel>
+          <Input
+            id="category-form-name"
+            autoComplete="off"
+            autoFocus
+            placeholder={t("categoryForm.fields.namePlaceholder")}
+            aria-invalid={errors.name ? true : undefined}
+            {...register("name")}
+          />
+          {errors.name ? (
+            <FieldError>
+              {translateValidationMessage(errors.name.message, t)}
+            </FieldError>
           ) : null}
-
-          <FieldGroup>
-            <Field data-invalid={errors.name ? true : undefined}>
-              <FieldLabel htmlFor="category-form-name">
-                {t("categoryForm.fields.name")}
-              </FieldLabel>
-              <Input
-                id="category-form-name"
-                autoComplete="off"
-                autoFocus
-                placeholder={t("categoryForm.fields.namePlaceholder")}
-                aria-invalid={errors.name ? true : undefined}
-                {...register("name")}
-              />
-              {errors.name ? (
-                <FieldError>
-                  {translateValidationMessage(errors.name.message, t)}
-                </FieldError>
-              ) : null}
-            </Field>
-          </FieldGroup>
-        </form>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-          >
-            {t("common.cancel")}
-          </Button>
-          <Button type="submit" form="category-form" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <LoaderCircle className="animate-spin" aria-hidden />
-                {t("categoryForm.submit.saving")}
-              </>
-            ) : category ? (
-              t("categoryForm.submit.save")
-            ) : (
-              t("categoryForm.submit.create")
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </Field>
+      </FieldGroup>
+    </FormDialog>
   )
 }

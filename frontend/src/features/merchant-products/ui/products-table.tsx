@@ -1,8 +1,4 @@
-import { useMemo } from "react"
 import {
-  createColumnHelper,
-  rowSortingFeature,
-  tableFeatures,
   useTable,
   type OnChangeFn,
   type SortingState,
@@ -14,11 +10,6 @@ import {
   ChevronsUpDown,
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import { Link } from "react-router"
-import {
-  formatDateTimeSeconds,
-  formatPriceRange,
-} from "@/shared/lib/format"
 import { Skeleton } from "@/shared/ui/skeleton"
 import {
   Table,
@@ -28,22 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table"
-import { defaultOrderForSort } from "../model/filters"
 import type { Product } from "../types"
-import { ProductActions } from "./product-actions"
-import { ProductStatusBadge } from "./product-status-badge"
-
-const productFeatures = tableFeatures({
-  rowSortingFeature,
-  columnMeta: {} as {
-    cellClassName?: string
-    headerClassName?: string
-  },
-})
-const productColumnHelper = createColumnHelper<
-  typeof productFeatures,
-  Product
->()
+import {
+  productTableFeatures,
+  useProductColumns,
+} from "./product-table-columns"
+import { TableEmptyState } from "./table-empty-state"
 
 export function ProductsTable({
   products,
@@ -68,98 +49,15 @@ export function ProductsTable({
 }) {
   const { t } = useTranslation("console")
 
-  const columns = useMemo(
-    () =>
-      productColumnHelper.columns([
-        productColumnHelper.accessor("name", {
-          header: t("products.table.product"),
-          sortDescFirst: defaultOrderForSort("name") === "desc",
-          cell: ({ row }) => {
-            const product = row.original
-            return (
-              <div className="flex max-w-72 flex-col gap-0.5">
-                <Link
-                  to={productHref(product.id)}
-                  className="truncate font-medium hover:underline"
-                >
-                  {product.name}
-                </Link>
-                {product.description ? (
-                  <span className="truncate text-xs text-muted-foreground">
-                    {product.description}
-                  </span>
-                ) : null}
-              </div>
-            )
-          },
-        }),
-        productColumnHelper.accessor("category_name", {
-          id: "category",
-          header: t("products.table.category"),
-          sortDescFirst: defaultOrderForSort("category") === "desc",
-          meta: { cellClassName: "text-muted-foreground" },
-          cell: ({ getValue }) =>
-            getValue() ?? t("products.filters.uncategorized"),
-        }),
-        productColumnHelper.accessor("status", {
-          header: t("products.table.status"),
-          sortDescFirst: defaultOrderForSort("status") === "desc",
-          cell: ({ getValue }) => (
-            <ProductStatusBadge status={getValue()} />
-          ),
-        }),
-        productColumnHelper.accessor("sku_count", {
-          header: t("products.table.skus"),
-          sortDescFirst: defaultOrderForSort("sku_count") === "desc",
-          meta: { cellClassName: "tabular-nums" },
-        }),
-        productColumnHelper.accessor("total_stock", {
-          header: t("products.table.stock"),
-          sortDescFirst: defaultOrderForSort("total_stock") === "desc",
-          meta: { cellClassName: "tabular-nums" },
-        }),
-        productColumnHelper.accessor("min_price_cents", {
-          id: "min_price",
-          header: t("products.table.price"),
-          sortDescFirst: defaultOrderForSort("min_price") === "desc",
-          meta: { cellClassName: "tabular-nums" },
-          cell: ({ row }) =>
-            formatPriceRange(
-              row.original.min_price_cents,
-              row.original.max_price_cents,
-            ) ?? "—",
-        }),
-        productColumnHelper.accessor("created_at", {
-          header: t("products.table.createdAt"),
-          sortDescFirst: defaultOrderForSort("created_at") === "desc",
-          meta: {
-            cellClassName: "text-muted-foreground tabular-nums",
-          },
-          cell: ({ getValue }) => formatDateTimeSeconds(getValue()),
-        }),
-        productColumnHelper.display({
-          id: "actions",
-          header: t("products.table.actions"),
-          enableSorting: false,
-          meta: {
-            headerClassName: "text-right",
-            cellClassName: "text-right",
-          },
-          cell: ({ row }) => (
-            <ProductActions
-              product={row.original}
-              onEdit={onEdit}
-              onToggleShelfStatus={onToggleShelfStatus}
-              onDelete={onDelete}
-            />
-          ),
-        }),
-      ]),
-    [t, productHref, onEdit, onToggleShelfStatus, onDelete],
-  )
+  const columns = useProductColumns({
+    productHref,
+    onEdit,
+    onToggleShelfStatus,
+    onDelete,
+  })
 
   const table = useTable({
-    features: productFeatures,
+    features: productTableFeatures,
     columns,
     data: products,
     state: { sorting },
@@ -236,25 +134,15 @@ export function ProductsTable({
         {isPending ? (
           <ProductTableSkeleton />
         ) : rows.length === 0 ? (
-          <TableRow>
-            <TableCell
-              colSpan={columnCount}
-              className="px-4 py-16 text-center whitespace-normal"
-            >
-              {isCatalogEmpty ? (
-                <>
-                  <p className="font-medium">{t("products.empty.title")}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t("products.empty.description")}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {t("products.empty.filtered")}
-                </p>
-              )}
-            </TableCell>
-          </TableRow>
+          <TableEmptyState
+            colSpan={columnCount}
+            title={isCatalogEmpty ? t("products.empty.title") : undefined}
+            description={
+              isCatalogEmpty
+                ? t("products.empty.description")
+                : t("products.empty.filtered")
+            }
+          />
         ) : (
           rows.map((row) => (
             <TableRow key={row.id}>

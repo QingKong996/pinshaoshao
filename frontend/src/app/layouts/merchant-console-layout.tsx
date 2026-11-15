@@ -48,6 +48,7 @@ export type MerchantConsoleRouteHandle = {
 }
 
 export function MerchantConsoleLayout() {
+  const { t } = useTranslation()
   const { session, signOut } = useMerchantAuth()
   const navigate = useNavigate()
   const handlingUnauthorized = useRef(false)
@@ -75,7 +76,11 @@ export function MerchantConsoleLayout() {
       <MerchantConsoleSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl md:px-6">
-          <MerchantConsoleBreadcrumb />
+          <SidebarTrigger
+            className="md:hidden"
+            aria-label={t("console:sidebarToggle")}
+          />
+          <MerchantConsoleBreadcrumb className="min-w-0" />
           <div className="ml-auto">
             <UserMenu
               session={session}
@@ -120,7 +125,7 @@ function MerchantConsoleSidebar() {
                     {children ? (
                       <SidebarMenuButton
                         tooltip={label}
-                        className="h-10 cursor-default text-base hover:bg-transparent hover:text-sidebar-foreground group-has-[[aria-current=page]]/menu-item:bg-sidebar-accent group-has-[[aria-current=page]]/menu-item:font-medium group-has-[[aria-current=page]]/menu-item:text-sidebar-accent-foreground [&_svg]:size-4"
+                        className="h-9 cursor-default font-medium hover:bg-transparent hover:text-sidebar-foreground group-has-[[aria-current=page]]/menu-item:bg-sidebar-accent group-has-[[aria-current=page]]/menu-item:font-medium group-has-[[aria-current=page]]/menu-item:text-sidebar-accent-foreground [&_svg]:size-4"
                         render={<div />}
                       >
                         <Icon />
@@ -129,7 +134,7 @@ function MerchantConsoleSidebar() {
                     ) : (
                       <SidebarMenuButton
                         tooltip={label}
-                        className="h-10 text-base group-has-[[aria-current=page]]/menu-item:bg-sidebar-accent group-has-[[aria-current=page]]/menu-item:font-medium group-has-[[aria-current=page]]/menu-item:text-sidebar-accent-foreground [&_svg]:size-4"
+                        className="h-9 group-has-[[aria-current=page]]/menu-item:bg-sidebar-accent group-has-[[aria-current=page]]/menu-item:font-medium group-has-[[aria-current=page]]/menu-item:text-sidebar-accent-foreground [&_svg]:size-4"
                         render={<NavLink to={item.to} />}
                       >
                         <Icon />
@@ -141,7 +146,7 @@ function MerchantConsoleSidebar() {
                         {children.map((child) => (
                           <SidebarMenuSubItem key={child.to}>
                             <SidebarMenuSubButton
-                              className="h-9 text-lg aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground"
+                              className="h-8 aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground"
                               render={<NavLink to={child.to} />}
                             >
                               <span>{t(child.labelKey)}</span>
@@ -171,20 +176,30 @@ function MerchantConsoleBreadcrumb({ className }: { className?: string }) {
 
   return (
     <Breadcrumb className={cn(className)}>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink render={<Link to={MERCHANT_CONSOLE_HOME_PATH} />}>
+      <BreadcrumbList className="flex-nowrap overflow-hidden">
+        <BreadcrumbItem className="hidden shrink-0 sm:inline-flex">
+          <BreadcrumbLink
+            className="truncate"
+            render={<Link to={MERCHANT_CONSOLE_HOME_PATH} />}
+          >
             {t("console:title")}
           </BreadcrumbLink>
         </BreadcrumbItem>
         {breadcrumbs.map((item, index) => (
           <Fragment key={item.to}>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
+            <BreadcrumbSeparator
+              className={cn("shrink-0", index === 0 && "hidden sm:block")}
+            />
+            <BreadcrumbItem className="min-w-0">
               {index === breadcrumbs.length - 1 ? (
-                <BreadcrumbPage>{t(item.labelKey)}</BreadcrumbPage>
+                <BreadcrumbPage className="truncate">
+                  {t(item.labelKey)}
+                </BreadcrumbPage>
               ) : (
-                <BreadcrumbLink render={<Link to={item.to} />}>
+                <BreadcrumbLink
+                  className="truncate"
+                  render={<Link to={item.to} />}
+                >
                   {t(item.labelKey)}
                 </BreadcrumbLink>
               )}

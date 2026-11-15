@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from "@/shared/ui/tooltip"
 import type { ProductCategory } from "../types"
+import { TableEmptyState } from "./table-empty-state"
 
 const categoryFeatures = tableFeatures({
   columnMeta: {} as {
@@ -163,25 +164,15 @@ export function CategoriesTable({
         {isPending ? (
           <CategoryTableSkeleton />
         ) : rows.length === 0 ? (
-          <TableRow>
-            <TableCell
-              colSpan={columnCount}
-              className="px-4 py-16 text-center whitespace-normal"
-            >
-              {isCatalogEmpty ? (
-                <>
-                  <p className="font-medium">{t("categories.empty.title")}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t("categories.empty.description")}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {t("categories.empty.filtered")}
-                </p>
-              )}
-            </TableCell>
-          </TableRow>
+          <TableEmptyState
+            colSpan={columnCount}
+            title={isCatalogEmpty ? t("categories.empty.title") : undefined}
+            description={
+              isCatalogEmpty
+                ? t("categories.empty.description")
+                : t("categories.empty.filtered")
+            }
+          />
         ) : (
           rows.map((row) => (
             <TableRow key={row.id}>

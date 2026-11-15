@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
-import { Link } from "react-router"
 import { AuthLayout } from "../auth-layout"
+import { AuthSwitchPrompt } from "../auth-switch-prompt"
 import { SignUpForm } from "../sign-up-form"
 import { useDocumentTitle } from "@/shared/hooks/use-document-title"
 
@@ -13,15 +13,11 @@ export default function SignUpPage() {
       title={t("auth:signUp.title")}
       description={t("auth:signUp.description")}
       footer={
-        <>
-          {t("auth:signUp.switchPrompt")}
-          <Link
-            to="/signin"
-            className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
-          >
-            {t("auth:signUp.switchLink")}
-          </Link>
-        </>
+        <AuthSwitchPrompt
+          prompt={t("auth:signUp.switchPrompt")}
+          linkLabel={t("auth:signUp.switchLink")}
+          to="/signin"
+        />
       }
     >
       <SignUpForm />

@@ -3,9 +3,6 @@ import type { InventoryItem } from "../types"
 export const ALL = "all"
 export type StockFilter = typeof ALL | "in_stock" | "out_of_stock"
 
-export const DEFAULT_PAGE_SIZE = 10
-export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const
-
 export function filterInventory(
   items: InventoryItem[],
   {

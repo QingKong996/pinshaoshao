@@ -1,17 +1,7 @@
 import { useMemo } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { AlertCircle, LoaderCircle, Plus, Trash2 } from "lucide-react"
 import { Controller, useFieldArray, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
-import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
-import { Button } from "@/shared/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/ui/dialog"
 import {
   Field,
   FieldError,
@@ -28,9 +18,7 @@ import {
   useCreateProductSKU,
   useUpdateProductSKU,
 } from "../model/mutations"
-import { describeConsoleError } from "../model/errors"
 import {
-  MAX_SPECS,
   buildFormSchema,
   translateValidationMessage,
   fixedSpecKeys,
@@ -38,6 +26,8 @@ import {
   skuToInput,
   type FormValues,
 } from "../model/sku-form"
+import { FormDialog } from "./form-dialog"
+import { SKUSpecFields } from "./sku-spec-fields"
 
 export type SKUFormDialogProps = {
   token: string
@@ -119,220 +109,86 @@ export function SKUFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {sku ? t("skuForm.editTitle") : t("skuForm.createTitle")}
-          </DialogTitle>
-        </DialogHeader>
+    <FormDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={sku ? t("skuForm.editTitle") : t("skuForm.createTitle")}
+      formId="sku-form"
+      onSubmit={handleSubmit(onSubmit)}
+      error={saveError}
+      isSubmitting={isSubmitting}
+      submitLabel={
+        sku ? t("skuForm.submit.save") : t("skuForm.submit.create")
+      }
+      submittingLabel={t("skuForm.submit.saving")}
+      className="sm:max-w-lg"
+    >
+      <FieldGroup>
+        <SKUSpecFields
+          fields={fields}
+          errors={errors.specs}
+          register={register}
+          specsEditable={specsEditable}
+          onAdd={() => append({ key: "", value: "" })}
+          onRemove={remove}
+        />
 
-        <form
-          id="sku-form"
-          noValidate
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
-          {saveError ? (
-            <Alert variant="destructive">
-              <AlertCircle aria-hidden />
-              <AlertTitle>{t("common.saveError")}</AlertTitle>
-              <AlertDescription>
-                {describeConsoleError(saveError, t)}
-              </AlertDescription>
-            </Alert>
-          ) : null}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field data-invalid={errors.price ? true : undefined}>
+            <FieldLabel htmlFor="sku-form-price">
+              {t("skuForm.fields.price")}
+            </FieldLabel>
+            <Input
+              id="sku-form-price"
+              inputMode="decimal"
+              autoComplete="off"
+              aria-invalid={errors.price ? true : undefined}
+              {...register("price")}
+            />
+            {errors.price ? (
+              <FieldError>
+                {translateValidationMessage(errors.price.message, t)}
+              </FieldError>
+            ) : null}
+          </Field>
 
-          <FieldGroup>
-            <Field>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <FieldLabel>{t("skuForm.fields.specs")}</FieldLabel>
-                {specsEditable ? null : (
-                  <span className="text-xs text-muted-foreground">
-                    {t("skuForm.specsLockedHint")}
-                  </span>
-                )}
-              </div>
+          <Field data-invalid={errors.stock ? true : undefined}>
+            <FieldLabel htmlFor="sku-form-stock">
+              {t("skuForm.fields.stock")}
+            </FieldLabel>
+            <Input
+              id="sku-form-stock"
+              inputMode="numeric"
+              autoComplete="off"
+              aria-invalid={errors.stock ? true : undefined}
+              {...register("stock")}
+            />
+            {errors.stock ? (
+              <FieldError>
+                {translateValidationMessage(errors.stock.message, t)}
+              </FieldError>
+            ) : null}
+          </Field>
+        </div>
 
-              {specsEditable ? (
-                <div className="flex flex-col gap-2">
-                  {fields.map((field, index) => {
-                    const keyError = errors.specs?.[index]?.key?.message
-                    const valueError = errors.specs?.[index]?.value?.message
-
-                    return (
-                      <div key={field.id} className="flex items-start gap-2">
-                        <Field
-                          className="flex-1"
-                          data-invalid={keyError ? true : undefined}
-                        >
-                          <Input
-                            autoComplete="off"
-                            placeholder={t("skuForm.specPlaceholder.key")}
-                            aria-label={t("skuForm.fields.specKey")}
-                            aria-invalid={keyError ? true : undefined}
-                            {...register(`specs.${index}.key`)}
-                          />
-                          {keyError ? (
-                            <FieldError>
-                              {translateValidationMessage(keyError, t)}
-                            </FieldError>
-                          ) : null}
-                        </Field>
-                        <Field
-                          className="flex-1"
-                          data-invalid={valueError ? true : undefined}
-                        >
-                          <Input
-                            autoComplete="off"
-                            placeholder={t("skuForm.specPlaceholder.value")}
-                            aria-label={t("skuForm.fields.specValue")}
-                            aria-invalid={valueError ? true : undefined}
-                            {...register(`specs.${index}.value`)}
-                          />
-                          {valueError ? (
-                            <FieldError>
-                              {translateValidationMessage(valueError, t)}
-                            </FieldError>
-                          ) : null}
-                        </Field>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={t("skuForm.removeSpec")}
-                          disabled={fields.length <= 1}
-                          onClick={() => remove(index)}
-                        >
-                          <Trash2 aria-hidden />
-                        </Button>
-                      </div>
-                    )
-                  })}
-
-                  {fields.length < MAX_SPECS ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-fit"
-                      onClick={() => append({ key: "", value: "" })}
-                    >
-                      <Plus aria-hidden />
-                      {t("skuForm.addSpec")}
-                    </Button>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {fields.map((field, index) => {
-                    const valueError = errors.specs?.[index]?.value?.message
-                    const inputID = `sku-form-spec-${index}`
-
-                    return (
-                      <Field
-                        key={field.id}
-                        data-invalid={valueError ? true : undefined}
-                      >
-                        <FieldLabel htmlFor={inputID}>{field.key}</FieldLabel>
-                        <Input
-                          id={inputID}
-                          autoComplete="off"
-                          aria-invalid={valueError ? true : undefined}
-                          {...register(`specs.${index}.value`)}
-                        />
-                        {valueError ? (
-                          <FieldError>
-                            {translateValidationMessage(valueError, t)}
-                          </FieldError>
-                        ) : null}
-                      </Field>
-                    )
-                  })}
-                </div>
-              )}
-            </Field>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field data-invalid={errors.price ? true : undefined}>
-                <FieldLabel htmlFor="sku-form-price">
-                  {t("skuForm.fields.price")}
-                </FieldLabel>
-                <Input
-                  id="sku-form-price"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  aria-invalid={errors.price ? true : undefined}
-                  {...register("price")}
-                />
-                {errors.price ? (
-                  <FieldError>
-                    {translateValidationMessage(errors.price.message, t)}
-                  </FieldError>
-                ) : null}
-              </Field>
-
-              <Field data-invalid={errors.stock ? true : undefined}>
-                <FieldLabel htmlFor="sku-form-stock">
-                  {t("skuForm.fields.stock")}
-                </FieldLabel>
-                <Input
-                  id="sku-form-stock"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  aria-invalid={errors.stock ? true : undefined}
-                  {...register("stock")}
-                />
-                {errors.stock ? (
-                  <FieldError>
-                    {translateValidationMessage(errors.stock.message, t)}
-                  </FieldError>
-                ) : null}
-              </Field>
-            </div>
-
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="sku-form-enabled">
-                {t("skuForm.fields.enabled")}
-              </FieldLabel>
-              <Controller
-                control={control}
-                name="is_enabled"
-                render={({ field }) => (
-                  <Switch
-                    id="sku-form-enabled"
-                    aria-label={t("skuForm.fields.enabled")}
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                )}
+        <Field orientation="horizontal">
+          <FieldLabel htmlFor="sku-form-enabled">
+            {t("skuForm.fields.enabled")}
+          </FieldLabel>
+          <Controller
+            control={control}
+            name="is_enabled"
+            render={({ field }) => (
+              <Switch
+                id="sku-form-enabled"
+                aria-label={t("skuForm.fields.enabled")}
+                checked={field.value}
+                onCheckedChange={field.onChange}
               />
-            </Field>
-          </FieldGroup>
-        </form>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-          >
-            {t("common.cancel")}
-          </Button>
-          <Button type="submit" form="sku-form" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <LoaderCircle className="animate-spin" aria-hidden />
-                {t("skuForm.submit.saving")}
-              </>
-            ) : sku ? (
-              t("skuForm.submit.save")
-            ) : (
-              t("skuForm.submit.create")
             )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          />
+        </Field>
+      </FieldGroup>
+    </FormDialog>
   )
 }

@@ -1,6 +1,5 @@
-import { Search } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import { Input } from "@/shared/ui/input"
+import { SearchInput } from "@/shared/ui/search-input"
 import {
   Select,
   SelectContent,
@@ -45,19 +44,13 @@ export function InventoryFilters({
 
   return (
     <div className="flex flex-col gap-2 border-b p-4 lg:flex-row lg:items-center">
-      <div className="relative w-full lg:max-w-xs">
-        <Search
-          className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden
-        />
-        <Input
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder={t("inventory.searchPlaceholder")}
-          aria-label={t("inventory.searchPlaceholder")}
-          className="pl-8"
-        />
-      </div>
+      <SearchInput
+        containerClassName="lg:max-w-xs"
+        value={search}
+        onChange={(event) => onSearchChange(event.target.value)}
+        placeholder={t("inventory.searchPlaceholder")}
+        aria-label={t("inventory.searchPlaceholder")}
+      />
       <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
         <Select
           items={categoryOptions}

@@ -79,14 +79,14 @@ export function AuthLayout({
             <br />
             {t(panel.titleRest)}
           </h2>
-          <p className="mt-4 text-sm leading-relaxed text-white/60">
+          <p className="mt-4 text-sm leading-relaxed text-white/70">
             {t(panel.description)}
           </p>
           <ul className="mt-8 space-y-3">
             {highlights.map(({ icon: Icon, labelKey }) => (
               <li
                 key={labelKey}
-                className="flex items-center gap-3 text-sm text-white/75"
+                className="flex items-center gap-3 text-sm text-white/80"
               >
                 <span className="grid size-8 place-items-center rounded-lg border border-white/10 bg-white/5">
                   <Icon className="size-4 text-orange-300" />
@@ -97,7 +97,7 @@ export function AuthLayout({
           </ul>
         </div>
 
-        <p className="relative text-xs text-white/35">
+        <p className="relative text-xs text-white/60">
           {t("auth:layout.disclaimer")}
         </p>
       </aside>
