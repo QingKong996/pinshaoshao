@@ -118,12 +118,18 @@ func insertUser(t *testing.T) *model.User {
 func insertShop(t *testing.T) *model.Shop {
 	t.Helper()
 
+	return insertShopWithUsername(t, context.Background(), testShopUsername, testShopEmail)
+}
+
+func insertShopWithUsername(t *testing.T, ctx context.Context, username, email string) *model.Shop {
+	t.Helper()
+
 	shop := &model.Shop{
-		Username:     testShopUsername,
+		Username:     username,
 		PasswordHash: testShopPassword,
-		Email:        testShopEmail,
+		Email:        email,
 	}
-	if err := repository.NewShopRepository(testPool).CreateShopWithSession(context.Background(), shop, testTokenHash(shop.Username)); err != nil {
+	if err := repository.NewShopRepository(testPool).CreateShopWithSession(ctx, shop, testTokenHash(shop.Username)); err != nil {
 		t.Fatalf("create shop: %v", err)
 	}
 	return shop

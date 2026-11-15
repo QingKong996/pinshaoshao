@@ -125,6 +125,77 @@ func TestProductRepository(t *testing.T) {
 		})
 		requireErrorIs(t, err, apperr.ErrProductNotFound)
 	})
+
+	t.Run("does not expose a product summary from another shop", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		otherShop := insertShopWithUsername(t, ctx, "shop02", "shop02@example.com")
+		otherProduct := insertProduct(t, otherShop.ID)
+
+		_, err := productRepository.GetProductSummaryByID(ctx, shop.ID, otherProduct.ID)
+		requireErrorIs(t, err, apperr.ErrProductNotFound)
+	})
+
+	t.Run("deletes a product and its skus", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+		skuRepository := repository.NewProductSKURepository(testPool)
+		createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999, 3)
+
+		if err := productRepository.DeleteProduct(ctx, shop.ID, product.ID); err != nil {
+			t.Fatalf("delete product: %v", err)
+		}
+
+		_, err := productRepository.GetProductByID(ctx, product.ID)
+		requireErrorIs(t, err, apperr.ErrProductNotFound)
+
+		skus, err := skuRepository.ListProductSKUsByProductID(ctx, product.ID)
+		if err != nil {
+			t.Fatalf("list product skus: %v", err)
+		}
+		if len(skus) != 0 {
+			t.Fatalf("product sku count = %d, want 0", len(skus))
+		}
+	})
+
+	t.Run("does not delete a product from another shop", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		otherShop := insertShopWithUsername(t, ctx, "shop02", "shop02@example.com")
+		otherProduct := insertProduct(t, otherShop.ID)
+
+		err := productRepository.DeleteProduct(ctx, shop.ID, otherProduct.ID)
+		requireErrorIs(t, err, apperr.ErrProductNotFound)
+
+		if _, err := productRepository.GetProductByID(ctx, otherProduct.ID); err != nil {
+			t.Fatalf("get other shop product after rejected delete: %v", err)
+		}
+	})
+
+	t.Run("does not update a product from another shop", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		otherShop := insertShopWithUsername(t, ctx, "shop02", "shop02@example.com")
+		otherProduct := insertProduct(t, otherShop.ID)
+
+		err := productRepository.UpdateProduct(ctx, &model.Product{
+			ID:         otherProduct.ID,
+			ShopID:     shop.ID,
+			Name:       "Stolen",
+			Status:     model.ProductStatusOnShelf,
+			CategoryID: nil,
+		})
+		requireErrorIs(t, err, apperr.ErrProductNotFound)
+
+		persisted, err := productRepository.GetProductByID(ctx, otherProduct.ID)
+		if err != nil {
+			t.Fatalf("get other shop product after rejected update: %v", err)
+		}
+		if persisted.Name != otherProduct.Name || persisted.Status != otherProduct.Status {
+			t.Fatalf("product = %+v, want unchanged values", persisted)
+		}
+	})
 }
 
 func TestProductSummaryList(t *testing.T) {
