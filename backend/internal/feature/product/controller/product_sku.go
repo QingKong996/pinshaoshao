@@ -9,7 +9,7 @@ import (
 	"pinshaoshao/internal/feature/product/dto"
 	"pinshaoshao/internal/feature/product/model"
 	"pinshaoshao/internal/feature/product/service"
-	"pinshaoshao/internal/middleware"
+	"pinshaoshao/internal/feature/shared/authctx"
 
 	"github.com/gin-gonic/gin"
 )
@@ -67,7 +67,7 @@ func (c *ProductSKUController) Create(ctx *gin.Context) {
 
 	sku, err := c.skuService.Create(
 		ctx.Request.Context(),
-		middleware.MustCurrentShop(ctx).ID,
+		authctx.MustShopID(ctx),
 		productID,
 		service.CreateProductSKUInput{
 			Specs:      req.Specs,
@@ -130,7 +130,7 @@ func (c *ProductSKUController) List(ctx *gin.Context) {
 		return
 	}
 
-	skus, err := c.skuService.List(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, productID)
+	skus, err := c.skuService.List(ctx.Request.Context(), authctx.MustShopID(ctx), productID)
 	if err != nil {
 		if errors.Is(err, apperr.ErrProductNotFound) {
 			ctx.JSON(http.StatusNotFound, dto.ErrorResponse{
@@ -198,7 +198,7 @@ func (c *ProductSKUController) Update(ctx *gin.Context) {
 
 	sku, err := c.skuService.Update(
 		ctx.Request.Context(),
-		middleware.MustCurrentShop(ctx).ID,
+		authctx.MustShopID(ctx),
 		productID,
 		skuID,
 		&model.ProductSKUUpdate{
@@ -278,7 +278,7 @@ func (c *ProductSKUController) Delete(ctx *gin.Context) {
 		return
 	}
 
-	err := c.skuService.Delete(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, productID, skuID)
+	err := c.skuService.Delete(ctx.Request.Context(), authctx.MustShopID(ctx), productID, skuID)
 	if err != nil {
 		switch {
 		case errors.Is(err, apperr.ErrProductNotFound):

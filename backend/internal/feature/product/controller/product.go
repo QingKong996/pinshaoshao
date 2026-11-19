@@ -9,7 +9,7 @@ import (
 	"pinshaoshao/internal/feature/product/dto"
 	"pinshaoshao/internal/feature/product/model"
 	"pinshaoshao/internal/feature/product/service"
-	"pinshaoshao/internal/middleware"
+	"pinshaoshao/internal/feature/shared/authctx"
 
 	"github.com/gin-gonic/gin"
 )
@@ -72,7 +72,7 @@ func (c *ProductController) List(ctx *gin.Context) {
 
 	result, err := c.productService.List(
 		ctx.Request.Context(),
-		middleware.MustCurrentShop(ctx).ID,
+		authctx.MustShopID(ctx),
 		model.ProductListFilter{
 			Search:        req.Search,
 			Status:        model.ProductStatus(req.Status),
@@ -139,7 +139,7 @@ func (c *ProductController) Get(ctx *gin.Context) {
 		return
 	}
 
-	product, err := c.productService.Get(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, productID)
+	product, err := c.productService.Get(ctx.Request.Context(), authctx.MustShopID(ctx), productID)
 	if err != nil {
 		if errors.Is(err, apperr.ErrProductNotFound) {
 			ctx.JSON(http.StatusNotFound, dto.ErrorResponse{
@@ -183,7 +183,7 @@ func (c *ProductController) Create(ctx *gin.Context) {
 
 	product, err := c.productService.Create(
 		ctx.Request.Context(),
-		middleware.MustCurrentShop(ctx).ID,
+		authctx.MustShopID(ctx),
 		service.CreateProductInput{
 			Name:        req.Name,
 			Description: req.Description,
@@ -244,7 +244,7 @@ func (c *ProductController) Update(ctx *gin.Context) {
 
 	product, err := c.productService.Update(
 		ctx.Request.Context(),
-		middleware.MustCurrentShop(ctx).ID,
+		authctx.MustShopID(ctx),
 		productID,
 		service.UpdateProductInput{
 			Name:        req.Name,
@@ -298,7 +298,7 @@ func (c *ProductController) Delete(ctx *gin.Context) {
 		return
 	}
 
-	err := c.productService.Delete(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, productID)
+	err := c.productService.Delete(ctx.Request.Context(), authctx.MustShopID(ctx), productID)
 	if err != nil {
 		if errors.Is(err, apperr.ErrProductNotFound) {
 			ctx.JSON(http.StatusNotFound, dto.ErrorResponse{

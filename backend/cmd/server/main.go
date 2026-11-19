@@ -72,14 +72,16 @@ func main() {
 
 	userModule := usermodule.NewModule(pool)
 	shopModule := shopmodule.NewModule(pool)
+	productModule := productmodule.NewModule(pool)
+	inventoryModule := inventorymodule.NewModule(pool)
 
 	router.Register(r, router.Modules{
 		User:      userModule,
 		Shop:      shopModule,
-		Product:   productmodule.NewModule(pool),
-		Inventory: inventorymodule.NewModule(pool),
-		UserAuth:  userModule.AuthMiddleware(),
-		ShopAuth:  shopModule.AuthMiddleware(),
+		Product:   productModule,
+		Inventory: inventoryModule,
+		UserAuth:  middleware.UserAuth(userModule.Authenticator()),
+		ShopAuth:  middleware.ShopAuth(shopModule.Authenticator()),
 	})
 
 	if err := r.Run(":" + port); err != nil {

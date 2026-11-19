@@ -16,7 +16,7 @@ type sessionAuthenticator[T any] interface {
 	Authenticate(ctx context.Context, token string) (*T, error)
 }
 
-type sessionAuthConfig struct {
+type sessionAuthConfig[T any] struct {
 	name            string
 	contextKey      string
 	contextTokenKey string
@@ -24,11 +24,13 @@ type sessionAuthConfig struct {
 	banned          error
 	unauthorized    error
 	internalServer  error
+	subjectIDKey    string
+	subjectID       func(*T) int
 }
 
 // authenticate validates the Bearer session token and exposes the authenticated
 // subject and token on the context.
-func authenticate[T any](authenticator sessionAuthenticator[T], config sessionAuthConfig) gin.HandlerFunc {
+func authenticate[T any](authenticator sessionAuthenticator[T], config sessionAuthConfig[T]) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, ok := bearerToken(c.GetHeader("Authorization"))
 		if !ok {
@@ -54,32 +56,11 @@ func authenticate[T any](authenticator sessionAuthenticator[T], config sessionAu
 
 		c.Set(config.contextKey, subject)
 		c.Set(config.contextTokenKey, token)
+		if config.subjectIDKey != "" {
+			c.Set(config.subjectIDKey, config.subjectID(subject))
+		}
 		c.Next()
 	}
-}
-
-func currentSubject[T any](c *gin.Context, key string) (*T, bool) {
-	value, ok := c.Get(key)
-	if !ok {
-		return nil, false
-	}
-	subject, ok := value.(*T)
-	if !ok || subject == nil {
-		return nil, false
-	}
-	return subject, true
-}
-
-func sessionToken(c *gin.Context, key string) (string, bool) {
-	value, ok := c.Get(key)
-	if !ok {
-		return "", false
-	}
-	token, ok := value.(string)
-	if !ok || token == "" {
-		return "", false
-	}
-	return token, true
 }
 
 // bearerToken parses an "Authorization: Bearer <token>" header.

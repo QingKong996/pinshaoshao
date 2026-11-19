@@ -9,12 +9,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Module wires the product feature and owns its routes.
 type Module struct {
 	categoryController *productcontroller.ProductCategoryController
 	productController  *productcontroller.ProductController
 	skuController      *productcontroller.ProductSKUController
 }
 
+// NewModule builds the product feature from its dependencies.
 func NewModule(pool *pgxpool.Pool) *Module {
 	productRepository := productrepository.NewProductRepository(pool)
 	categoryRepository := productrepository.NewProductCategoryRepository(pool)
@@ -33,6 +35,7 @@ func NewModule(pool *pgxpool.Pool) *Module {
 	}
 }
 
+// Register mounts the product routes on the engine.
 func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
 	merchant := r.Group("/api/v1/merchant")
 	protected := merchant.Group("")

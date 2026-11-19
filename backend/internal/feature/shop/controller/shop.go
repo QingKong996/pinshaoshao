@@ -5,12 +5,12 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"pinshaoshao/internal/feature/shared/authctx"
 	"pinshaoshao/internal/feature/shared/httpx"
 	"pinshaoshao/internal/feature/shop/apperr"
 	"pinshaoshao/internal/feature/shop/dto"
 	"pinshaoshao/internal/feature/shop/model"
 	shopservice "pinshaoshao/internal/feature/shop/service"
-	"pinshaoshao/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -117,7 +117,7 @@ func (c *ShopController) Register(ctx *gin.Context) {
 // @Failure     500 {object} dto.ErrorResponse
 // @Router      /merchant/logout [post]
 func (c *ShopController) Logout(ctx *gin.Context) {
-	token := middleware.MustShopSessionToken(ctx)
+	token := authctx.MustToken(ctx, authctx.ShopTokenKey, "controller.ShopController.Logout: route is not protected by ShopAuth")
 	httpx.Logout(ctx, token, c.shopService.Logout)
 }
 
@@ -135,7 +135,7 @@ func (c *ShopController) Logout(ctx *gin.Context) {
 // @Security    BearerAuth
 // @Router      /merchant/shop [get]
 func (c *ShopController) GetProfile(ctx *gin.Context) {
-	shop, err := c.shopService.GetProfile(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID)
+	shop, err := c.shopService.GetProfile(ctx.Request.Context(), authctx.MustShopID(ctx))
 	if err != nil {
 		if errors.Is(err, apperr.ErrShopNotFound) {
 			ctx.JSON(http.StatusNotFound, dto.ErrorResponse{
@@ -185,7 +185,7 @@ func (c *ShopController) UpdateProfile(ctx *gin.Context) {
 
 	shop, err := c.shopService.UpdateProfile(
 		ctx.Request.Context(),
-		middleware.MustCurrentShop(ctx).ID,
+		authctx.MustShopID(ctx),
 		shopservice.UpdateShopProfileInput{
 			Name:        req.Name,
 			Description: description,

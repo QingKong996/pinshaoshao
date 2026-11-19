@@ -7,7 +7,7 @@ import (
 	"pinshaoshao/internal/feature/inventory/apperr"
 	"pinshaoshao/internal/feature/inventory/dto"
 	"pinshaoshao/internal/feature/inventory/model"
-	"pinshaoshao/internal/middleware"
+	"pinshaoshao/internal/feature/shared/authctx"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,7 +38,7 @@ func NewInventoryController(inventoryService InventoryService) *InventoryControl
 // @Security    BearerAuth
 // @Router      /merchant/inventory [get]
 func (c *InventoryController) List(ctx *gin.Context) {
-	items, err := c.inventoryService.List(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID)
+	items, err := c.inventoryService.List(ctx.Request.Context(), authctx.MustShopID(ctx))
 	if err != nil {
 		slog.ErrorContext(ctx.Request.Context(), "list inventory", "error", err)
 		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{

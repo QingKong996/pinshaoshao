@@ -4,10 +4,10 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"pinshaoshao/internal/feature/shared/authctx"
 	"pinshaoshao/internal/feature/shop/apperr"
 	"pinshaoshao/internal/feature/shop/dto"
 	"pinshaoshao/internal/feature/shop/model"
-	"pinshaoshao/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,7 +38,7 @@ func NewDashboardController(dashboardService DashboardService) *DashboardControl
 // @Security    BearerAuth
 // @Router      /merchant/dashboard [get]
 func (c *DashboardController) Overview(ctx *gin.Context) {
-	stats, err := c.dashboardService.Overview(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID)
+	stats, err := c.dashboardService.Overview(ctx.Request.Context(), authctx.MustShopID(ctx))
 	if err != nil {
 		slog.ErrorContext(ctx.Request.Context(), "get dashboard overview", "error", err)
 		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{

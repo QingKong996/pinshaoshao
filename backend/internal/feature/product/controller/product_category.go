@@ -8,7 +8,7 @@ import (
 	"pinshaoshao/internal/feature/product/apperr"
 	"pinshaoshao/internal/feature/product/dto"
 	"pinshaoshao/internal/feature/product/model"
-	"pinshaoshao/internal/middleware"
+	"pinshaoshao/internal/feature/shared/authctx"
 
 	"github.com/gin-gonic/gin"
 )
@@ -42,9 +42,7 @@ func NewProductCategoryController(categoryService ProductCategoryService) *Produ
 // @Security    BearerAuth
 // @Router      /merchant/categories [get]
 func (c *ProductCategoryController) List(ctx *gin.Context) {
-	shop := middleware.MustCurrentShop(ctx)
-
-	categories, err := c.categoryService.List(ctx.Request.Context(), shop.ID)
+	categories, err := c.categoryService.List(ctx.Request.Context(), authctx.MustShopID(ctx))
 	if err != nil {
 		slog.ErrorContext(ctx.Request.Context(), "list product categories", "error", err)
 		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
@@ -85,7 +83,7 @@ func (c *ProductCategoryController) Create(ctx *gin.Context) {
 		return
 	}
 
-	category, err := c.categoryService.Create(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, req.Name)
+	category, err := c.categoryService.Create(ctx.Request.Context(), authctx.MustShopID(ctx), req.Name)
 	if err != nil {
 		if errors.Is(err, apperr.ErrCategoryNameTaken) {
 			ctx.JSON(http.StatusConflict, dto.ErrorResponse{
@@ -138,7 +136,7 @@ func (c *ProductCategoryController) Update(ctx *gin.Context) {
 		return
 	}
 
-	category, err := c.categoryService.Update(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, categoryID, req.Name)
+	category, err := c.categoryService.Update(ctx.Request.Context(), authctx.MustShopID(ctx), categoryID, req.Name)
 	if err != nil {
 		switch {
 		case errors.Is(err, apperr.ErrCategoryNotFound):
@@ -184,7 +182,7 @@ func (c *ProductCategoryController) Delete(ctx *gin.Context) {
 		return
 	}
 
-	err := c.categoryService.Delete(ctx.Request.Context(), middleware.MustCurrentShop(ctx).ID, categoryID)
+	err := c.categoryService.Delete(ctx.Request.Context(), authctx.MustShopID(ctx), categoryID)
 	if err != nil {
 		if errors.Is(err, apperr.ErrCategoryNotFound) {
 			ctx.JSON(http.StatusNotFound, dto.ErrorResponse{

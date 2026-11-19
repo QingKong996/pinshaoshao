@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"pinshaoshao/internal/feature/shared/authctx"
 	"pinshaoshao/internal/feature/shared/httpx"
 	"pinshaoshao/internal/feature/user/apperr"
 	"pinshaoshao/internal/feature/user/dto"
 	userservice "pinshaoshao/internal/feature/user/service"
-	"pinshaoshao/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -113,6 +113,6 @@ func (c *UserController) Register(ctx *gin.Context) {
 // @Failure     500 {object} dto.ErrorResponse
 // @Router      /logout [post]
 func (c *UserController) Logout(ctx *gin.Context) {
-	token := middleware.MustUserSessionToken(ctx)
+	token := authctx.MustToken(ctx, authctx.UserTokenKey, "controller.UserController.Logout: route is not protected by UserAuth")
 	httpx.Logout(ctx, token, c.userService.Logout)
 }
