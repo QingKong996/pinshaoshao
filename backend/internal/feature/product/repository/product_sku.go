@@ -97,6 +97,11 @@ func (r *ProductSKURepository) UpdateProductSKU(ctx context.Context, productID i
 // DeleteProductSKU deletes a SKU only when its inventory record is empty.
 func (r *ProductSKURepository) DeleteProductSKU(ctx context.Context, productID int, skuID int) error {
 	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
+		// Keep SKU deletion in the same product -> SKU -> inventory lock order as other SKU writes.
+		if err := lockProduct(ctx, tx, productID); err != nil {
+			return err
+		}
+
 		const lockQuery = `SELECT ii.total_stock, ii.frozen_stock
 FROM product_skus ps
 JOIN inventory_items ii ON ii.sku_id = ps.id
