@@ -28,6 +28,10 @@ jobs:
         working-directory: backend
         run: go test ./...
 
+      - name: Run integration tests
+        working-directory: backend
+        run: go test -tags=integration ./...
+
   frontend:
     runs-on: ubuntu-latest
     steps:

@@ -6,8 +6,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/feature/shared/authctx"
+	"pinshaoshao/internal/feature/shop/apperr"
+	"pinshaoshao/internal/feature/shop/model"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -134,6 +135,11 @@ func TestShopAuth(t *testing.T) {
 				shop, ok := CurrentShop(c)
 				if !ok {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "shop missing from context"})
+					return
+				}
+				shopID, ok := authctx.ShopID(c)
+				if !ok || shopID != shop.ID {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "shop ID missing from context"})
 					return
 				}
 				token := MustShopSessionToken(c)
