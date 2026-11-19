@@ -40,7 +40,6 @@ func TestCreateProductSKU(t *testing.T) {
 		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
 			Specs:      map[string]string{"color": "black", "size": "M"},
 			PriceCents: 1999,
-			Stock:      100,
 		})
 		if err != nil {
 			t.Fatalf("create sku: %v", err)
@@ -205,14 +204,12 @@ func TestListProductSKUs(t *testing.T) {
 				ProductID:  1,
 				Specs:      map[string]string{"color": "black", "size": "M"},
 				PriceCents: 1999,
-				Stock:      10,
 			},
 			{
 				ID:         2,
 				ProductID:  1,
 				Specs:      map[string]string{"color": "white", "size": "L"},
 				PriceCents: 1999,
-				Stock:      10,
 			},
 		}
 
@@ -255,7 +252,7 @@ func TestUpdateProductSKU(t *testing.T) {
 
 	t.Run("updates only the provided fields", func(t *testing.T) {
 		skuService, productReader, skuRepository := newTestProductSKUService(t)
-		stock := 42
+		price := int64(2999)
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
 		skuRepository.EXPECT().
@@ -264,23 +261,23 @@ func TestUpdateProductSKU(t *testing.T) {
 				if productID != 1 || skuID != 5 {
 					t.Fatalf("product/sku = %d/%d, want 1/5", productID, skuID)
 				}
-				if update.Stock == nil || *update.Stock != 42 {
-					t.Fatalf("stock update = %v, want 42", update.Stock)
+				if update.PriceCents == nil || *update.PriceCents != 2999 {
+					t.Fatalf("price update = %v, want 2999", update.PriceCents)
 				}
-				if update.PriceCents != nil || update.Specs != nil || update.IsEnabled != nil {
-					t.Fatalf("update = %+v, want only the stock", update)
+				if update.Specs != nil || update.IsEnabled != nil {
+					t.Fatalf("update = %+v, want only the price", update)
 				}
-				return &model.ProductSKU{ID: 5, ProductID: 1, Specs: map[string]string{"color": "black"}, PriceCents: 1999, Stock: 42, IsEnabled: true}, nil
+				return &model.ProductSKU{ID: 5, ProductID: 1, Specs: map[string]string{"color": "black"}, PriceCents: 2999, IsEnabled: true}, nil
 			})
 
-		got, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{Stock: &stock})
+		got, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{PriceCents: &price})
 		if err != nil {
 			t.Fatalf("update sku: %v", err)
 		}
-		if got.Stock != 42 {
-			t.Fatalf("stock = %d, want 42", got.Stock)
+		if got.PriceCents != 2999 {
+			t.Fatalf("price = %d, want 2999", got.PriceCents)
 		}
-		if got.PriceCents != 1999 || got.Specs["color"] != "black" || !got.IsEnabled {
+		if got.Specs["color"] != "black" || !got.IsEnabled {
 			t.Fatalf("sku = %+v, want unchanged fields", got)
 		}
 	})
@@ -311,7 +308,6 @@ func TestUpdateProductSKU(t *testing.T) {
 	t.Run("updates all fields", func(t *testing.T) {
 		skuService, productReader, skuRepository := newTestProductSKUService(t)
 		price := int64(2999)
-		stock := 0
 		enabled := false
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
@@ -321,28 +317,24 @@ func TestUpdateProductSKU(t *testing.T) {
 				if update.PriceCents == nil || *update.PriceCents != 2999 {
 					t.Fatalf("price update = %v, want 2999", update.PriceCents)
 				}
-				if update.Stock == nil || *update.Stock != 0 {
-					t.Fatalf("stock update = %v, want 0", update.Stock)
-				}
 				if update.IsEnabled == nil || *update.IsEnabled {
 					t.Fatalf("enabled update = %v, want false", update.IsEnabled)
 				}
 				if update.Specs == nil || update.Specs["size"] != "L" {
 					t.Fatalf("specs = %v, want size=L", update.Specs)
 				}
-				return &model.ProductSKU{ID: 5, ProductID: 1, Specs: update.Specs, PriceCents: 2999, Stock: 0, IsEnabled: false}, nil
+				return &model.ProductSKU{ID: 5, ProductID: 1, Specs: update.Specs, PriceCents: 2999, IsEnabled: false}, nil
 			})
 
 		got, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{
 			Specs:      map[string]string{"size": "L"},
 			PriceCents: &price,
-			Stock:      &stock,
 			IsEnabled:  &enabled,
 		})
 		if err != nil {
 			t.Fatalf("update sku: %v", err)
 		}
-		if got.PriceCents != 2999 || got.Stock != 0 || got.IsEnabled {
+		if got.PriceCents != 2999 || got.IsEnabled {
 			t.Fatalf("sku = %+v, want updated fields", got)
 		}
 	})
@@ -374,8 +366,8 @@ func TestUpdateProductSKU(t *testing.T) {
 			UpdateProductSKU(ctx, 1, 99, gomock.Any()).
 			Return(nil, fmt.Errorf("sku repository: %w", apperr.ErrProductSKUNotFound))
 
-		stock := 1
-		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 99, &model.ProductSKUUpdate{Stock: &stock})
+		price := int64(1)
+		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 99, &model.ProductSKUUpdate{PriceCents: &price})
 		requireErrorIs(t, err, apperr.ErrProductSKUNotFound)
 	})
 
@@ -385,8 +377,8 @@ func TestUpdateProductSKU(t *testing.T) {
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(otherShopProduct, nil)
 
-		stock := 1
-		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{Stock: &stock})
+		price := int64(1)
+		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{PriceCents: &price})
 		requireErrorIs(t, err, apperr.ErrProductNotFound)
 	})
 
@@ -412,8 +404,8 @@ func TestUpdateProductSKU(t *testing.T) {
 			UpdateProductSKU(ctx, 1, 5, gomock.Any()).
 			Return(nil, fmt.Errorf("sku repository: %w", apperr.ErrProductSKUAlreadyExists))
 
-		stock := 0
-		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{Stock: &stock})
+		price := int64(0)
+		_, err := skuService.Update(ctx, testProduct.ShopID, 1, 5, &model.ProductSKUUpdate{PriceCents: &price})
 		requireErrorIs(t, err, apperr.ErrProductSKUAlreadyExists)
 	})
 }

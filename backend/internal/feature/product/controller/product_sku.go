@@ -72,7 +72,6 @@ func (c *ProductSKUController) Create(ctx *gin.Context) {
 		service.CreateProductSKUInput{
 			Specs:      req.Specs,
 			PriceCents: req.PriceCents,
-			Stock:      req.Stock,
 			IsEnabled:  req.IsEnabled,
 		},
 	)
@@ -204,7 +203,6 @@ func (c *ProductSKUController) Update(ctx *gin.Context) {
 		&model.ProductSKUUpdate{
 			Specs:      req.Specs,
 			PriceCents: req.PriceCents,
-			Stock:      req.Stock,
 			IsEnabled:  req.IsEnabled,
 		},
 	)
@@ -258,6 +256,7 @@ func (c *ProductSKUController) Update(ctx *gin.Context) {
 // @Failure     401 {object} httpx.ErrorResponse
 // @Failure     403 {object} httpx.ErrorResponse
 // @Failure     404 {object} httpx.ErrorResponse
+// @Failure     409 {object} httpx.ErrorResponse "SKU inventory is not empty"
 // @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products/{productID}/skus/{skuID} [delete]
@@ -289,6 +288,10 @@ func (c *ProductSKUController) Delete(ctx *gin.Context) {
 			ctx.JSON(http.StatusNotFound, dto.ErrorResponse{
 				Error: apperr.ErrProductSKUNotFound.Error(),
 			})
+		case errors.Is(err, apperr.ErrProductSKUHasInventory):
+			ctx.JSON(http.StatusConflict, dto.ErrorResponse{
+				Error: apperr.ErrProductSKUHasInventory.Error(),
+			})
 		default:
 			slog.ErrorContext(ctx.Request.Context(), "delete product SKU", "product_id", productID, "sku_id", skuID, "error", err)
 			ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
@@ -307,7 +310,6 @@ func newProductSKUResponse(sku *model.ProductSKU) dto.ProductSKUResponse {
 		ProductID:  sku.ProductID,
 		Specs:      sku.Specs,
 		PriceCents: sku.PriceCents,
-		Stock:      sku.Stock,
 		IsEnabled:  sku.IsEnabled,
 		CreatedAt:  sku.CreatedAt,
 		UpdatedAt:  sku.UpdatedAt,

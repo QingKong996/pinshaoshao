@@ -46,18 +46,19 @@ func TestDashboardRepositoryOverview(t *testing.T) {
 			t.Fatalf("create off-shelf product: %v", err)
 		}
 
-		createTestSKU(t, ctx, skuRepository, onShelf.ID, map[string]string{"variant": "black"}, 1000, 3)
-		createTestSKU(t, ctx, skuRepository, onShelf.ID, map[string]string{"variant": "white"}, 2000, 0)
+		black := createTestSKU(t, ctx, skuRepository, onShelf.ID, map[string]string{"variant": "black"}, 1000)
+		setTestInventory(t, ctx, black.ID, 3, 0)
+		createTestSKU(t, ctx, skuRepository, onShelf.ID, map[string]string{"variant": "white"}, 2000)
 		if err := skuRepository.CreateProductSKU(ctx, &model.ProductSKU{
 			ProductID:  onShelf.ID,
 			Specs:      map[string]string{"variant": "disabled"},
 			PriceCents: 3000,
-			Stock:      0,
 			IsEnabled:  false,
 		}); err != nil {
 			t.Fatalf("create disabled SKU: %v", err)
 		}
-		createTestSKU(t, ctx, skuRepository, offShelf.ID, map[string]string{"size": "M"}, 500, 2)
+		offShelfSKU := createTestSKU(t, ctx, skuRepository, offShelf.ID, map[string]string{"size": "M"}, 500)
+		setTestInventory(t, ctx, offShelfSKU.ID, 2, 0)
 
 		otherShop := insertShopWithUsername(t, ctx, "shop02", "shop02@example.com")
 		otherProduct := &model.Product{
@@ -68,7 +69,8 @@ func TestDashboardRepositoryOverview(t *testing.T) {
 		if err := productRepository.CreateProduct(ctx, otherProduct); err != nil {
 			t.Fatalf("create other shop product: %v", err)
 		}
-		createTestSKU(t, ctx, skuRepository, otherProduct.ID, map[string]string{"variant": "other"}, 100, 100)
+		otherSKU := createTestSKU(t, ctx, skuRepository, otherProduct.ID, map[string]string{"variant": "other"}, 100)
+		setTestInventory(t, ctx, otherSKU.ID, 100, 0)
 
 		stats, err := dashboardRepository.GetDashboardStats(ctx, shop.ID)
 		if err != nil {

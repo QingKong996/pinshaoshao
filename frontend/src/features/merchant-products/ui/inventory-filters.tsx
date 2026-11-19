@@ -86,7 +86,7 @@ export function InventoryFilters({
         >
           <SelectTrigger
             className="w-36"
-            aria-label={t("inventory.table.stock")}
+            aria-label={t("inventory.table.availableStock")}
           >
             <SelectValue />
           </SelectTrigger>

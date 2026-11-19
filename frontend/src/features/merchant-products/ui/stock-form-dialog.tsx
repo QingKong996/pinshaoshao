@@ -49,7 +49,7 @@ export function StockFormDialog({
 
   useEffect(() => {
     if (item) {
-      reset(initialValues(item.stock))
+      reset(initialValues(item.total_stock))
     }
   }, [item, reset])
 
@@ -64,9 +64,9 @@ export function StockFormDialog({
     }
     try {
       await updateStockMutation.mutateAsync({
-        productID: item.product_id,
         skuID: item.sku_id,
-        stock: Number(values.stock),
+        totalStock: Number(values.stock),
+        version: item.version,
       })
       closeDialog()
     } catch {
@@ -119,7 +119,10 @@ export function StockFormDialog({
           />
           {item ? (
             <FieldDescription>
-              {t("stockForm.currentStock", { stock: item.stock })}
+              {t("stockForm.currentStock", {
+                total: item.total_stock,
+                frozen: item.frozen_stock,
+              })}
             </FieldDescription>
           ) : null}
           {errors.stock ? (

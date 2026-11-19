@@ -9,3 +9,17 @@ export async function listInventory(token: string) {
   )
   return data
 }
+
+export async function updateInventoryTotalStock(
+  token: string,
+  skuID: number,
+  totalStock: number,
+  version: number,
+) {
+  const { data } = await apiClient.patch<InventoryItem>(
+    `/merchant/inventory/${skuID}`,
+    { total_stock: totalStock, version },
+    authorized(token),
+  )
+  return data
+}

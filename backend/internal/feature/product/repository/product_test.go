@@ -109,7 +109,7 @@ func TestProductRepository(t *testing.T) {
 		shop := insertShop(t)
 		product := insertProduct(t, shop.ID)
 		skuRepository := repository.NewProductSKURepository(testPool)
-		createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999, 3)
+		createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999)
 
 		if err := productRepository.DeleteProduct(ctx, shop.ID, product.ID); err != nil {
 			t.Fatalf("delete product: %v", err)
@@ -125,6 +125,21 @@ func TestProductRepository(t *testing.T) {
 		if len(skus) != 0 {
 			t.Fatalf("product sku count = %d, want 0", len(skus))
 		}
+	})
+
+	t.Run("rejects deleting a product with inventory", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+		skuRepository := repository.NewProductSKURepository(testPool)
+		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999)
+
+		if _, err := testPool.Exec(ctx, `UPDATE inventory_items SET total_stock = 3 WHERE sku_id = $1`, sku.ID); err != nil {
+			t.Fatalf("set inventory: %v", err)
+		}
+
+		err := productRepository.DeleteProduct(ctx, shop.ID, product.ID)
+		requireErrorIs(t, err, apperr.ErrProductHasInventory)
 	})
 
 	t.Run("does not delete a product from another shop", func(t *testing.T) {
@@ -200,12 +215,11 @@ func TestProductSummaryList(t *testing.T) {
 			}
 			return product
 		}
-		createSKU := func(product *model.Product, spec string, price int64, stock int) {
+		createSKU := func(product *model.Product, spec string, price int64) {
 			sku := &model.ProductSKU{
 				ProductID:  product.ID,
 				Specs:      map[string]string{"variant": spec},
 				PriceCents: price,
-				Stock:      stock,
 				IsEnabled:  true,
 			}
 			if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
@@ -217,10 +231,10 @@ func TestProductSummaryList(t *testing.T) {
 		bravo := createProduct("Bravo", "warm hoodie", model.ProductStatusOffShelf, &categoryA.ID)
 		charlie := createProduct("Charlie", "cotton pants", model.ProductStatusOnShelf, nil)
 
-		createSKU(alpha, "1", 1000, 10)
-		createSKU(bravo, "1", 500, 5)
-		createSKU(bravo, "2", 800, 6)
-		createSKU(charlie, "1", 2000, 30)
+		createSKU(alpha, "1", 1000)
+		createSKU(bravo, "1", 500)
+		createSKU(bravo, "2", 800)
+		createSKU(charlie, "1", 2000)
 
 		otherShop := &shopmodel.Shop{
 			Username:     "shop02",
@@ -336,7 +350,6 @@ func TestProductSummaryList(t *testing.T) {
 			{"name ascending", model.ProductSortName, model.ProductSortOrderAsc, []string{"Alpha", "Bravo", "Charlie"}},
 			{"name descending", model.ProductSortName, model.ProductSortOrderDesc, []string{"Charlie", "Bravo", "Alpha"}},
 			{"created newest first", model.ProductSortCreatedAt, model.ProductSortOrderDesc, []string{"Charlie", "Bravo", "Alpha"}},
-			{"stock descending", model.ProductSortTotalStock, model.ProductSortOrderDesc, []string{"Charlie", "Bravo", "Alpha"}},
 			{"sku count descending", model.ProductSortSKUCount, model.ProductSortOrderDesc, []string{"Bravo", "Charlie", "Alpha"}},
 			{"price ascending", model.ProductSortMinPrice, model.ProductSortOrderAsc, []string{"Bravo", "Alpha", "Charlie"}},
 			{"category ascending", model.ProductSortCategory, model.ProductSortOrderAsc, []string{"Bravo", "Alpha", "Charlie"}},

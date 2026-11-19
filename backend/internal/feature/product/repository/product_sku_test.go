@@ -26,7 +26,6 @@ func TestProductSKURepository(t *testing.T) {
 			ProductID:  product.ID,
 			Specs:      map[string]string{"color": "black", "size": "M"},
 			PriceCents: 1999,
-			Stock:      100,
 			IsEnabled:  true,
 		}
 		if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
@@ -47,11 +46,19 @@ func TestProductSKURepository(t *testing.T) {
 			t.Fatalf("product sku count = %d, want 1", len(skus))
 		}
 		got := skus[0]
-		if got.ProductID != product.ID || got.PriceCents != 1999 || got.Stock != 100 || !got.IsEnabled {
+		if got.ProductID != product.ID || got.PriceCents != 1999 || !got.IsEnabled {
 			t.Fatalf("product sku = %+v, want created values", got)
 		}
 		if got.Specs["color"] != "black" || got.Specs["size"] != "M" {
 			t.Fatalf("specs = %v, want color=black size=M", got.Specs)
+		}
+
+		var totalStock, frozenStock int
+		if err := testPool.QueryRow(ctx, `SELECT total_stock, frozen_stock FROM inventory_items WHERE sku_id = $1`, sku.ID).Scan(&totalStock, &frozenStock); err != nil {
+			t.Fatalf("get inventory item: %v", err)
+		}
+		if totalStock != 0 || frozenStock != 0 {
+			t.Fatalf("inventory = %d/%d, want zero stock", totalStock, frozenStock)
 		}
 	})
 
@@ -187,17 +194,17 @@ func TestProductSKUUpdateAndDelete(t *testing.T) {
 		resetDatabase(t)
 		shop := insertShop(t)
 		product := insertProduct(t, shop.ID)
-		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999, 3)
+		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999)
 
-		stock := 42
-		got, err := skuRepository.UpdateProductSKU(ctx, product.ID, sku.ID, &model.ProductSKUUpdate{Stock: &stock})
+		price := int64(2999)
+		got, err := skuRepository.UpdateProductSKU(ctx, product.ID, sku.ID, &model.ProductSKUUpdate{PriceCents: &price})
 		if err != nil {
 			t.Fatalf("update product sku: %v", err)
 		}
-		if got.Stock != 42 {
-			t.Fatalf("stock = %d, want 42", got.Stock)
+		if got.PriceCents != 2999 {
+			t.Fatalf("price = %d, want 2999", got.PriceCents)
 		}
-		if got.PriceCents != 1999 || got.Specs["color"] != "black" || !got.IsEnabled {
+		if got.Specs["color"] != "black" || !got.IsEnabled {
 			t.Fatalf("product sku = %+v, want unchanged fields", got)
 		}
 	})
@@ -206,8 +213,8 @@ func TestProductSKUUpdateAndDelete(t *testing.T) {
 		resetDatabase(t)
 		shop := insertShop(t)
 		product := insertProduct(t, shop.ID)
-		first := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999, 3)
-		createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "white"}, 1999, 3)
+		first := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999)
+		createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "white"}, 1999)
 
 		specs := map[string]string{"size": "M"}
 		_, err := skuRepository.UpdateProductSKU(ctx, product.ID, first.ID, &model.ProductSKUUpdate{Specs: specs})
@@ -218,7 +225,7 @@ func TestProductSKUUpdateAndDelete(t *testing.T) {
 		resetDatabase(t)
 		shop := insertShop(t)
 		product := insertProduct(t, shop.ID)
-		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999, 3)
+		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999)
 
 		specs := map[string]string{"size": "M"}
 		got, err := skuRepository.UpdateProductSKU(ctx, product.ID, sku.ID, &model.ProductSKUUpdate{Specs: specs})
@@ -235,8 +242,8 @@ func TestProductSKUUpdateAndDelete(t *testing.T) {
 		shop := insertShop(t)
 		product := insertProduct(t, shop.ID)
 
-		stock := 1
-		_, err := skuRepository.UpdateProductSKU(ctx, product.ID, 404, &model.ProductSKUUpdate{Stock: &stock})
+		price := int64(1)
+		_, err := skuRepository.UpdateProductSKU(ctx, product.ID, 404, &model.ProductSKUUpdate{PriceCents: &price})
 		requireErrorIs(t, err, apperr.ErrProductSKUNotFound)
 	})
 
@@ -244,7 +251,7 @@ func TestProductSKUUpdateAndDelete(t *testing.T) {
 		resetDatabase(t)
 		shop := insertShop(t)
 		product := insertProduct(t, shop.ID)
-		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999, 3)
+		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999)
 
 		if err := skuRepository.DeleteProductSKU(ctx, product.ID, sku.ID); err != nil {
 			t.Fatalf("delete product sku: %v", err)
@@ -258,6 +265,28 @@ func TestProductSKUUpdateAndDelete(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects deleting a sku with inventory", func(t *testing.T) {
+		resetDatabase(t)
+		shop := insertShop(t)
+		product := insertProduct(t, shop.ID)
+		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999)
+
+		if _, err := testPool.Exec(ctx, `UPDATE inventory_items SET total_stock = 3 WHERE sku_id = $1`, sku.ID); err != nil {
+			t.Fatalf("set inventory: %v", err)
+		}
+
+		err := skuRepository.DeleteProductSKU(ctx, product.ID, sku.ID)
+		requireErrorIs(t, err, apperr.ErrProductSKUHasInventory)
+
+		skus, err := skuRepository.ListProductSKUsByProductID(ctx, product.ID)
+		if err != nil {
+			t.Fatalf("list product skus: %v", err)
+		}
+		if len(skus) != 1 {
+			t.Fatalf("product sku count = %d, want 1", len(skus))
+		}
+	})
+
 	t.Run("rejects deleting an unknown sku", func(t *testing.T) {
 		resetDatabase(t)
 		shop := insertShop(t)
@@ -267,14 +296,13 @@ func TestProductSKUUpdateAndDelete(t *testing.T) {
 	})
 }
 
-func createTestSKU(t *testing.T, ctx context.Context, skuRepository *repository.ProductSKURepository, productID int, specs map[string]string, priceCents int64, stock int) *model.ProductSKU {
+func createTestSKU(t *testing.T, ctx context.Context, skuRepository *repository.ProductSKURepository, productID int, specs map[string]string, priceCents int64) *model.ProductSKU {
 	t.Helper()
 
 	sku := &model.ProductSKU{
 		ProductID:  productID,
 		Specs:      specs,
 		PriceCents: priceCents,
-		Stock:      stock,
 		IsEnabled:  true,
 	}
 	if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {

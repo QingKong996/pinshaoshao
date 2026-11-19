@@ -44,7 +44,11 @@
     "invalidCategory": "所选分类无效，请重新选择。",
     "productSKUSpecs": "规格格式不正确，请检查规格名和规格值。",
     "productSKUSpecsMismatch": "所有 SKU 的规格名必须保持一致。",
-    "productSKUAlreadyExists": "已存在相同规格的 SKU。"
+    "productSKUAlreadyExists": "已存在相同规格的 SKU。",
+    "inventoryVersionConflict": "库存已发生变化，请查看最新数量后重试。",
+    "inventoryBelowFrozen": "总库存不能低于冻结库存。",
+    "skuHasInventory": "请先将该 SKU 库存调整为 0 再删除。",
+    "productHasInventory": "请先将该商品所有 SKU 库存调整为 0 再删除。"
   },
   "status": {
     "active": "正常",
@@ -88,7 +92,6 @@
       "category": "分类",
       "status": "状态",
       "skus": "SKU",
-      "stock": "库存",
       "price": "价格",
       "createdAt": "创建时间",
       "actions": "操作",
@@ -182,7 +185,9 @@
       "specs": "规格",
       "category": "分类",
       "price": "单价",
-      "stock": "库存",
+      "totalStock": "总库存",
+      "frozenStock": "冻结库存",
+      "availableStock": "可售库存",
       "status": "状态",
       "updatedAt": "更新时间",
       "actions": "操作"
@@ -206,12 +211,12 @@
     }
   },
   "stockForm": {
-    "title": "调整库存",
+    "title": "调整总库存",
     "description": "{{product}} · {{specs}}",
     "fields": {
-      "stock": "库存数量"
+      "stock": "总库存"
     },
-    "currentStock": "当前库存：{{stock}}",
+    "currentStock": "总库存：{{total}} · 冻结库存：{{frozen}}",
     "submit": {
       "save": "保存",
       "saving": "保存中…"
@@ -249,7 +254,6 @@
     "meta": {
       "category": "分类",
       "skuCount": "SKU 数量",
-      "stock": "总库存",
       "price": "价格区间",
       "updatedAt": "更新时间"
     },
@@ -259,7 +263,6 @@
       "table": {
         "specs": "规格",
         "price": "价格",
-        "stock": "库存",
         "enabled": "状态",
         "actions": "操作"
       },
@@ -289,7 +292,6 @@
       "specKey": "规格名",
       "specValue": "规格值",
       "price": "价格（元）",
-      "stock": "库存",
       "enabled": "启用"
     },
     "specPlaceholder": {
@@ -310,9 +312,7 @@
       "specDuplicate": "规格名不能重复。",
       "specLimit": "最多添加 {{max}} 个规格。",
       "priceRequired": "请输入价格。",
-      "priceInvalid": "请输入有效的价格（最多两位小数）。",
-      "stockRequired": "请输入库存。",
-      "stockInvalid": "库存需为不小于 0 的整数。"
+      "priceInvalid": "请输入有效的价格（最多两位小数）。"
     }
   }
 }

@@ -4,7 +4,6 @@ import type { ProductSKU, ProductSKUInput } from "../types"
 
 export const MAX_SPECS = 5
 const PRICE_PATTERN = /^\d+(\.\d{1,2})?$/
-const STOCK_PATTERN = /^\d+$/
 
 const VALIDATION_MESSAGES = {
   specKeyRequired: "skuForm.errors.specKeyRequired",
@@ -13,14 +12,11 @@ const VALIDATION_MESSAGES = {
   specLimit: "skuForm.errors.specLimit",
   priceRequired: "skuForm.errors.priceRequired",
   priceInvalid: "skuForm.errors.priceInvalid",
-  stockRequired: "skuForm.errors.stockRequired",
-  stockInvalid: "skuForm.errors.stockInvalid",
 } as const
 
 const skuFormSchema = z.object({
   specs: z.array(z.object({ key: z.string(), value: z.string() })),
   price: z.string(),
-  stock: z.string(),
   is_enabled: z.boolean(),
 })
 
@@ -78,20 +74,6 @@ export function buildFormSchema(specsEditable: boolean) {
         path: ["price"],
       })
     }
-    const stock = values.stock.trim()
-    if (!stock) {
-      context.addIssue({
-        code: "custom",
-        message: VALIDATION_MESSAGES.stockRequired,
-        path: ["stock"],
-      })
-    } else if (!STOCK_PATTERN.test(stock)) {
-      context.addIssue({
-        code: "custom",
-        message: VALIDATION_MESSAGES.stockInvalid,
-        path: ["stock"],
-      })
-    }
   })
 }
 
@@ -139,7 +121,6 @@ export function skuToInput(values: FormValues): ProductSKUInput {
       values.specs.map((spec) => [spec.key.trim(), spec.value.trim()]),
     ),
     price_cents: Math.round(Number(values.price.trim()) * 100),
-    stock: Number(values.stock.trim()),
     is_enabled: values.is_enabled,
   }
 }

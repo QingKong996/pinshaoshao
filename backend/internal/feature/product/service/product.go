@@ -182,7 +182,6 @@ func normalizeProductListFilter(filter model.ProductListFilter) (model.ProductLi
 		model.ProductSortCategory,
 		model.ProductSortStatus,
 		model.ProductSortSKUCount,
-		model.ProductSortTotalStock,
 		model.ProductSortMinPrice:
 	default:
 		return model.ProductListFilter{}, apperr.ErrInvalidProductListQuery

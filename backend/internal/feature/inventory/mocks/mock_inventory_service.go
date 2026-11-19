@@ -12,6 +12,7 @@ package mocks
 import (
 	context "context"
 	model "pinshaoshao/internal/feature/inventory/model"
+	service "pinshaoshao/internal/feature/inventory/service"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -54,4 +55,19 @@ func (m *MockInventoryService) List(ctx context.Context, shopID int) ([]model.In
 func (mr *MockInventoryServiceMockRecorder) List(ctx, shopID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockInventoryService)(nil).List), ctx, shopID)
+}
+
+// Update mocks base method.
+func (m *MockInventoryService) Update(ctx context.Context, shopID, skuID int, input service.UpdateInventoryInput) (*model.InventoryItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, shopID, skuID, input)
+	ret0, _ := ret[0].(*model.InventoryItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockInventoryServiceMockRecorder) Update(ctx, shopID, skuID, input any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockInventoryService)(nil).Update), ctx, shopID, skuID, input)
 }

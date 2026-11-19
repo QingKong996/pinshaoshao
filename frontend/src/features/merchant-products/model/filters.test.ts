@@ -12,7 +12,6 @@ describe("defaultOrderForSort", () => {
     expect(defaultOrderForSort("category")).toBe("asc")
     expect(defaultOrderForSort("status")).toBe("asc")
     expect(defaultOrderForSort("created_at")).toBe("desc")
-    expect(defaultOrderForSort("total_stock")).toBe("desc")
   })
 })
 

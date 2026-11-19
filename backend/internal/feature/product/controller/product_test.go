@@ -61,7 +61,6 @@ func newTestProductSummary() *model.ProductSummary {
 		},
 		CategoryName:  &categoryName,
 		SKUCount:      3,
-		TotalStock:    120,
 		MinPriceCents: &minPrice,
 		MaxPriceCents: &maxPrice,
 	}
@@ -92,7 +91,7 @@ func TestProductList(t *testing.T) {
 		if len(body.Items) != 1 {
 			t.Fatalf("product count = %d, want 1", len(body.Items))
 		}
-		if body.Items[0].Status != string(model.ProductStatusOnShelf) || body.Items[0].SKUCount != 3 || body.Items[0].TotalStock != 120 {
+		if body.Items[0].Status != string(model.ProductStatusOnShelf) || body.Items[0].SKUCount != 3 {
 			t.Fatalf("product = %+v, want aggregates", body.Items[0])
 		}
 		if body.Items[0].CategoryID == nil || *body.Items[0].CategoryID != 2 {
@@ -117,8 +116,8 @@ func TestProductList(t *testing.T) {
 				if filter.Page != 2 || filter.PageSize != 5 {
 					t.Fatalf("pagination = %d/%d, want 2/5", filter.Page, filter.PageSize)
 				}
-				if filter.Sort != model.ProductSortTotalStock || filter.Order != model.ProductSortOrderAsc {
-					t.Fatalf("sort = %s %s, want total_stock asc", filter.Sort, filter.Order)
+				if filter.Sort != model.ProductSortMinPrice || filter.Order != model.ProductSortOrderAsc {
+					t.Fatalf("sort = %s %s, want min_price asc", filter.Sort, filter.Order)
 				}
 				if filter.Search != "shirt" || filter.Status != model.ProductStatusOnShelf {
 					t.Fatalf("filters = %+v, want shirt on shelf", filter)
@@ -136,7 +135,7 @@ func TestProductList(t *testing.T) {
 		rec := doRequest(
 			newProductRouter(t, productController, activeShop),
 			http.MethodGet,
-			"/products?page=2&page_size=5&sort=total_stock&order=asc&search=shirt&status=on_shelf&category_id=2",
+			"/products?page=2&page_size=5&sort=min_price&order=asc&search=shirt&status=on_shelf&category_id=2",
 			"Bearer session-token",
 			"",
 		)

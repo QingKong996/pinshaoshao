@@ -13,9 +13,9 @@ const dashboardStatsQuery = `SELECT
     (SELECT COUNT(*) FROM products WHERE shop_id = $1 AND status = 'on_shelf'),
     (SELECT COUNT(*) FROM product_skus ps JOIN products p ON p.id = ps.product_id WHERE p.shop_id = $1),
     (SELECT COUNT(*) FROM product_categories WHERE shop_id = $1),
-    (SELECT COALESCE(SUM(ps.stock), 0)::BIGINT FROM product_skus ps JOIN products p ON p.id = ps.product_id WHERE p.shop_id = $1),
-    (SELECT COALESCE(SUM(ps.price_cents * ps.stock), 0)::BIGINT FROM product_skus ps JOIN products p ON p.id = ps.product_id WHERE p.shop_id = $1),
-    (SELECT COUNT(*) FROM product_skus ps JOIN products p ON p.id = ps.product_id WHERE p.shop_id = $1 AND ps.is_enabled AND ps.stock = 0)`
+    (SELECT COALESCE(SUM(ii.total_stock), 0)::BIGINT FROM inventory_items ii JOIN product_skus ps ON ps.id = ii.sku_id JOIN products p ON p.id = ps.product_id WHERE p.shop_id = $1),
+    (SELECT COALESCE(SUM(ps.price_cents * ii.total_stock), 0)::BIGINT FROM inventory_items ii JOIN product_skus ps ON ps.id = ii.sku_id JOIN products p ON p.id = ps.product_id WHERE p.shop_id = $1),
+    (SELECT COUNT(*) FROM inventory_items ii JOIN product_skus ps ON ps.id = ii.sku_id JOIN products p ON p.id = ps.product_id WHERE p.shop_id = $1 AND ps.is_enabled AND ii.total_stock - ii.frozen_stock = 0)`
 
 type DashboardRepository struct {
 	pool *pgxpool.Pool

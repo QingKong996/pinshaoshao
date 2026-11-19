@@ -20,7 +20,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-const skuBody = `{"specs":{"color":"black","size":"M"},"price_cents":1999,"stock":100}`
+const skuBody = `{"specs":{"color":"black","size":"M"},"price_cents":1999}`
 
 func newTestProductSKUController(t *testing.T) (*controller.ProductSKUController, *mocks.MockProductSKUService) {
 	t.Helper()
@@ -50,7 +50,6 @@ func newTestSKU() *model.ProductSKU {
 		ProductID:  1,
 		Specs:      map[string]string{"color": "black", "size": "M"},
 		PriceCents: 1999,
-		Stock:      100,
 		IsEnabled:  true,
 	}
 }
@@ -75,7 +74,7 @@ func TestProductSKUCreate(t *testing.T) {
 		if body.ID != 1 || body.ProductID != 1 {
 			t.Fatalf("sku = %+v, want id 1 of product 1", body)
 		}
-		if body.PriceCents != 1999 || body.Stock != 100 || !body.IsEnabled {
+		if body.PriceCents != 1999 || !body.IsEnabled {
 			t.Fatalf("sku = %+v, want created values", body)
 		}
 		if body.Specs["color"] != "black" || body.Specs["size"] != "M" {
@@ -108,8 +107,6 @@ func TestProductSKUCreate(t *testing.T) {
 	t.Run("rejects an invalid payload", func(t *testing.T) {
 		payloads := map[string]string{
 			"negative price": `{"price_cents":-1}`,
-			"negative stock": `{"stock":-1}`,
-			"stock overflow": `{"stock":3000000000}`,
 		}
 		for name, payload := range payloads {
 			t.Run(name, func(t *testing.T) {
@@ -237,12 +234,12 @@ func TestProductSKUUpdate(t *testing.T) {
 	t.Run("returns the updated sku", func(t *testing.T) {
 		skuController, skuService := newTestProductSKUController(t)
 		sku := newTestSKU()
-		sku.Stock = 42
+		sku.PriceCents = 2099
 		skuService.EXPECT().
 			Update(gomock.Any(), activeSKUShop.ID, 1, 5, gomock.Any()).
 			Return(sku, nil)
 
-		rec := doRequest(newSKURouter(t, skuController, activeSKUShop), http.MethodPatch, "/products/1/skus/5", "Bearer session-token", `{"stock":42}`)
+		rec := doRequest(newSKURouter(t, skuController, activeSKUShop), http.MethodPatch, "/products/1/skus/5", "Bearer session-token", `{"price_cents":2099}`)
 
 		requireStatus(t, rec, http.StatusOK)
 
@@ -250,8 +247,8 @@ func TestProductSKUUpdate(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 			t.Fatalf("decode sku response: %v", err)
 		}
-		if body.Stock != 42 {
-			t.Fatalf("stock = %d, want 42", body.Stock)
+		if body.PriceCents != 2099 {
+			t.Fatalf("price = %d, want 2099", body.PriceCents)
 		}
 	})
 
@@ -266,7 +263,7 @@ func TestProductSKUUpdate(t *testing.T) {
 			t.Run(path, func(t *testing.T) {
 				skuController, _ := newTestProductSKUController(t)
 
-				rec := doRequest(newSKURouter(t, skuController, activeSKUShop), http.MethodPatch, path, "Bearer session-token", `{"stock":42}`)
+				rec := doRequest(newSKURouter(t, skuController, activeSKUShop), http.MethodPatch, path, "Bearer session-token", `{"price_cents":2099}`)
 
 				requireStatus(t, rec, http.StatusBadRequest)
 				if got := decodeError(t, rec); got != wantError {
@@ -288,8 +285,6 @@ func TestProductSKUUpdate(t *testing.T) {
 	t.Run("rejects an invalid payload", func(t *testing.T) {
 		payloads := map[string]string{
 			"negative price": `{"price_cents":-1}`,
-			"negative stock": `{"stock":-1}`,
-			"stock overflow": `{"stock":3000000000}`,
 		}
 		for name, payload := range payloads {
 			t.Run(name, func(t *testing.T) {
@@ -325,7 +320,7 @@ func TestProductSKUUpdate(t *testing.T) {
 					Update(gomock.Any(), activeSKUShop.ID, 1, 5, gomock.Any()).
 					Return(nil, fmt.Errorf("service: %w", tt.serviceError))
 
-				rec := doRequest(newSKURouter(t, skuController, activeSKUShop), http.MethodPatch, "/products/1/skus/5", "Bearer session-token", `{"stock":42}`)
+				rec := doRequest(newSKURouter(t, skuController, activeSKUShop), http.MethodPatch, "/products/1/skus/5", "Bearer session-token", `{"price_cents":2099}`)
 
 				requireStatus(t, rec, tt.wantStatus)
 				requireError(t, rec, tt.wantError)

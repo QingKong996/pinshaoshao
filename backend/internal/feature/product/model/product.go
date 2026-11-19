@@ -12,14 +12,13 @@ const (
 type ProductSort string
 
 const (
-	ProductSortCreatedAt  ProductSort = "created_at"
-	ProductSortUpdatedAt  ProductSort = "updated_at"
-	ProductSortName       ProductSort = "name"
-	ProductSortCategory   ProductSort = "category"
-	ProductSortStatus     ProductSort = "status"
-	ProductSortSKUCount   ProductSort = "sku_count"
-	ProductSortTotalStock ProductSort = "total_stock"
-	ProductSortMinPrice   ProductSort = "min_price"
+	ProductSortCreatedAt ProductSort = "created_at"
+	ProductSortUpdatedAt ProductSort = "updated_at"
+	ProductSortName      ProductSort = "name"
+	ProductSortCategory  ProductSort = "category"
+	ProductSortStatus    ProductSort = "status"
+	ProductSortSKUCount  ProductSort = "sku_count"
+	ProductSortMinPrice  ProductSort = "min_price"
 )
 
 type ProductSortOrder string
@@ -45,7 +44,6 @@ type ProductSummary struct {
 	Product
 	CategoryName  *string
 	SKUCount      int64
-	TotalStock    int64
 	MinPriceCents *int64
 	MaxPriceCents *int64
 }

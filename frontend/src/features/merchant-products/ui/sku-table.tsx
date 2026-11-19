@@ -64,10 +64,6 @@ export function SKUTable({
           meta: { cellClassName: "tabular-nums" },
           cell: ({ getValue }) => formatPriceCents(getValue()),
         }),
-        skuColumnHelper.accessor("stock", {
-          header: t("productDetail.skus.table.stock"),
-          meta: { cellClassName: "tabular-nums" },
-        }),
         skuColumnHelper.accessor("is_enabled", {
           header: t("productDetail.skus.table.enabled"),
           cell: ({ getValue }) => (
@@ -178,9 +174,6 @@ function SKUTableSkeleton() {
           </TableCell>
           <TableCell>
             <Skeleton className="h-4 w-16" />
-          </TableCell>
-          <TableCell>
-            <Skeleton className="h-4 w-10" />
           </TableCell>
           <TableCell>
             <Skeleton className="h-5 w-16" />

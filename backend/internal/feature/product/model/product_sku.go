@@ -7,7 +7,6 @@ type ProductSKU struct {
 	ProductID  int
 	Specs      map[string]string
 	PriceCents int64
-	Stock      int
 	IsEnabled  bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -18,6 +17,5 @@ type ProductSKU struct {
 type ProductSKUUpdate struct {
 	Specs      map[string]string
 	PriceCents *int64
-	Stock      *int
 	IsEnabled  *bool
 }

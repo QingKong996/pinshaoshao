@@ -29,4 +29,5 @@ func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
 	protected := merchant.Group("")
 	protected.Use(authMiddleware)
 	protected.GET("/inventory", m.controller.List)
+	protected.PATCH("/inventory/:skuID", m.controller.Update)
 }

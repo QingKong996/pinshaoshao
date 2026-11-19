@@ -18,10 +18,6 @@ export function ProductMeta({ product }: { product: Product }) {
       label: t("productDetail.meta.skuCount"),
       value: String(product.sku_count),
     },
-    {
-      label: t("productDetail.meta.stock"),
-      value: String(product.total_stock),
-    },
     { label: t("productDetail.meta.price"), value: priceRange ?? "—" },
     {
       label: t("productDetail.meta.updatedAt"),
@@ -31,7 +27,7 @@ export function ProductMeta({ product }: { product: Product }) {
 
   return (
     <Card>
-      <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((item) => (
           <div key={item.label} className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">{item.label}</span>
