@@ -24,10 +24,10 @@ export function filterInventory(
     ) {
       return false
     }
-    if (stockFilter === "in_stock" && item.stock === 0) {
+    if (stockFilter === "in_stock" && item.available_stock === 0) {
       return false
     }
-    if (stockFilter === "out_of_stock" && item.stock > 0) {
+    if (stockFilter === "out_of_stock" && item.available_stock > 0) {
       return false
     }
     if (!normalizedSearch) {

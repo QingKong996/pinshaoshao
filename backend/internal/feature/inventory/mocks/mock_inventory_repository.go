@@ -55,3 +55,18 @@ func (mr *MockInventoryRepositoryMockRecorder) ListInventoryByShopID(ctx, shopID
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListInventoryByShopID", reflect.TypeOf((*MockInventoryRepository)(nil).ListInventoryByShopID), ctx, shopID)
 }
+
+// UpdateInventoryTotalStock mocks base method.
+func (m *MockInventoryRepository) UpdateInventoryTotalStock(ctx context.Context, shopID, skuID, totalStock int, version int64) (*model.InventoryItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateInventoryTotalStock", ctx, shopID, skuID, totalStock, version)
+	ret0, _ := ret[0].(*model.InventoryItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateInventoryTotalStock indicates an expected call of UpdateInventoryTotalStock.
+func (mr *MockInventoryRepositoryMockRecorder) UpdateInventoryTotalStock(ctx, shopID, skuID, totalStock, version any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateInventoryTotalStock", reflect.TypeOf((*MockInventoryRepository)(nil).UpdateInventoryTotalStock), ctx, shopID, skuID, totalStock, version)
+}

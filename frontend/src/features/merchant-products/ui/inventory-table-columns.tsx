@@ -76,20 +76,28 @@ export function useInventoryColumns({
           meta: { cellClassName: "tabular-nums" },
           cell: ({ getValue }) => formatPriceCents(getValue()),
         }),
-        inventoryColumnHelper.accessor("stock", {
-          header: t("inventory.table.stock"),
+        inventoryColumnHelper.accessor("total_stock", {
+          header: t("inventory.table.totalStock"),
+          meta: { cellClassName: "tabular-nums" },
+        }),
+        inventoryColumnHelper.accessor("frozen_stock", {
+          header: t("inventory.table.frozenStock"),
+          meta: { cellClassName: "tabular-nums" },
+        }),
+        inventoryColumnHelper.accessor("available_stock", {
+          header: t("inventory.table.availableStock"),
           meta: { cellClassName: "tabular-nums" },
           cell: ({ getValue }) => {
-            const stock = getValue()
+            const availableStock = getValue()
             return (
               <span
                 className={
-                  stock === 0
+                  availableStock === 0
                     ? "font-medium text-destructive"
                     : undefined
                 }
               >
-                {stock}
+                {availableStock}
               </span>
             )
           },

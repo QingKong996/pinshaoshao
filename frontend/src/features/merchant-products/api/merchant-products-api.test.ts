@@ -6,7 +6,10 @@ import {
   listProductCategories,
   updateProductCategory,
 } from "@/features/merchant-products/api/categories"
-import { listInventory } from "@/features/merchant-products/api/inventory"
+import {
+  listInventory,
+  updateInventoryTotalStock,
+} from "@/features/merchant-products/api/inventory"
 import {
   createProduct,
   deleteProduct,
@@ -19,9 +22,9 @@ import {
   deleteProductSKU,
   listProductSKUs,
   updateProductSKU,
-  updateProductSKUStock,
 } from "@/features/merchant-products/api/skus"
 import type {
+  InventoryItem,
   Product,
   ProductCategory,
   ProductSKU,
@@ -46,7 +49,6 @@ const product: Product = {
   category_id: 3,
   category_name: "Clothing",
   sku_count: 0,
-  total_stock: 0,
   min_price_cents: null,
   max_price_cents: null,
   created_at: "2026-11-15T08:00:00Z",
@@ -66,9 +68,24 @@ const sku: ProductSKU = {
   product_id: 7,
   specs: { Size: "M" },
   price_cents: 1990,
-  stock: 5,
   is_enabled: true,
   created_at: "2026-11-15T08:00:00Z",
+  updated_at: "2026-11-15T08:00:00Z",
+}
+
+const inventoryItem: InventoryItem = {
+  sku_id: 11,
+  product_id: 7,
+  product_name: "Cotton T-shirt",
+  category_id: 3,
+  category_name: "Clothing",
+  specs: { Size: "M" },
+  price_cents: 1990,
+  total_stock: 9,
+  frozen_stock: 1,
+  available_stock: 8,
+  version: 2,
+  is_enabled: true,
   updated_at: "2026-11-15T08:00:00Z",
 }
 
@@ -88,8 +105,10 @@ describe("merchant product APIs", () => {
           body: hasBody ? await request.json() : null,
         })
 
-        if (url.pathname.endsWith("/inventory")) {
-          return HttpResponse.json([])
+        if (url.pathname.includes("/inventory")) {
+          return HttpResponse.json(
+            request.method === "GET" ? [] : inventoryItem,
+          )
         }
         if (url.pathname.endsWith("/categories")) {
           return HttpResponse.json(
@@ -146,16 +165,14 @@ describe("merchant product APIs", () => {
     await createProductSKU(authToken, 7, {
       specs: { Size: "M" },
       price_cents: 1990,
-      stock: 5,
       is_enabled: true,
     })
     await updateProductSKU(authToken, 7, 11, {
       specs: { Size: "L" },
       price_cents: 2090,
-      stock: 4,
       is_enabled: false,
     })
-    await updateProductSKUStock(authToken, 7, 11, 9)
+    await updateInventoryTotalStock(authToken, 11, 9, 2)
     await deleteProductSKU(authToken, 7, 11)
 
     await listProductCategories(authToken)
@@ -175,7 +192,7 @@ describe("merchant product APIs", () => {
       { method: "GET", pathname: "/api/v1/merchant/products/7/skus" },
       { method: "POST", pathname: "/api/v1/merchant/products/7/skus" },
       { method: "PATCH", pathname: "/api/v1/merchant/products/7/skus/11" },
-      { method: "PATCH", pathname: "/api/v1/merchant/products/7/skus/11" },
+      { method: "PATCH", pathname: "/api/v1/merchant/inventory/11" },
       { method: "DELETE", pathname: "/api/v1/merchant/products/7/skus/11" },
       { method: "GET", pathname: "/api/v1/merchant/categories" },
       { method: "POST", pathname: "/api/v1/merchant/categories" },
@@ -204,6 +221,6 @@ describe("merchant product APIs", () => {
       status: "off_shelf",
     })
     expect(requests[3]?.body).toMatchObject({ category_id: null })
-    expect(requests[8]?.body).toEqual({ stock: 9 })
+    expect(requests[8]?.body).toEqual({ total_stock: 9, version: 2 })
   })
 })

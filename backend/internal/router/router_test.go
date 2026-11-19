@@ -67,6 +67,7 @@ var routeCases = []routeCase{
 	{method: http.MethodPatch, pattern: "/api/v1/merchant/products/:productID/skus/:skuID", requestPath: "/api/v1/merchant/products/1/skus/2", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodDelete, pattern: "/api/v1/merchant/products/:productID/skus/:skuID", requestPath: "/api/v1/merchant/products/1/skus/2", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/merchant/inventory", requestPath: "/api/v1/merchant/inventory", authError: shopapperr.ErrInvalidShopSession.Error()},
+	{method: http.MethodPatch, pattern: "/api/v1/merchant/inventory/:skuID", requestPath: "/api/v1/merchant/inventory/2", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/merchant/dashboard", requestPath: "/api/v1/merchant/dashboard", authError: shopapperr.ErrInvalidShopSession.Error()},
 }
 

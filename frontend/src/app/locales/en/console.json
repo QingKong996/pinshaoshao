@@ -44,7 +44,11 @@
     "invalidCategory": "The selected category is unavailable. Choose another one.",
     "productSKUSpecs": "The SKU specs are invalid. Check the spec names and values.",
     "productSKUSpecsMismatch": "All SKUs of a product must use the same spec names.",
-    "productSKUAlreadyExists": "A SKU with these specs already exists."
+    "productSKUAlreadyExists": "A SKU with these specs already exists.",
+    "inventoryVersionConflict": "Inventory changed since it was loaded. Review the latest values and try again.",
+    "inventoryBelowFrozen": "Total stock cannot be lower than frozen stock.",
+    "skuHasInventory": "Reduce the SKU inventory to zero before deleting it.",
+    "productHasInventory": "Reduce every SKU inventory of this product to zero before deleting it."
   },
   "status": {
     "active": "Active",
@@ -88,7 +92,6 @@
       "category": "Category",
       "status": "Status",
       "skus": "SKUs",
-      "stock": "Stock",
       "price": "Price",
       "createdAt": "Created",
       "actions": "Actions",
@@ -182,7 +185,9 @@
       "specs": "Specs",
       "category": "Category",
       "price": "Price",
-      "stock": "Stock",
+      "totalStock": "Total",
+      "frozenStock": "Frozen",
+      "availableStock": "Available",
       "status": "Status",
       "updatedAt": "Updated",
       "actions": "Actions"
@@ -206,12 +211,12 @@
     }
   },
   "stockForm": {
-    "title": "Adjust stock",
+    "title": "Adjust total stock",
     "description": "{{product}} · {{specs}}",
     "fields": {
-      "stock": "Stock quantity"
+      "stock": "Total stock"
     },
-    "currentStock": "Current stock: {{stock}}",
+    "currentStock": "Total: {{total}} · Frozen: {{frozen}}",
     "submit": {
       "save": "Save",
       "saving": "Saving…"
@@ -249,7 +254,6 @@
     "meta": {
       "category": "Category",
       "skuCount": "SKUs",
-      "stock": "Total stock",
       "price": "Price range",
       "updatedAt": "Updated"
     },
@@ -259,7 +263,6 @@
       "table": {
         "specs": "Specs",
         "price": "Price",
-        "stock": "Stock",
         "enabled": "Status",
         "actions": "Actions"
       },
@@ -289,7 +292,6 @@
       "specKey": "Spec name",
       "specValue": "Spec value",
       "price": "Price (CNY)",
-      "stock": "Stock",
       "enabled": "Enabled"
     },
     "specPlaceholder": {
@@ -310,9 +312,7 @@
       "specDuplicate": "Spec names must be unique.",
       "specLimit": "A SKU can have at most {{max}} specs.",
       "priceRequired": "Enter a price.",
-      "priceInvalid": "Enter a valid price with up to two decimals.",
-      "stockRequired": "Enter the stock.",
-      "stockInvalid": "Stock must be a whole number of 0 or more."
+      "priceInvalid": "Enter a valid price with up to two decimals."
     }
   }
 }

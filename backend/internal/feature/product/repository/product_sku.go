@@ -15,7 +15,7 @@ import (
 
 const foreignKeyViolationCode = "23503"
 
-const productSKUColumns = `id, product_id, specs, price_cents, stock, is_enabled, created_at, updated_at`
+const productSKUColumns = `id, product_id, specs, price_cents, is_enabled, created_at, updated_at`
 
 type ProductSKURepository struct {
 	pool *pgxpool.Pool
@@ -43,7 +43,10 @@ func (r *ProductSKURepository) CreateProductSKU(ctx context.Context, sku *model.
 			}
 		}
 
-		return insertProductSKU(ctx, tx, sku)
+		if err := insertProductSKU(ctx, tx, sku); err != nil {
+			return err
+		}
+		return insertInventoryItem(ctx, tx, sku.ID)
 	})
 	if err != nil {
 		return fmt.Errorf("repository.CreateProductSKU: %w", err)
@@ -91,16 +94,41 @@ func (r *ProductSKURepository) UpdateProductSKU(ctx context.Context, productID i
 	return sku, nil
 }
 
-// DeleteProductSKU deletes a SKU of the product.
+// DeleteProductSKU deletes a SKU only when its inventory record is empty.
 func (r *ProductSKURepository) DeleteProductSKU(ctx context.Context, productID int, skuID int) error {
-	const query = `DELETE FROM product_skus WHERE product_id = $1 AND id = $2`
+	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
+		// Keep SKU deletion in the same product -> SKU -> inventory lock order as other SKU writes.
+		if err := lockProduct(ctx, tx, productID); err != nil {
+			return err
+		}
 
-	tag, err := r.pool.Exec(ctx, query, productID, skuID)
+		const lockQuery = `SELECT ii.total_stock, ii.frozen_stock
+FROM product_skus ps
+JOIN inventory_items ii ON ii.sku_id = ps.id
+WHERE ps.product_id = $1 AND ps.id = $2
+FOR UPDATE OF ps, ii`
+
+		var totalStock, frozenStock int
+		if err := tx.QueryRow(ctx, lockQuery, productID, skuID).Scan(&totalStock, &frozenStock); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return apperr.ErrProductSKUNotFound
+			}
+			return err
+		}
+		if totalStock > 0 || frozenStock > 0 {
+			return apperr.ErrProductSKUHasInventory
+		}
+
+		if _, err := tx.Exec(ctx, `DELETE FROM inventory_items WHERE sku_id = $1`, skuID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM product_skus WHERE product_id = $1 AND id = $2`, productID, skuID); err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return fmt.Errorf("repository.DeleteProductSKU: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("repository.DeleteProductSKU: %w", apperr.ErrProductSKUNotFound)
 	}
 	return nil
 }
@@ -150,9 +178,9 @@ func listProductSKUs(ctx context.Context, db database.DBTX, productID int) ([]mo
 }
 
 func insertProductSKU(ctx context.Context, db database.DBTX, sku *model.ProductSKU) error {
-	const query = `INSERT INTO product_skus (product_id, specs, price_cents, stock, is_enabled) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, updated_at`
+	const query = `INSERT INTO product_skus (product_id, specs, price_cents, is_enabled) VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at`
 
-	err := db.QueryRow(ctx, query, sku.ProductID, sku.Specs, sku.PriceCents, sku.Stock, sku.IsEnabled).Scan(
+	err := db.QueryRow(ctx, query, sku.ProductID, sku.Specs, sku.PriceCents, sku.IsEnabled).Scan(
 		&sku.ID,
 		&sku.CreatedAt,
 		&sku.UpdatedAt,
@@ -172,14 +200,20 @@ func insertProductSKU(ctx context.Context, db database.DBTX, sku *model.ProductS
 	return nil
 }
 
+func insertInventoryItem(ctx context.Context, db database.DBTX, skuID int) error {
+	if _, err := db.Exec(ctx, `INSERT INTO inventory_items (sku_id) VALUES ($1)`, skuID); err != nil {
+		return fmt.Errorf("insert inventory item: %w", err)
+	}
+	return nil
+}
+
 func updateProductSKU(ctx context.Context, db database.DBTX, productID int, skuID int, update *model.ProductSKUUpdate) (*model.ProductSKU, error) {
 	const query = `UPDATE product_skus SET
     specs = COALESCE($1::jsonb, specs),
     price_cents = COALESCE($2, price_cents),
-    stock = COALESCE($3, stock),
-    is_enabled = COALESCE($4, is_enabled),
+    is_enabled = COALESCE($3, is_enabled),
     updated_at = now()
-WHERE id = $5 AND product_id = $6
+WHERE id = $4 AND product_id = $5
 RETURNING ` + productSKUColumns
 
 	var specs any
@@ -187,7 +221,7 @@ RETURNING ` + productSKUColumns
 		specs = update.Specs
 	}
 
-	sku, err := scanProductSKU(db.QueryRow(ctx, query, specs, update.PriceCents, update.Stock, update.IsEnabled, skuID, productID))
+	sku, err := scanProductSKU(db.QueryRow(ctx, query, specs, update.PriceCents, update.IsEnabled, skuID, productID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperr.ErrProductSKUNotFound
@@ -221,7 +255,6 @@ func scanProductSKU(row pgx.Row) (*model.ProductSKU, error) {
 		&sku.ProductID,
 		&sku.Specs,
 		&sku.PriceCents,
-		&sku.Stock,
 		&sku.IsEnabled,
 		&sku.CreatedAt,
 		&sku.UpdatedAt,

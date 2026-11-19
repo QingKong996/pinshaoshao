@@ -29,7 +29,6 @@ const productInput = {
 const skuInput = {
   specs: { Size: "M" },
   price_cents: 1990,
-  stock: 5,
   is_enabled: true,
 }
 
@@ -188,7 +187,7 @@ describe("merchant product mutations", () => {
 
   it("invalidates inventory and products after a stock adjustment", async () => {
     server.use(
-      http.patch("*/api/v1/merchant/products/7/skus/11", () =>
+      http.patch("*/api/v1/merchant/inventory/11", () =>
         HttpResponse.json({ id: 11 }),
       ),
     )
@@ -200,9 +199,9 @@ describe("merchant product mutations", () => {
 
     await act(async () => {
       await update.result.current.mutateAsync({
-        productID: 7,
         skuID: 11,
-        stock: 9,
+        totalStock: 9,
+        version: 2,
       })
     })
 

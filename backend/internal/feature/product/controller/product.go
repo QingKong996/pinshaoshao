@@ -39,7 +39,7 @@ func NewProductController(productService ProductService) *ProductController {
 // @Produce     json
 // @Param       page query int false "Page number" default(1)
 // @Param       page_size query int false "Page size" default(10)
-// @Param       sort query string false "Sort field" Enums(created_at,updated_at,name,category,status,sku_count,total_stock,min_price) default(created_at)
+// @Param       sort query string false "Sort field" Enums(created_at,updated_at,name,category,status,sku_count,min_price) default(created_at)
 // @Param       order query string false "Sort direction" Enums(asc,desc) default(desc)
 // @Param       search query string false "Search product name or description"
 // @Param       status query string false "Product status" Enums(on_shelf,off_shelf)
@@ -278,7 +278,7 @@ func (c *ProductController) Update(ctx *gin.Context) {
 // Delete removes a product of the authenticated shop.
 //
 // @Summary     Delete a merchant product
-// @Description Delete a product of the authenticated shop; its SKUs are removed with it.
+// @Description Delete a product of the authenticated shop when all of its inventory is empty; its SKUs are removed with it.
 // @Tags        Merchant Products
 // @Param       productID path int true "Product ID"
 // @Success     204
@@ -286,6 +286,7 @@ func (c *ProductController) Update(ctx *gin.Context) {
 // @Failure     401 {object} httpx.ErrorResponse
 // @Failure     403 {object} httpx.ErrorResponse
 // @Failure     404 {object} httpx.ErrorResponse
+// @Failure     409 {object} httpx.ErrorResponse "Product inventory is not empty"
 // @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products/{productID} [delete]
@@ -300,16 +301,21 @@ func (c *ProductController) Delete(ctx *gin.Context) {
 
 	err := c.productService.Delete(ctx.Request.Context(), authctx.MustShopID(ctx), productID)
 	if err != nil {
-		if errors.Is(err, apperr.ErrProductNotFound) {
+		switch {
+		case errors.Is(err, apperr.ErrProductNotFound):
 			ctx.JSON(http.StatusNotFound, dto.ErrorResponse{
 				Error: apperr.ErrProductNotFound.Error(),
 			})
-			return
+		case errors.Is(err, apperr.ErrProductHasInventory):
+			ctx.JSON(http.StatusConflict, dto.ErrorResponse{
+				Error: apperr.ErrProductHasInventory.Error(),
+			})
+		default:
+			slog.ErrorContext(ctx.Request.Context(), "delete product", "product_id", productID, "error", err)
+			ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+				Error: apperr.ErrInternalServer.Error(),
+			})
 		}
-		slog.ErrorContext(ctx.Request.Context(), "delete product", "product_id", productID, "error", err)
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Error: apperr.ErrInternalServer.Error(),
-		})
 		return
 	}
 
@@ -325,7 +331,6 @@ func newProductResponse(product *model.ProductSummary) dto.ProductResponse {
 		CategoryID:    product.CategoryID,
 		CategoryName:  product.CategoryName,
 		SKUCount:      product.SKUCount,
-		TotalStock:    product.TotalStock,
 		MinPriceCents: product.MinPriceCents,
 		MaxPriceCents: product.MaxPriceCents,
 		CreatedAt:     product.CreatedAt,

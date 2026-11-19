@@ -19,7 +19,6 @@ const (
 type CreateProductSKUInput struct {
 	Specs      map[string]string
 	PriceCents int64
-	Stock      int
 	IsEnabled  *bool
 }
 
@@ -68,7 +67,6 @@ func (s *ProductSKUService) Create(ctx context.Context, shopID int, productID in
 		ProductID:  productID,
 		Specs:      specs,
 		PriceCents: input.PriceCents,
-		Stock:      input.Stock,
 		IsEnabled:  isEnabled,
 	}
 
@@ -97,7 +95,7 @@ func (s *ProductSKUService) Update(ctx context.Context, shopID int, productID in
 		return nil, fmt.Errorf("service.UpdateProductSKU: %w", err)
 	}
 
-	if update.Specs == nil && update.PriceCents == nil && update.Stock == nil && update.IsEnabled == nil {
+	if update.Specs == nil && update.PriceCents == nil && update.IsEnabled == nil {
 		return nil, fmt.Errorf("service.UpdateProductSKU: %w", apperr.ErrInvalidProductSKUUpdate)
 	}
 

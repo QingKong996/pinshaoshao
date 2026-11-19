@@ -19,7 +19,7 @@ type UpdateProductRequest struct {
 type ListProductsQuery struct {
 	Page          *int   `form:"page" binding:"omitempty,min=1,max=1000000" example:"1"`
 	PageSize      *int   `form:"page_size" binding:"omitempty,min=1,max=100" example:"10"`
-	Sort          string `form:"sort" binding:"omitempty,oneof=created_at updated_at name category status sku_count total_stock min_price" example:"created_at"`
+	Sort          string `form:"sort" binding:"omitempty,oneof=created_at updated_at name category status sku_count min_price" example:"created_at"`
 	Order         string `form:"order" binding:"omitempty,oneof=asc desc" example:"desc"`
 	Search        string `form:"search" binding:"omitempty,max=100" example:"T-shirt"`
 	Status        string `form:"status" binding:"omitempty,oneof=on_shelf off_shelf" example:"on_shelf"`
@@ -35,7 +35,6 @@ type ProductResponse struct {
 	CategoryID    *int      `json:"category_id" example:"2"`
 	CategoryName  *string   `json:"category_name" example:"服饰"`
 	SKUCount      int64     `json:"sku_count" example:"3"`
-	TotalStock    int64     `json:"total_stock" example:"120"`
 	MinPriceCents *int64    `json:"min_price_cents" example:"1999"`
 	MaxPriceCents *int64    `json:"max_price_cents" example:"2999"`
 	CreatedAt     time.Time `json:"created_at" example:"2026-11-09T12:00:00Z"`

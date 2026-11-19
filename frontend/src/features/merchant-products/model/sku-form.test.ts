@@ -16,7 +16,6 @@ const sku: ProductSKU = {
   product_id: 7,
   specs: { Size: "M", Color: "Blue" },
   price_cents: 1990,
-  stock: 8,
   is_enabled: true,
   created_at: "2026-11-15T08:00:00Z",
   updated_at: "2026-11-15T09:00:00Z",
@@ -28,12 +27,11 @@ const validValues = {
     { key: "Size", value: "M" },
   ],
   price: "19.90",
-  stock: "8",
   is_enabled: true,
 }
 
 describe("SKU form schema", () => {
-  it("accepts valid editable specs, price, and stock", () => {
+  it("accepts valid editable specs and price", () => {
     expect(buildFormSchema(true).safeParse(validValues).success).toBe(true)
   })
 
@@ -72,7 +70,7 @@ describe("SKU form schema", () => {
     })
   })
 
-  it("rejects invalid prices and stock quantities", () => {
+  it("rejects invalid prices", () => {
     expect(
       buildFormSchema(true).safeParse({
         ...validValues,
@@ -85,18 +83,6 @@ describe("SKU form schema", () => {
         price: "12.345",
       }).error?.issues[0]?.message,
     ).toBe("skuForm.errors.priceInvalid")
-    expect(
-      buildFormSchema(true).safeParse({
-        ...validValues,
-        stock: "",
-      }).error?.issues[0]?.message,
-    ).toBe("skuForm.errors.stockRequired")
-    expect(
-      buildFormSchema(true).safeParse({
-        ...validValues,
-        stock: "-1",
-      }).error?.issues[0]?.message,
-    ).toBe("skuForm.errors.stockInvalid")
   })
 
   it("keeps fixed spec keys read-only while still requiring values", () => {
@@ -144,13 +130,11 @@ describe("SKU form helpers", () => {
           { key: "Size", value: "M" },
         ],
         price: " 12.345 ",
-        stock: " 12 ",
         is_enabled: false,
       }),
     ).toEqual({
       specs: { Color: "Blue", Size: "M" },
       price_cents: 1235,
-      stock: 12,
       is_enabled: false,
     })
   })

@@ -17,7 +17,6 @@ const productColumns = `id, shop_id, name, description, status, category_id, cre
 const productSummarySelect = `SELECT p.id, p.shop_id, p.name, p.description, p.status, p.category_id,
        p.created_at, p.updated_at, pc.name,
        COUNT(ps.id)::BIGINT,
-       COALESCE(SUM(ps.stock), 0)::BIGINT,
        MIN(ps.price_cents)::BIGINT,
        MAX(ps.price_cents)::BIGINT
 FROM products p
@@ -158,8 +157,6 @@ func productSummaryOrderBy(sort model.ProductSort, order model.ProductSortOrder)
 		expression = "p.status"
 	case model.ProductSortSKUCount:
 		expression = "COUNT(ps.id)"
-	case model.ProductSortTotalStock:
-		expression = "COALESCE(SUM(ps.stock), 0)"
 	case model.ProductSortMinPrice:
 		expression = "MIN(ps.price_cents)"
 	default:
@@ -215,16 +212,61 @@ func (r *ProductRepository) UpdateProduct(ctx context.Context, product *model.Pr
 	return nil
 }
 
-// DeleteProduct deletes a product of the shop; its SKUs are removed by the schema cascade.
+// DeleteProduct deletes a product only when every SKU has empty inventory.
 func (r *ProductRepository) DeleteProduct(ctx context.Context, shopID int, productID int) error {
-	const query = `DELETE FROM products WHERE id = $1 AND shop_id = $2`
+	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
+		const lockQuery = `SELECT id FROM products WHERE id = $1 AND shop_id = $2 FOR UPDATE`
 
-	tag, err := r.pool.Exec(ctx, query, productID, shopID)
+		var id int
+		if err := tx.QueryRow(ctx, lockQuery, productID, shopID).Scan(&id); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return apperr.ErrProductNotFound
+			}
+			return err
+		}
+
+		const inventoryQuery = `SELECT ii.total_stock, ii.frozen_stock
+FROM inventory_items ii
+JOIN product_skus ps ON ps.id = ii.sku_id
+WHERE ps.product_id = $1
+ORDER BY ii.sku_id
+FOR UPDATE OF ii`
+		rows, err := tx.Query(ctx, inventoryQuery, productID)
+		if err != nil {
+			return err
+		}
+		hasInventory := false
+		for rows.Next() {
+			var totalStock, frozenStock int
+			if err := rows.Scan(&totalStock, &frozenStock); err != nil {
+				rows.Close()
+				return err
+			}
+			if totalStock > 0 || frozenStock > 0 {
+				hasInventory = true
+			}
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		rows.Close()
+		if hasInventory {
+			return apperr.ErrProductHasInventory
+		}
+
+		const deleteInventoryQuery = `DELETE FROM inventory_items
+WHERE sku_id IN (SELECT id FROM product_skus WHERE product_id = $1)`
+		if _, err := tx.Exec(ctx, deleteInventoryQuery, productID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM products WHERE id = $1 AND shop_id = $2`, productID, shopID); err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return fmt.Errorf("repository.DeleteProduct: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("repository.DeleteProduct: %w", apperr.ErrProductNotFound)
 	}
 	return nil
 }
@@ -262,7 +304,6 @@ func scanProductSummary(row pgx.Row) (*model.ProductSummary, error) {
 		&summary.UpdatedAt,
 		&summary.CategoryName,
 		&summary.SKUCount,
-		&summary.TotalStock,
 		&summary.MinPriceCents,
 		&summary.MaxPriceCents,
 	)

@@ -22,9 +22,20 @@ export function describeConsoleError(
     case 404:
       return t("errors.notFound")
     case 409:
-      return error.message === "category name already exists"
-        ? t("errors.categoryNameTaken")
-        : t("errors.unknown")
+      switch (error.message) {
+        case "category name already exists":
+          return t("errors.categoryNameTaken")
+        case "inventory version conflict":
+          return t("errors.inventoryVersionConflict")
+        case "total stock must not be below frozen stock":
+          return t("errors.inventoryBelowFrozen")
+        case "product sku still has inventory":
+          return t("errors.skuHasInventory")
+        case "product still has inventory":
+          return t("errors.productHasInventory")
+        default:
+          return t("errors.unknown")
+      }
     case 500:
       return t("errors.server")
     default:

@@ -14,7 +14,10 @@ const items: InventoryItem[] = [
     category_name: "Clothing",
     specs: { Color: "Blue", Size: "M" },
     price_cents: 1990,
-    stock: 8,
+    total_stock: 8,
+    frozen_stock: 2,
+    available_stock: 6,
+    version: 3,
     is_enabled: true,
     updated_at: "2026-11-15T08:00:00Z",
   },
@@ -26,7 +29,10 @@ const items: InventoryItem[] = [
     category_name: null,
     specs: {},
     price_cents: 990,
-    stock: 0,
+    total_stock: 0,
+    frozen_stock: 0,
+    available_stock: 0,
+    version: 0,
     is_enabled: false,
     updated_at: "2026-11-15T09:00:00Z",
   },
@@ -105,19 +111,19 @@ describe("MerchantConsoleInventoryPage", () => {
       screen.getAllByRole("button", { name: "Adjust stock" })[0],
     )
     expect(
-      await screen.findByRole("heading", { name: "Adjust stock" }),
+      await screen.findByRole("heading", { name: "Adjust total stock" }),
     ).toBeVisible()
-    expect(screen.getByText("Current stock: 8")).toBeVisible()
+    expect(screen.getByText("Total: 8 · Frozen: 2")).toBeVisible()
 
-    const stockInput = screen.getByLabelText("Stock quantity")
+    const stockInput = screen.getByLabelText("Total stock")
     await user.clear(stockInput)
     await user.type(stockInput, "12")
     await user.click(screen.getByRole("button", { name: "Save" }))
 
     expect(updateMutation.mutateAsync).toHaveBeenCalledWith({
-      productID: 10,
       skuID: 1,
-      stock: 12,
+      totalStock: 12,
+      version: 3,
     })
   })
 })

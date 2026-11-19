@@ -32,8 +32,7 @@ func testProductSummary() *model.ProductSummary {
 			Description: "Cotton T-shirt",
 			Status:      model.ProductStatusOnShelf,
 		},
-		SKUCount:   2,
-		TotalStock: 30,
+		SKUCount: 2,
 	}
 }
 
@@ -72,7 +71,7 @@ func TestListProducts(t *testing.T) {
 			Search:     "  shirt  ",
 			Status:     model.ProductStatusOnShelf,
 			CategoryID: &categoryID,
-			Sort:       model.ProductSortTotalStock,
+			Sort:       model.ProductSortMinPrice,
 			Order:      model.ProductSortOrderAsc,
 			Page:       3,
 			PageSize:   5,

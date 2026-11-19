@@ -85,11 +85,6 @@ export function useProductColumns({
           sortDescFirst: defaultOrderForSort("sku_count") === "desc",
           meta: { cellClassName: "tabular-nums" },
         }),
-        productColumnHelper.accessor("total_stock", {
-          header: t("products.table.stock"),
-          sortDescFirst: defaultOrderForSort("total_stock") === "desc",
-          meta: { cellClassName: "tabular-nums" },
-        }),
         productColumnHelper.accessor("min_price_cents", {
           id: "min_price",
           header: t("products.table.price"),

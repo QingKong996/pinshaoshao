@@ -35,6 +35,7 @@ func newInventoryRouter(t *testing.T, inventoryController *controller.InventoryC
 	protected := r.Group("")
 	protected.Use(middleware.ShopAuth(stubShopAuthenticator{shop: shop}))
 	protected.GET("/inventory", inventoryController.List)
+	protected.PATCH("/inventory/:skuID", inventoryController.Update)
 	return r
 }
 
@@ -49,7 +50,9 @@ func newTestInventoryItem() model.InventoryItem {
 		CategoryName: &categoryName,
 		Specs:        map[string]string{"color": "black"},
 		PriceCents:   1999,
-		Stock:        2,
+		TotalStock:   2,
+		FrozenStock:  1,
+		Version:      3,
 		IsEnabled:    true,
 	}
 }
@@ -81,7 +84,7 @@ func TestInventoryList(t *testing.T) {
 		if item.CategoryName == nil || *item.CategoryName != "clothes" {
 			t.Fatalf("category name = %v, want clothes", item.CategoryName)
 		}
-		if item.Stock != 2 || !item.IsEnabled || item.Specs["color"] != "black" {
+		if item.TotalStock != 2 || item.FrozenStock != 1 || item.AvailableStock != 1 || item.Version != 3 || !item.IsEnabled || item.Specs["color"] != "black" {
 			t.Fatalf("item = %+v, want inventory values", item)
 		}
 	})
@@ -117,5 +120,97 @@ func TestInventoryList(t *testing.T) {
 
 		requireStatus(t, rec, http.StatusInternalServerError)
 		requireError(t, rec, apperr.ErrInternalServer)
+	})
+}
+
+func TestInventoryUpdate(t *testing.T) {
+	activeShop := &shopmodel.Shop{ID: 7, Username: testShopUsername, Status: shopmodel.ShopStatusActive}
+
+	t.Run("returns the updated inventory", func(t *testing.T) {
+		inventoryController, inventoryService := newTestInventoryController(t)
+		item := newTestInventoryItem()
+		item.TotalStock = 12
+		item.Version = 4
+		inventoryService.EXPECT().
+			Update(gomock.Any(), activeShop.ID, 5, gomock.Any()).
+			Return(&item, nil)
+
+		rec := doRequest(
+			newInventoryRouter(t, inventoryController, activeShop),
+			http.MethodPatch,
+			"/inventory/5",
+			"Bearer session-token",
+			`{"total_stock":12,"version":3}`,
+		)
+
+		requireStatus(t, rec, http.StatusOK)
+
+		var body dto.InventoryItemResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode inventory response: %v", err)
+		}
+		if body.TotalStock != 12 || body.AvailableStock != 11 || body.Version != 4 {
+			t.Fatalf("inventory = %+v, want updated total stock", body)
+		}
+	})
+
+	t.Run("rejects an invalid request", func(t *testing.T) {
+		tests := map[string]struct {
+			path string
+			body string
+		}{
+			"invalid sku id":  {path: "/inventory/abc", body: `{"total_stock":12,"version":3}`},
+			"missing total":   {path: "/inventory/5", body: `{"version":3}`},
+			"negative total":  {path: "/inventory/5", body: `{"total_stock":-1,"version":3}`},
+			"missing version": {path: "/inventory/5", body: `{"total_stock":12}`},
+		}
+		for name, tt := range tests {
+			t.Run(name, func(t *testing.T) {
+				inventoryController, _ := newTestInventoryController(t)
+
+				rec := doRequest(
+					newInventoryRouter(t, inventoryController, activeShop),
+					http.MethodPatch,
+					tt.path,
+					"Bearer session-token",
+					tt.body,
+				)
+
+				requireStatus(t, rec, http.StatusBadRequest)
+			})
+		}
+	})
+
+	t.Run("maps service errors", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			err        error
+			wantStatus int
+			wantError  error
+		}{
+			{"unknown sku", apperr.ErrInventoryItemNotFound, http.StatusNotFound, apperr.ErrInventoryItemNotFound},
+			{"version conflict", apperr.ErrInventoryVersion, http.StatusConflict, apperr.ErrInventoryVersion},
+			{"below frozen", apperr.ErrInventoryBelowFrozen, http.StatusConflict, apperr.ErrInventoryBelowFrozen},
+			{"service failure", errors.New("database is down"), http.StatusInternalServerError, apperr.ErrInternalServer},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				inventoryController, inventoryService := newTestInventoryController(t)
+				inventoryService.EXPECT().
+					Update(gomock.Any(), activeShop.ID, 5, gomock.Any()).
+					Return(nil, tt.err)
+
+				rec := doRequest(
+					newInventoryRouter(t, inventoryController, activeShop),
+					http.MethodPatch,
+					"/inventory/5",
+					"Bearer session-token",
+					`{"total_stock":12,"version":3}`,
+				)
+
+				requireStatus(t, rec, tt.wantStatus)
+				requireError(t, rec, tt.wantError)
+			})
+		}
 	})
 }

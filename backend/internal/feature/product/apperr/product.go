@@ -8,6 +8,8 @@ var (
 	ErrProductSKUAlreadyExists = errors.New(`product sku with the same specs already exists`)
 	ErrProductSKUSpecsMismatch = errors.New(`product sku specs must have the same keys as the product's existing skus`)
 	ErrProductSKUNotFound      = errors.New(`product sku not found`)
+	ErrProductSKUHasInventory  = errors.New(`product sku still has inventory`)
+	ErrProductHasInventory     = errors.New(`product still has inventory`)
 	ErrInvalidProductSKUID     = errors.New(`invalid product sku id`)
 	ErrInvalidProductSKUSpecs  = errors.New(`invalid product sku specs`)
 	ErrInvalidProductSKUUpdate = errors.New(`product sku update must contain at least one field`)

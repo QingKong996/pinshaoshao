@@ -120,6 +120,12 @@ function InventoryTableSkeleton() {
             <Skeleton className="h-4 w-10" />
           </TableCell>
           <TableCell className="px-4 py-3">
+            <Skeleton className="h-4 w-10" />
+          </TableCell>
+          <TableCell className="px-4 py-3">
+            <Skeleton className="h-4 w-10" />
+          </TableCell>
+          <TableCell className="px-4 py-3">
             <Skeleton className="h-5 w-16" />
           </TableCell>
           <TableCell className="px-4 py-3">

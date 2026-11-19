@@ -17,8 +17,8 @@ import {
   createProductSKU,
   deleteProductSKU,
   updateProductSKU,
-  updateProductSKUStock,
 } from "../api/skus"
+import { updateInventoryTotalStock } from "../api/inventory"
 import type {
   CatalogChanged,
   ProductCategoryInput,
@@ -52,9 +52,9 @@ type UpdateCategoryVariables = {
 }
 
 type UpdateInventoryStockVariables = {
-  productID: number
   skuID: number
-  stock: number
+  totalStock: number
+  version: number
 }
 
 function invalidateProductData(
@@ -195,11 +195,11 @@ export function useUpdateInventoryStock(
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
-      productID,
       skuID,
-      stock,
+      totalStock,
+      version,
     }: UpdateInventoryStockVariables) =>
-      updateProductSKUStock(token, productID, skuID, stock),
+      updateInventoryTotalStock(token, skuID, totalStock, version),
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({

@@ -74,7 +74,6 @@ export function SKUFormDialog({
     defaultValues: {
       specs: initialSpecs(sku, specsEditable, specKeys),
       price: sku ? String(sku.price_cents / 100) : "",
-      stock: sku ? String(sku.stock) : "",
       is_enabled: sku?.is_enabled ?? true,
     },
   })
@@ -133,43 +132,23 @@ export function SKUFormDialog({
           onRemove={remove}
         />
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field data-invalid={errors.price ? true : undefined}>
-            <FieldLabel htmlFor="sku-form-price">
-              {t("skuForm.fields.price")}
-            </FieldLabel>
-            <Input
-              id="sku-form-price"
-              inputMode="decimal"
-              autoComplete="off"
-              aria-invalid={errors.price ? true : undefined}
-              {...register("price")}
-            />
-            {errors.price ? (
-              <FieldError>
-                {translateValidationMessage(errors.price.message, t)}
-              </FieldError>
-            ) : null}
-          </Field>
-
-          <Field data-invalid={errors.stock ? true : undefined}>
-            <FieldLabel htmlFor="sku-form-stock">
-              {t("skuForm.fields.stock")}
-            </FieldLabel>
-            <Input
-              id="sku-form-stock"
-              inputMode="numeric"
-              autoComplete="off"
-              aria-invalid={errors.stock ? true : undefined}
-              {...register("stock")}
-            />
-            {errors.stock ? (
-              <FieldError>
-                {translateValidationMessage(errors.stock.message, t)}
-              </FieldError>
-            ) : null}
-          </Field>
-        </div>
+        <Field data-invalid={errors.price ? true : undefined}>
+          <FieldLabel htmlFor="sku-form-price">
+            {t("skuForm.fields.price")}
+          </FieldLabel>
+          <Input
+            id="sku-form-price"
+            inputMode="decimal"
+            autoComplete="off"
+            aria-invalid={errors.price ? true : undefined}
+            {...register("price")}
+          />
+          {errors.price ? (
+            <FieldError>
+              {translateValidationMessage(errors.price.message, t)}
+            </FieldError>
+          ) : null}
+        </Field>
 
         <Field orientation="horizontal">
           <FieldLabel htmlFor="sku-form-enabled">

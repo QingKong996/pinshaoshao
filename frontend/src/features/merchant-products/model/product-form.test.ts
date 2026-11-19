@@ -19,7 +19,6 @@ const product: Product = {
   category_id: 3,
   category_name: "Clothing",
   sku_count: 2,
-  total_stock: 15,
   min_price_cents: 1990,
   max_price_cents: 2590,
   created_at: "2026-11-15T08:00:00Z",

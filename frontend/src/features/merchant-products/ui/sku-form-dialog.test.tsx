@@ -27,7 +27,6 @@ const sku: ProductSKU = {
   product_id: 7,
   specs: { Size: "M" },
   price_cents: 1990,
-  stock: 5,
   is_enabled: true,
   created_at: "2026-11-15T08:00:00Z",
   updated_at: "2026-11-15T09:00:00Z",
@@ -59,7 +58,6 @@ describe("SKUFormDialog", () => {
     await user.type(screen.getByLabelText("Spec name"), " Size ")
     await user.type(screen.getByLabelText("Spec value"), " M ")
     await user.type(screen.getByLabelText("Price (CNY)"), "19.90")
-    await user.type(screen.getByLabelText("Stock", { exact: true }), "5")
     await user.click(screen.getByRole("button", { name: "Add" }))
 
     await waitFor(() =>
@@ -68,7 +66,6 @@ describe("SKUFormDialog", () => {
         input: {
           specs: { Size: "M" },
           price_cents: 1990,
-          stock: 5,
           is_enabled: true,
         },
       }),
@@ -104,7 +101,6 @@ describe("SKUFormDialog", () => {
         input: {
           specs: { Size: "M" },
           price_cents: 2550,
-          stock: 5,
           is_enabled: true,
         },
       }),

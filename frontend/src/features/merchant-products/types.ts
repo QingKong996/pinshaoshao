@@ -7,7 +7,6 @@ export type ProductSort =
   | "category"
   | "status"
   | "sku_count"
-  | "total_stock"
   | "min_price"
 
 export type SortOrder = "asc" | "desc"
@@ -39,7 +38,6 @@ export type Product = {
   category_id: number | null
   category_name: string | null
   sku_count: number
-  total_stock: number
   min_price_cents: number | null
   max_price_cents: number | null
   created_at: string
@@ -66,7 +64,10 @@ export type InventoryItem = {
   category_name: string | null
   specs: Record<string, string>
   price_cents: number
-  stock: number
+  total_stock: number
+  frozen_stock: number
+  available_stock: number
+  version: number
   is_enabled: boolean
   updated_at: string
 }
@@ -76,7 +77,6 @@ export type ProductSKU = {
   product_id: number
   specs: Record<string, string>
   price_cents: number
-  stock: number
   is_enabled: boolean
   created_at: string
   updated_at: string
@@ -92,7 +92,6 @@ export type ProductInput = {
 export type ProductSKUInput = {
   specs: Record<string, string>
   price_cents: number
-  stock: number
   is_enabled: boolean
 }
 

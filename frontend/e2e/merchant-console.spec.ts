@@ -56,7 +56,6 @@ async function mockMerchantApi(page: Page) {
               category_id: 3,
               category_name: "Clothing",
               sku_count: 2,
-              total_stock: 15,
               min_price_cents: 1990,
               max_price_cents: 2590,
               created_at: "2026-11-15T08:00:00Z",
@@ -84,7 +83,6 @@ async function mockMerchantApi(page: Page) {
           category_id: 3,
           category_name: "Clothing",
           sku_count: 2,
-          total_stock: 15,
           min_price_cents: 1990,
           max_price_cents: 2590,
           created_at: "2026-11-15T08:00:00Z",
@@ -110,7 +108,6 @@ async function mockMerchantApi(page: Page) {
           product_id: 7,
           specs: { Size: "M" },
           price_cents: 1990,
-          stock: 5,
           is_enabled: true,
           created_at: "2026-11-15T08:00:00Z",
           updated_at: "2026-11-15T08:00:00Z",
@@ -203,7 +200,6 @@ test("merchant can sign in, inspect products, and confirm deletion", async ({
   await skuDialog.getByLabel("Spec name").fill("Size")
   await skuDialog.getByLabel("Spec value").fill("M")
   await skuDialog.getByLabel("Price (CNY)").fill("19.90")
-  await skuDialog.getByLabel("Stock", { exact: true }).fill("5")
   const createSkuRequest = page.waitForRequest(
     (request) =>
       request.method() === "POST" &&

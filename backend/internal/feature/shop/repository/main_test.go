@@ -121,18 +121,25 @@ func insertShopWithUsername(t *testing.T, ctx context.Context, username, email s
 	return shop
 }
 
-func createTestSKU(t *testing.T, ctx context.Context, skuRepository *productrepository.ProductSKURepository, productID int, specs map[string]string, priceCents int64, stock int) *productmodel.ProductSKU {
+func createTestSKU(t *testing.T, ctx context.Context, skuRepository *productrepository.ProductSKURepository, productID int, specs map[string]string, priceCents int64) *productmodel.ProductSKU {
 	t.Helper()
 
 	sku := &productmodel.ProductSKU{
 		ProductID:  productID,
 		Specs:      specs,
 		PriceCents: priceCents,
-		Stock:      stock,
 		IsEnabled:  true,
 	}
 	if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
 		t.Fatalf("create product sku: %v", err)
 	}
 	return sku
+}
+
+func setTestInventory(t *testing.T, ctx context.Context, skuID int, totalStock int, frozenStock int) {
+	t.Helper()
+
+	if _, err := testPool.Exec(ctx, `UPDATE inventory_items SET total_stock = $1, frozen_stock = $2 WHERE sku_id = $3`, totalStock, frozenStock, skuID); err != nil {
+		t.Fatalf("set inventory: %v", err)
+	}
 }
