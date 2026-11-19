@@ -32,9 +32,9 @@ func NewDashboardController(dashboardService DashboardService) *DashboardControl
 // @Tags        Merchant Dashboard
 // @Produce     json
 // @Success     200 {object} dto.DashboardResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/dashboard [get]
 func (c *DashboardController) Overview(ctx *gin.Context) {

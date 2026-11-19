@@ -39,12 +39,12 @@ func NewShopController(shopService ShopService) *ShopController {
 // @Tags        Merchant Authentication
 // @Accept      json
 // @Produce     json
-// @Param       request body dto.LoginRequest true "Login credentials"
-// @Success     200 {object} dto.TokenResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Param       request body httpx.LoginRequest true "Login credentials"
+// @Success     200 {object} httpx.TokenResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Router      /merchant/login [post]
 func (c *ShopController) Login(ctx *gin.Context) {
 	httpx.Login(ctx, func(ctx context.Context, username, password string) (string, error) {
@@ -63,10 +63,10 @@ func (c *ShopController) Login(ctx *gin.Context) {
 // @Accept      json
 // @Produce     json
 // @Param       request body dto.ShopRegisterRequest true "Registration details"
-// @Success     201 {object} dto.TokenResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     409 {object} dto.ErrorResponse "Shop username or email already exists"
-// @Failure     500 {object} dto.ErrorResponse
+// @Success     201 {object} httpx.TokenResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     409 {object} httpx.ErrorResponse "Shop username or email already exists"
+// @Failure     500 {object} httpx.ErrorResponse
 // @Router      /merchant/register [post]
 func (c *ShopController) Register(ctx *gin.Context) {
 	var req dto.ShopRegisterRequest
@@ -112,9 +112,9 @@ func (c *ShopController) Register(ctx *gin.Context) {
 // @Tags        Merchant Authentication
 // @Security    BearerAuth
 // @Success     204
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Router      /merchant/logout [post]
 func (c *ShopController) Logout(ctx *gin.Context) {
 	token := authctx.MustToken(ctx, authctx.ShopTokenKey, "controller.ShopController.Logout: route is not protected by ShopAuth")
@@ -128,10 +128,10 @@ func (c *ShopController) Logout(ctx *gin.Context) {
 // @Tags        Merchant Shop
 // @Produce     json
 // @Success     200 {object} dto.ShopProfileResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/shop [get]
 func (c *ShopController) GetProfile(ctx *gin.Context) {
@@ -162,11 +162,11 @@ func (c *ShopController) GetProfile(ctx *gin.Context) {
 // @Produce     json
 // @Param       request body dto.UpdateShopProfileRequest true "Profile fields"
 // @Success     200 {object} dto.ShopProfileResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/shop [patch]
 func (c *ShopController) UpdateProfile(ctx *gin.Context) {
