@@ -12,6 +12,7 @@ import {
 import HomePage from "./pages/home"
 import MerchantHomePage from "./pages/merchant-home/merchant-home-page"
 import NotFoundPage from "./pages/not-found"
+import { CartRoute } from "./routes/cart-route"
 import { MerchantCategoriesRoute } from "./routes/merchant-categories-route"
 import { MerchantDashboardRoute } from "./routes/merchant-dashboard-route"
 import { MerchantInventoryRoute } from "./routes/merchant-inventory-route"
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
       { path: "/", element: <HomePage /> },
       { path: "/signin", element: <SignInPage /> },
       { path: "/signup", element: <SignUpPage /> },
+      { path: "/cart", element: <CartRoute /> },
       {
         path: "/merchant/signin",
         element: <MerchantSignInPage redirectTo={MERCHANT_CONSOLE_HOME_PATH} />,

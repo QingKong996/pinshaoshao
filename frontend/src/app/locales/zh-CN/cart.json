@@ -1,0 +1,61 @@
+{
+  "documentTitle": "购物车 · {{brand}}",
+  "title": "购物车",
+  "description": "结算前检查已选商品。下单前不会占用库存。",
+  "signedOut": {
+    "title": "登录后查看购物车",
+    "description": "购物车与买家账户关联，登录后即可继续查看。",
+    "action": "去登录"
+  },
+  "empty": {
+    "title": "购物车还是空的",
+    "description": "加入购物车的商品会显示在这里。"
+  },
+  "item": {
+    "select": "选择 {{name}} 参与结算",
+    "defaultSpecs": "无规格",
+    "snapshotPrice": "加入时价格 {{price}}",
+    "availableStock": "可售 {{count}} 件",
+    "stockUnknown": "暂时无法获取库存",
+    "lineTotal": "小计",
+    "quantity": "数量",
+    "decrease": "减少数量",
+    "increase": "增加数量",
+    "remove": "移除 {{name}}"
+  },
+  "availability": {
+    "available": "可结算",
+    "productDeleted": "商品已删除",
+    "productOffShelf": "商品已下架",
+    "skuDeleted": "该规格已删除",
+    "skuDisabled": "该规格已停用",
+    "outOfStock": "已售罄",
+    "insufficientStock": "仅剩 {{count}} 件"
+  },
+  "summary": {
+    "title": "已选商品",
+    "selected": "已选",
+    "itemCount": "{{count}} 件",
+    "subtotal": "商品小计",
+    "notice": "此处价格是加入购物车时的展示快照。结算时将按商品目录当前价格和可售库存计算。"
+  },
+  "removeDialog": {
+    "title": "移除该商品？",
+    "description": "确定从购物车移除 {{name}}？",
+    "cancel": "取消",
+    "confirm": "移除"
+  },
+  "errors": {
+    "title": "购物车更新失败",
+    "loadTitle": "购物车加载失败",
+    "unknown": "操作失败，请稍后重试。",
+    "network": "无法连接服务器，请检查网络后重试。",
+    "unauthorized": "登录状态已失效，请重新登录。",
+    "notFound": "该购物车条目已不存在。",
+    "invalidItem": "请检查购买数量后重试。",
+    "unavailable": "该商品当前不可购买。",
+    "server": "服务器暂时无法更新购物车，请稍后重试。",
+    "retry": "重试",
+    "dismiss": "关闭"
+  }
+}

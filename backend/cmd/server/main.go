@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	cartmodule "pinshaoshao/internal/feature/cart"
 	inventorymodule "pinshaoshao/internal/feature/inventory"
 	productmodule "pinshaoshao/internal/feature/product"
 	shopmodule "pinshaoshao/internal/feature/shop"
@@ -74,12 +75,14 @@ func main() {
 	shopModule := shopmodule.NewModule(pool)
 	productModule := productmodule.NewModule(pool)
 	inventoryModule := inventorymodule.NewModule(pool)
+	cartModule := cartmodule.NewModule(pool)
 
 	router.Register(r, router.Modules{
 		User:      userModule,
 		Shop:      shopModule,
 		Product:   productModule,
 		Inventory: inventoryModule,
+		Cart:      cartModule,
 		UserAuth:  middleware.UserAuth(userModule.Authenticator()),
 		ShopAuth:  middleware.ShopAuth(shopModule.Authenticator()),
 	})

@@ -1,0 +1,61 @@
+{
+  "documentTitle": "Shopping cart · {{brand}}",
+  "title": "Shopping cart",
+  "description": "Review your items before checkout. Stock is not reserved until an order is placed.",
+  "signedOut": {
+    "title": "Sign in to view your cart",
+    "description": "Your cart is linked to your buyer account, so sign in to pick up where you left off.",
+    "action": "Sign in"
+  },
+  "empty": {
+    "title": "Your cart is empty",
+    "description": "Items you add will appear here."
+  },
+  "item": {
+    "select": "Select {{name}} for checkout",
+    "defaultSpecs": "No specifications",
+    "snapshotPrice": "{{price}} at the time it was added",
+    "availableStock": "{{count}} available",
+    "stockUnknown": "Availability unavailable",
+    "lineTotal": "Line total",
+    "quantity": "Quantity",
+    "decrease": "Decrease quantity",
+    "increase": "Increase quantity",
+    "remove": "Remove {{name}}"
+  },
+  "availability": {
+    "available": "Available",
+    "productDeleted": "Product is no longer available",
+    "productOffShelf": "Product is off shelf",
+    "skuDeleted": "This option is no longer available",
+    "skuDisabled": "This option is disabled",
+    "outOfStock": "Out of stock",
+    "insufficientStock": "Only {{count}} left"
+  },
+  "summary": {
+    "title": "Selected items",
+    "selected": "Selection",
+    "itemCount": "{{count}}",
+    "subtotal": "Subtotal",
+    "notice": "Prices shown are from when items were added. The current catalog price and available stock are applied at checkout."
+  },
+  "removeDialog": {
+    "title": "Remove this item?",
+    "description": "Remove {{name}} from your cart?",
+    "cancel": "Cancel",
+    "confirm": "Remove"
+  },
+  "errors": {
+    "title": "Cart update failed",
+    "loadTitle": "Could not load your cart",
+    "unknown": "Something went wrong. Please try again.",
+    "network": "Unable to reach the server. Check your connection and retry.",
+    "unauthorized": "Your session has expired. Please sign in again.",
+    "notFound": "This cart item is no longer available.",
+    "invalidItem": "Please check the quantity and try again.",
+    "unavailable": "This product is no longer available for purchase.",
+    "server": "The server could not update your cart. Please try again later.",
+    "retry": "Try again",
+    "dismiss": "Dismiss"
+  }
+}

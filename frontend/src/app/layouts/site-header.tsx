@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { ShoppingCart } from "lucide-react"
 import { Link } from "react-router"
 import { BrandMark } from "@/shared/ui/brand-mark"
 import { LanguageSwitcher } from "@/shared/ui/language-switcher"
@@ -15,10 +16,23 @@ export function SiteHeader() {
         <BrandMark />
         <div className="ml-auto flex items-center gap-2">
           {session ? (
-            <UserMenu
-              session={session}
-              signOut={signOut}
-            />
+            <>
+              <Link
+                to="/cart"
+                aria-label={t("common:nav.cart")}
+                title={t("common:nav.cart")}
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "icon-sm",
+                })}
+              >
+                <ShoppingCart aria-hidden />
+              </Link>
+              <UserMenu
+                session={session}
+                signOut={signOut}
+              />
+            </>
           ) : (
             <Link
               to="/signin"

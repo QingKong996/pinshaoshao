@@ -4,6 +4,7 @@ import "github.com/gin-gonic/gin"
 
 const (
 	UserSubjectKey = "auth.user"
+	UserIDKey      = "auth.user.id"
 	UserTokenKey   = "auth.user.token"
 	ShopSubjectKey = "auth.shop"
 	ShopIDKey      = "auth.shop.id"
@@ -52,6 +53,25 @@ func MustToken(c *gin.Context, key, panicMessage string) string {
 		panic(panicMessage)
 	}
 	return token
+}
+
+// UserID returns the authenticated user ID.
+func UserID(c *gin.Context) (int, bool) {
+	value, ok := c.Get(UserIDKey)
+	if !ok {
+		return 0, false
+	}
+	userID, ok := value.(int)
+	return userID, ok && userID > 0
+}
+
+// MustUserID returns the authenticated user ID or panics when the route is not protected by UserAuth.
+func MustUserID(c *gin.Context) int {
+	userID, ok := UserID(c)
+	if !ok {
+		panic("authctx.MustUserID: route is not protected by UserAuth")
+	}
+	return userID
 }
 
 // ShopID returns the authenticated shop ID.

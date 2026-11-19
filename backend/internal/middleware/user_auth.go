@@ -25,6 +25,8 @@ func UserAuth(authenticator UserSessionAuthenticator) gin.HandlerFunc {
 		banned:          apperr.ErrUserBanned,
 		unauthorized:    apperr.ErrUnauthorized,
 		internalServer:  apperr.ErrInternalServer,
+		subjectIDKey:    authctx.UserIDKey,
+		subjectID:       func(user *model.User) int { return user.ID },
 	})
 }
 

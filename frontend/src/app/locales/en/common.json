@@ -1,7 +1,8 @@
 {
   "nav": {
     "features": "Features",
-    "howItWorks": "How it works"
+    "howItWorks": "How it works",
+    "cart": "Shopping cart"
   },
   "auth": {
     "signIn": "Sign in",
