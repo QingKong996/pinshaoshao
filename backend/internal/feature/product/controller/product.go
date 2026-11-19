@@ -46,10 +46,10 @@ func NewProductController(productService ProductService) *ProductController {
 // @Param       category_id query int false "Category ID"
 // @Param       uncategorized query bool false "Only uncategorized products"
 // @Success     200 {object} dto.ProductListResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products [get]
 func (c *ProductController) List(ctx *gin.Context) {
@@ -123,11 +123,11 @@ func (c *ProductController) List(ctx *gin.Context) {
 // @Produce     json
 // @Param       productID path int true "Product ID"
 // @Success     200 {object} dto.ProductResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products/{productID} [get]
 func (c *ProductController) Get(ctx *gin.Context) {
@@ -166,10 +166,10 @@ func (c *ProductController) Get(ctx *gin.Context) {
 // @Produce     json
 // @Param       request body dto.CreateProductRequest true "Product details"
 // @Success     201 {object} dto.ProductResponse
-// @Failure     400 {object} dto.ErrorResponse "Invalid payload or a category of another shop"
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse "Invalid payload or a category of another shop"
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products [post]
 func (c *ProductController) Create(ctx *gin.Context) {
@@ -218,11 +218,11 @@ func (c *ProductController) Create(ctx *gin.Context) {
 // @Param       productID path int true "Product ID"
 // @Param       request body dto.UpdateProductRequest true "Product details"
 // @Success     200 {object} dto.ProductResponse
-// @Failure     400 {object} dto.ErrorResponse "Invalid payload or a category of another shop"
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse "Invalid payload or a category of another shop"
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products/{productID} [patch]
 func (c *ProductController) Update(ctx *gin.Context) {
@@ -282,11 +282,11 @@ func (c *ProductController) Update(ctx *gin.Context) {
 // @Tags        Merchant Products
 // @Param       productID path int true "Product ID"
 // @Success     204
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products/{productID} [delete]
 func (c *ProductController) Delete(ctx *gin.Context) {

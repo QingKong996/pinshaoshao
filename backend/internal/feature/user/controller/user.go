@@ -35,12 +35,12 @@ func NewUserController(userService UserService) *UserController {
 // @Tags        Authentication
 // @Accept      json
 // @Produce     json
-// @Param       request body dto.LoginRequest true "Login credentials"
-// @Success     200 {object} dto.TokenResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Param       request body httpx.LoginRequest true "Login credentials"
+// @Success     200 {object} httpx.TokenResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Router      /login [post]
 func (c *UserController) Login(ctx *gin.Context) {
 	httpx.Login(ctx, func(ctx context.Context, username, password string) (string, error) {
@@ -59,10 +59,10 @@ func (c *UserController) Login(ctx *gin.Context) {
 // @Accept      json
 // @Produce     json
 // @Param       request body dto.RegisterRequest true "Registration details"
-// @Success     201 {object} dto.TokenResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     409 {object} dto.ErrorResponse "Username or email already exists"
-// @Failure     500 {object} dto.ErrorResponse
+// @Success     201 {object} httpx.TokenResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     409 {object} httpx.ErrorResponse "Username or email already exists"
+// @Failure     500 {object} httpx.ErrorResponse
 // @Router      /register [post]
 func (c *UserController) Register(ctx *gin.Context) {
 	var req dto.RegisterRequest
@@ -108,9 +108,9 @@ func (c *UserController) Register(ctx *gin.Context) {
 // @Tags        Authentication
 // @Security    BearerAuth
 // @Success     204
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Router      /logout [post]
 func (c *UserController) Logout(ctx *gin.Context) {
 	token := authctx.MustToken(ctx, authctx.UserTokenKey, "controller.UserController.Logout: route is not protected by UserAuth")

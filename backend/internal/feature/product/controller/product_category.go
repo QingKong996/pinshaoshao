@@ -36,9 +36,9 @@ func NewProductCategoryController(categoryService ProductCategoryService) *Produ
 // @Tags        Merchant Categories
 // @Produce     json
 // @Success     200 {array} dto.ProductCategoryResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/categories [get]
 func (c *ProductCategoryController) List(ctx *gin.Context) {
@@ -67,11 +67,11 @@ func (c *ProductCategoryController) List(ctx *gin.Context) {
 // @Produce     json
 // @Param       request body dto.CreateProductCategoryRequest true "Category details"
 // @Success     201 {object} dto.ProductCategoryResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     409 {object} dto.ErrorResponse "Category name already exists"
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     409 {object} httpx.ErrorResponse "Category name already exists"
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/categories [post]
 func (c *ProductCategoryController) Create(ctx *gin.Context) {
@@ -111,12 +111,12 @@ func (c *ProductCategoryController) Create(ctx *gin.Context) {
 // @Param       categoryID path int true "Category ID"
 // @Param       request body dto.UpdateProductCategoryRequest true "Category details"
 // @Success     200 {object} dto.ProductCategoryResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     409 {object} dto.ErrorResponse "Category name already exists"
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     409 {object} httpx.ErrorResponse "Category name already exists"
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/categories/{categoryID} [patch]
 func (c *ProductCategoryController) Update(ctx *gin.Context) {
@@ -166,11 +166,11 @@ func (c *ProductCategoryController) Update(ctx *gin.Context) {
 // @Tags        Merchant Categories
 // @Param       categoryID path int true "Category ID"
 // @Success     204
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/categories/{categoryID} [delete]
 func (c *ProductCategoryController) Delete(ctx *gin.Context) {

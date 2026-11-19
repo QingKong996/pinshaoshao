@@ -40,12 +40,12 @@ func NewProductSKUController(skuService ProductSKUService) *ProductSKUController
 // @Param       productID path int true "Product ID"
 // @Param       request body dto.CreateProductSKURequest true "SKU details"
 // @Success     201 {object} dto.ProductSKUResponse
-// @Failure     400 {object} dto.ErrorResponse "Invalid payload or spec keys that differ from the product's existing SKUs"
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse "Product not found"
-// @Failure     409 {object} dto.ErrorResponse "Product already has a SKU with the same specs"
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse "Invalid payload or spec keys that differ from the product's existing SKUs"
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse "Product not found"
+// @Failure     409 {object} httpx.ErrorResponse "Product already has a SKU with the same specs"
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products/{productID}/skus [post]
 func (c *ProductSKUController) Create(ctx *gin.Context) {
@@ -114,11 +114,11 @@ func (c *ProductSKUController) Create(ctx *gin.Context) {
 // @Produce     json
 // @Param       productID path int true "Product ID"
 // @Success     200 {array} dto.ProductSKUResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products/{productID}/skus [get]
 func (c *ProductSKUController) List(ctx *gin.Context) {
@@ -163,12 +163,12 @@ func (c *ProductSKUController) List(ctx *gin.Context) {
 // @Param       skuID path int true "SKU ID"
 // @Param       request body dto.UpdateProductSKURequest true "SKU fields"
 // @Success     200 {object} dto.ProductSKUResponse
-// @Failure     400 {object} dto.ErrorResponse "Invalid payload, no fields, or spec keys that differ from the product's existing SKUs"
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     409 {object} dto.ErrorResponse "Product already has a SKU with the same specs"
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse "Invalid payload, no fields, or spec keys that differ from the product's existing SKUs"
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     409 {object} httpx.ErrorResponse "Product already has a SKU with the same specs"
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products/{productID}/skus/{skuID} [patch]
 func (c *ProductSKUController) Update(ctx *gin.Context) {
@@ -254,11 +254,11 @@ func (c *ProductSKUController) Update(ctx *gin.Context) {
 // @Param       productID path int true "Product ID"
 // @Param       skuID path int true "SKU ID"
 // @Success     204
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/products/{productID}/skus/{skuID} [delete]
 func (c *ProductSKUController) Delete(ctx *gin.Context) {

@@ -32,9 +32,9 @@ func NewInventoryController(inventoryService InventoryService) *InventoryControl
 // @Tags        Merchant Inventory
 // @Produce     json
 // @Success     200 {array} dto.InventoryItemResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /merchant/inventory [get]
 func (c *InventoryController) List(ctx *gin.Context) {
