@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"context"
-	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/feature/user/apperr"
+	"pinshaoshao/internal/feature/user/model"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,6 +27,8 @@ func UserAuth(authenticator UserSessionAuthenticator) gin.HandlerFunc {
 		contextTokenKey: contextKeyUserToken,
 		invalidSession:  apperr.ErrInvalidSession,
 		banned:          apperr.ErrUserBanned,
+		unauthorized:    apperr.ErrUnauthorized,
+		internalServer:  apperr.ErrInternalServer,
 	})
 }
 

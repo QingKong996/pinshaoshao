@@ -6,11 +6,12 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
-	"pinshaoshao/internal/controller"
+	inventorymodule "pinshaoshao/internal/feature/inventory"
+	productmodule "pinshaoshao/internal/feature/product"
+	shopmodule "pinshaoshao/internal/feature/shop"
+	usermodule "pinshaoshao/internal/feature/user"
 	"pinshaoshao/internal/middleware"
-	"pinshaoshao/internal/repository"
 	"pinshaoshao/internal/router"
-	"pinshaoshao/internal/service"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -69,44 +70,17 @@ func main() {
 		fatal("connect database", "error", err)
 	}
 
-	userRepository := repository.NewUserRepository(pool)
-	userService := service.NewUserService(userRepository)
-	userController := controller.NewUserController(userService)
-	userAuthMiddleware := middleware.UserAuth(userService)
+	userModule := usermodule.NewModule(pool)
+	shopModule := shopmodule.NewModule(pool)
 
-	shopRepository := repository.NewShopRepository(pool)
-	shopService := service.NewShopService(shopRepository)
-	shopController := controller.NewShopController(shopService)
-	shopAuthMiddleware := middleware.ShopAuth(shopService)
-
-	productRepository := repository.NewProductRepository(pool)
-	productCategoryRepository := repository.NewProductCategoryRepository(pool)
-	productSKURepository := repository.NewProductSKURepository(pool)
-	inventoryRepository := repository.NewInventoryRepository(pool)
-	dashboardRepository := repository.NewDashboardRepository(pool)
-	productSKUService := service.NewProductSKUService(productRepository, productSKURepository)
-	productCategoryService := service.NewProductCategoryService(productCategoryRepository)
-	productService := service.NewProductService(productRepository, productCategoryRepository)
-	inventoryService := service.NewInventoryService(inventoryRepository)
-	dashboardService := service.NewDashboardService(dashboardRepository)
-	productSKUController := controller.NewProductSKUController(productSKUService)
-	productCategoryController := controller.NewProductCategoryController(productCategoryService)
-	productController := controller.NewProductController(productService)
-	inventoryController := controller.NewInventoryController(inventoryService)
-	dashboardController := controller.NewDashboardController(dashboardService)
-
-	router.UserRegister(r, userController, userAuthMiddleware)
-	router.ShopRegister(r, shopController, shopAuthMiddleware)
-	router.MerchantRegister(
-		r,
-		shopController,
-		productCategoryController,
-		productController,
-		productSKUController,
-		inventoryController,
-		dashboardController,
-		shopAuthMiddleware,
-	)
+	router.Register(r, router.Modules{
+		User:      userModule,
+		Shop:      shopModule,
+		Product:   productmodule.NewModule(pool),
+		Inventory: inventorymodule.NewModule(pool),
+		UserAuth:  userModule.AuthMiddleware(),
+		ShopAuth:  shopModule.AuthMiddleware(),
+	})
 
 	if err := r.Run(":" + port); err != nil {
 		fatal("run server", "error", err)

@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"context"
-	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/feature/shop/apperr"
+	"pinshaoshao/internal/feature/shop/model"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,6 +27,8 @@ func ShopAuth(authenticator ShopSessionAuthenticator) gin.HandlerFunc {
 		contextTokenKey: contextKeyShopToken,
 		invalidSession:  apperr.ErrInvalidShopSession,
 		banned:          apperr.ErrShopBanned,
+		unauthorized:    apperr.ErrUnauthorized,
+		internalServer:  apperr.ErrInternalServer,
 	})
 }
 

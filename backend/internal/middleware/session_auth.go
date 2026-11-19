@@ -5,8 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/dto"
+	"pinshaoshao/internal/feature/shared/httpx"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +22,8 @@ type sessionAuthConfig struct {
 	contextTokenKey string
 	invalidSession  error
 	banned          error
+	unauthorized    error
+	internalServer  error
 }
 
 // authenticate validates the Bearer session token and exposes the authenticated
@@ -31,22 +32,22 @@ func authenticate[T any](authenticator sessionAuthenticator[T], config sessionAu
 	return func(c *gin.Context) {
 		token, ok := bearerToken(c.GetHeader("Authorization"))
 		if !ok {
-			abortWithError(c, http.StatusUnauthorized, apperr.ErrUnauthorized)
+			abortWithError(c, http.StatusUnauthorized, config.unauthorized)
 			return
 		}
 
 		subject, err := authenticator.Authenticate(c.Request.Context(), token)
 		if err != nil {
 			switch {
-			case errors.Is(err, apperr.ErrUnauthorized):
-				abortWithError(c, http.StatusUnauthorized, apperr.ErrUnauthorized)
+			case errors.Is(err, config.unauthorized):
+				abortWithError(c, http.StatusUnauthorized, config.unauthorized)
 			case errors.Is(err, config.invalidSession):
 				abortWithError(c, http.StatusUnauthorized, config.invalidSession)
 			case errors.Is(err, config.banned):
 				abortWithError(c, http.StatusForbidden, config.banned)
 			default:
 				slog.ErrorContext(c.Request.Context(), "authenticate session", "middleware", config.name, "error", err)
-				abortWithError(c, http.StatusInternalServerError, apperr.ErrInternalServer)
+				abortWithError(c, http.StatusInternalServerError, config.internalServer)
 			}
 			return
 		}
@@ -99,7 +100,7 @@ func abortWithError(c *gin.Context, status int, err error) {
 	if status == http.StatusUnauthorized {
 		c.Header("WWW-Authenticate", "Bearer")
 	}
-	c.AbortWithStatusJSON(status, dto.ErrorResponse{
+	c.AbortWithStatusJSON(status, httpx.ErrorResponse{
 		Error: err.Error(),
 	})
 }

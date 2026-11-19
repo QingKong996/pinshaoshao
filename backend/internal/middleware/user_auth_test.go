@@ -6,8 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"pinshaoshao/internal/apperr"
-	"pinshaoshao/internal/model"
+	"pinshaoshao/internal/feature/user/apperr"
+	"pinshaoshao/internal/feature/user/model"
 	"testing"
 
 	"github.com/gin-gonic/gin"
