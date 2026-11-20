@@ -6,10 +6,13 @@ import (
 	"context"
 	"testing"
 
+	inventoryrepository "pinshaoshao/internal/feature/inventory/repository"
 	"pinshaoshao/internal/feature/product/model"
 	productrepository "pinshaoshao/internal/feature/product/repository"
 	shopmodel "pinshaoshao/internal/feature/shop/model"
 	shoprepository "pinshaoshao/internal/feature/shop/repository"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func TestDashboardRepositoryOverview(t *testing.T) {
@@ -49,11 +52,17 @@ func TestDashboardRepositoryOverview(t *testing.T) {
 		black := createTestSKU(t, ctx, skuRepository, onShelf.ID, map[string]string{"variant": "black"}, 1000)
 		setTestInventory(t, ctx, black.ID, 3, 0)
 		createTestSKU(t, ctx, skuRepository, onShelf.ID, map[string]string{"variant": "white"}, 2000)
-		if err := skuRepository.CreateProductSKU(ctx, testPool, &model.ProductSKU{
+		disabledSKU := &model.ProductSKU{
 			ProductID:  onShelf.ID,
 			Specs:      map[string]string{"variant": "disabled"},
 			PriceCents: 3000,
 			IsEnabled:  false,
+		}
+		if err := pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+			if err := skuRepository.CreateProductSKU(ctx, tx, disabledSKU); err != nil {
+				return err
+			}
+			return inventoryrepository.NewInventoryRepository(testPool).CreateEmptyForSKU(ctx, tx, disabledSKU.ID)
 		}); err != nil {
 			t.Fatalf("create disabled SKU: %v", err)
 		}
