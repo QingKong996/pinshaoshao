@@ -130,7 +130,7 @@ func createTestSKU(t *testing.T, ctx context.Context, skuRepository *productrepo
 		PriceCents: priceCents,
 		IsEnabled:  true,
 	}
-	if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
+	if err := skuRepository.CreateProductSKU(ctx, testPool, sku); err != nil {
 		t.Fatalf("create product sku: %v", err)
 	}
 	return sku

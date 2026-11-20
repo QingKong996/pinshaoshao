@@ -141,7 +141,7 @@ func insertCatalogSKU(t *testing.T, status productmodel.ProductStatus, enabled b
 		PriceCents: 1999,
 		IsEnabled:  enabled,
 	}
-	if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
+	if err := skuRepository.CreateProductSKU(ctx, testPool, sku); err != nil {
 		t.Fatalf("create sku: %v", err)
 	}
 	if _, err := testPool.Exec(ctx, `UPDATE inventory_items SET total_stock = $1 WHERE sku_id = $2`, totalStock, sku.ID); err != nil {

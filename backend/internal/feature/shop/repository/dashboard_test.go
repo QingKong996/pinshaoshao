@@ -49,7 +49,7 @@ func TestDashboardRepositoryOverview(t *testing.T) {
 		black := createTestSKU(t, ctx, skuRepository, onShelf.ID, map[string]string{"variant": "black"}, 1000)
 		setTestInventory(t, ctx, black.ID, 3, 0)
 		createTestSKU(t, ctx, skuRepository, onShelf.ID, map[string]string{"variant": "white"}, 2000)
-		if err := skuRepository.CreateProductSKU(ctx, &model.ProductSKU{
+		if err := skuRepository.CreateProductSKU(ctx, testPool, &model.ProductSKU{
 			ProductID:  onShelf.ID,
 			Specs:      map[string]string{"variant": "disabled"},
 			PriceCents: 3000,
