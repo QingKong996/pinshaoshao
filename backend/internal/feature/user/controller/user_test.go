@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"testing"
 
+	usermodule "pinshaoshao/internal/feature/user"
 	"pinshaoshao/internal/feature/user/apperr"
 	usercontroller "pinshaoshao/internal/feature/user/controller"
 	"pinshaoshao/internal/feature/user/mocks"
 	"pinshaoshao/internal/feature/user/model"
-	"pinshaoshao/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/mock/gomock"
@@ -31,7 +31,7 @@ func newUserLogoutRouter(t *testing.T, userController *usercontroller.UserContro
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.POST("/logout", middleware.UserAuth(stubUserAuthenticator{user: user}), userController.Logout)
+	r.POST("/logout", usermodule.AuthMiddleware(stubUserAuthenticator{user: user}), userController.Logout)
 	return r
 }
 

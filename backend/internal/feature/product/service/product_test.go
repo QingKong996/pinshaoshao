@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	inventoryapperr "pinshaoshao/internal/feature/inventory/apperr"
 	"pinshaoshao/internal/feature/product/apperr"
 	"pinshaoshao/internal/feature/product/mocks"
 	"pinshaoshao/internal/feature/product/model"
@@ -20,7 +21,12 @@ func newTestProductService(t *testing.T) (*service.ProductService, *mocks.MockPr
 	ctrl := gomock.NewController(t)
 	productRepository := mocks.NewMockProductRepository(ctrl)
 	categoryReader := mocks.NewMockProductCategoryReader(ctrl)
-	return service.NewProductService(productRepository, categoryReader), productRepository, categoryReader
+	return service.NewProductService(
+		productRepository,
+		categoryReader,
+		testInventoryLifecycle{},
+		testTransactor{},
+	), productRepository, categoryReader
 }
 
 func testProductSummary() *model.ProductSummary {
@@ -293,7 +299,8 @@ func TestDeleteProduct(t *testing.T) {
 	t.Run("deletes the product", func(t *testing.T) {
 		productService, productRepository, _ := newTestProductService(t)
 
-		productRepository.EXPECT().DeleteProduct(ctx, 1, 2).Return(nil)
+		productRepository.EXPECT().LockProduct(ctx, nil, 1, 2).Return(nil)
+		productRepository.EXPECT().DeleteProduct(ctx, nil, 1, 2).Return(nil)
 
 		if err := productService.Delete(ctx, 1, 2); err != nil {
 			t.Fatalf("delete product: %v", err)
@@ -304,10 +311,28 @@ func TestDeleteProduct(t *testing.T) {
 		productService, productRepository, _ := newTestProductService(t)
 
 		productRepository.EXPECT().
-			DeleteProduct(ctx, 1, 99).
+			LockProduct(ctx, nil, 1, 99).
 			Return(fmt.Errorf("product repository: %w", apperr.ErrProductNotFound))
 
 		err := productService.Delete(ctx, 1, 99)
 		requireErrorIs(t, err, apperr.ErrProductNotFound)
+	})
+
+	t.Run("rejects a product with inventory", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		productRepository := mocks.NewMockProductRepository(ctrl)
+		productService := service.NewProductService(
+			productRepository,
+			mocks.NewMockProductCategoryReader(ctrl),
+			testInventoryLifecycle{
+				deleteProductErr: fmt.Errorf("inventory: %w", inventoryapperr.ErrInventoryNotEmpty),
+			},
+			testTransactor{},
+		)
+
+		productRepository.EXPECT().LockProduct(ctx, nil, 1, 2).Return(nil)
+
+		err := productService.Delete(ctx, 1, 2)
+		requireErrorIs(t, err, apperr.ErrProductHasInventory)
 	})
 }

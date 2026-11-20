@@ -27,28 +27,22 @@ func NewProductSKURepository(pool *pgxpool.Pool) *ProductSKURepository {
 
 // CreateProductSKU inserts a SKU while holding the product row lock, so another
 // concurrent SKU creation cannot change the spec key set in between.
-func (r *ProductSKURepository) CreateProductSKU(ctx context.Context, sku *model.ProductSKU) error {
-	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
-		if err := lockProduct(ctx, tx, sku.ProductID); err != nil {
-			return err
-		}
+func (r *ProductSKURepository) CreateProductSKU(ctx context.Context, db database.DBTX, sku *model.ProductSKU) error {
+	if err := lockProduct(ctx, db, sku.ProductID); err != nil {
+		return fmt.Errorf("repository.CreateProductSKU: %w", err)
+	}
 
-		skus, err := listProductSKUs(ctx, tx, sku.ProductID)
-		if err != nil {
-			return fmt.Errorf("list product skus: %w", err)
-		}
-		for i := range skus {
-			if !hasSameSpecKeys(skus[i].Specs, sku.Specs) {
-				return apperr.ErrProductSKUSpecsMismatch
-			}
-		}
-
-		if err := insertProductSKU(ctx, tx, sku); err != nil {
-			return err
-		}
-		return insertInventoryItem(ctx, tx, sku.ID)
-	})
+	skus, err := listProductSKUs(ctx, db, sku.ProductID)
 	if err != nil {
+		return fmt.Errorf("repository.CreateProductSKU: %w", err)
+	}
+	for i := range skus {
+		if !hasSameSpecKeys(skus[i].Specs, sku.Specs) {
+			return fmt.Errorf("repository.CreateProductSKU: %w", apperr.ErrProductSKUSpecsMismatch)
+		}
+	}
+
+	if err := insertProductSKU(ctx, db, sku); err != nil {
 		return fmt.Errorf("repository.CreateProductSKU: %w", err)
 	}
 	return nil
@@ -94,41 +88,22 @@ func (r *ProductSKURepository) UpdateProductSKU(ctx context.Context, productID i
 	return sku, nil
 }
 
-// DeleteProductSKU deletes a SKU only when its inventory record is empty.
-func (r *ProductSKURepository) DeleteProductSKU(ctx context.Context, productID int, skuID int) error {
-	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
-		// Keep SKU deletion in the same product -> SKU -> inventory lock order as other SKU writes.
-		if err := lockProduct(ctx, tx, productID); err != nil {
-			return err
-		}
-
-		const lockQuery = `SELECT ii.total_stock, ii.frozen_stock
-FROM product_skus ps
-JOIN inventory_items ii ON ii.sku_id = ps.id
-WHERE ps.product_id = $1 AND ps.id = $2
-FOR UPDATE OF ps, ii`
-
-		var totalStock, frozenStock int
-		if err := tx.QueryRow(ctx, lockQuery, productID, skuID).Scan(&totalStock, &frozenStock); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return apperr.ErrProductSKUNotFound
-			}
-			return err
-		}
-		if totalStock > 0 || frozenStock > 0 {
-			return apperr.ErrProductSKUHasInventory
-		}
-
-		if _, err := tx.Exec(ctx, `DELETE FROM inventory_items WHERE sku_id = $1`, skuID); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `DELETE FROM product_skus WHERE product_id = $1 AND id = $2`, productID, skuID); err != nil {
-			return err
-		}
-		return nil
-	})
+// DeleteProductSKU deletes a SKU already locked through LockProduct.
+func (r *ProductSKURepository) DeleteProductSKU(ctx context.Context, db database.DBTX, productID int, skuID int) error {
+	tag, err := db.Exec(ctx, `DELETE FROM product_skus WHERE product_id = $1 AND id = $2`, productID, skuID)
 	if err != nil {
 		return fmt.Errorf("repository.DeleteProductSKU: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("repository.DeleteProductSKU: %w", apperr.ErrProductSKUNotFound)
+	}
+	return nil
+}
+
+// LockProduct locks a product before its SKUs or inventory rows are changed.
+func (r *ProductSKURepository) LockProduct(ctx context.Context, db database.DBTX, productID int) error {
+	if err := lockProduct(ctx, db, productID); err != nil {
+		return fmt.Errorf("repository.LockProduct: %w", err)
 	}
 	return nil
 }
@@ -196,13 +171,6 @@ func insertProductSKU(ctx context.Context, db database.DBTX, sku *model.ProductS
 			}
 		}
 		return err
-	}
-	return nil
-}
-
-func insertInventoryItem(ctx context.Context, db database.DBTX, skuID int) error {
-	if _, err := db.Exec(ctx, `INSERT INTO inventory_items (sku_id) VALUES ($1)`, skuID); err != nil {
-		return fmt.Errorf("insert inventory item: %w", err)
 	}
 	return nil
 }

@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"testing"
 
+	shopmodule "pinshaoshao/internal/feature/shop"
 	"pinshaoshao/internal/feature/shop/apperr"
 	shopcontroller "pinshaoshao/internal/feature/shop/controller"
 	"pinshaoshao/internal/feature/shop/dto"
 	"pinshaoshao/internal/feature/shop/mocks"
 	"pinshaoshao/internal/feature/shop/model"
-	"pinshaoshao/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/mock/gomock"
@@ -31,7 +31,7 @@ func newDashboardRouter(t *testing.T, dashboardController *shopcontroller.Dashbo
 
 	r := gin.New()
 	protected := r.Group("")
-	protected.Use(middleware.ShopAuth(stubShopAuthenticator{shop: shop}))
+	protected.Use(shopmodule.AuthMiddleware(stubShopAuthenticator{shop: shop}))
 	protected.GET("/dashboard", dashboardController.Overview)
 	return r
 }

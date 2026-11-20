@@ -29,3 +29,6 @@ PR使用Why(为什么修改),What(修改了什么),How(如何验证),Tests(测�
 
 ## 行为规范
 禁止顺手修复问题修改代码.
+
+## 架构规范
+使用DDD + Clean Architecture架构.

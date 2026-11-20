@@ -14,8 +14,8 @@ import (
 	"pinshaoshao/internal/feature/product/dto"
 	"pinshaoshao/internal/feature/product/mocks"
 	"pinshaoshao/internal/feature/product/model"
+	shopmodule "pinshaoshao/internal/feature/shop"
 	shopmodel "pinshaoshao/internal/feature/shop/model"
-	"pinshaoshao/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/mock/gomock"
@@ -35,7 +35,7 @@ func newCategoryRouter(t *testing.T, categoryController *controller.ProductCateg
 
 	r := gin.New()
 	protected := r.Group("")
-	protected.Use(middleware.ShopAuth(stubShopAuthenticator{shop: shop}))
+	protected.Use(shopmodule.AuthMiddleware(stubShopAuthenticator{shop: shop}))
 	protected.GET("/categories", categoryController.List)
 	protected.POST("/categories", categoryController.Create)
 	protected.PATCH("/categories/:categoryID", categoryController.Update)

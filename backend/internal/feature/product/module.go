@@ -1,6 +1,8 @@
 package product
 
 import (
+	"pinshaoshao/internal/database"
+	inventoryfeature "pinshaoshao/internal/feature/inventory"
 	productcontroller "pinshaoshao/internal/feature/product/controller"
 	productrepository "pinshaoshao/internal/feature/product/repository"
 	productservice "pinshaoshao/internal/feature/product/service"
@@ -17,20 +19,21 @@ type Module struct {
 }
 
 // NewModule builds the product feature from its dependencies.
-func NewModule(pool *pgxpool.Pool) *Module {
+func NewModule(pool *pgxpool.Pool, inventoryLifecycle inventoryfeature.Lifecycle) *Module {
 	productRepository := productrepository.NewProductRepository(pool)
 	categoryRepository := productrepository.NewProductCategoryRepository(pool)
 	skuRepository := productrepository.NewProductSKURepository(pool)
+	transactor := database.NewTransactor(pool)
 
 	return &Module{
 		categoryController: productcontroller.NewProductCategoryController(
 			productservice.NewProductCategoryService(categoryRepository),
 		),
 		productController: productcontroller.NewProductController(
-			productservice.NewProductService(productRepository, categoryRepository),
+			productservice.NewProductService(productRepository, categoryRepository, inventoryLifecycle, transactor),
 		),
 		skuController: productcontroller.NewProductSKUController(
-			productservice.NewProductSKUService(productRepository, skuRepository),
+			productservice.NewProductSKUService(productRepository, skuRepository, inventoryLifecycle, transactor),
 		),
 	}
 }

@@ -28,7 +28,7 @@ func TestProductSKURepository(t *testing.T) {
 			PriceCents: 1999,
 			IsEnabled:  true,
 		}
-		if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
+		if err := createProductSKU(ctx, skuRepository, sku); err != nil {
 			t.Fatalf("create product sku: %v", err)
 		}
 		if sku.ID == 0 {
@@ -75,7 +75,7 @@ func TestProductSKURepository(t *testing.T) {
 		for productID, specs := range specsByProduct {
 			for _, spec := range specs {
 				sku := &model.ProductSKU{ProductID: productID, Specs: spec}
-				if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
+				if err := createProductSKU(ctx, skuRepository, sku); err != nil {
 					t.Fatalf("create product sku: %v", err)
 				}
 			}
@@ -101,18 +101,18 @@ func TestProductSKURepository(t *testing.T) {
 		product := insertProduct(t, shop.ID)
 		specs := map[string]string{"color": "black"}
 
-		if err := skuRepository.CreateProductSKU(ctx, &model.ProductSKU{ProductID: product.ID, Specs: specs}); err != nil {
+		if err := createProductSKU(ctx, skuRepository, &model.ProductSKU{ProductID: product.ID, Specs: specs}); err != nil {
 			t.Fatalf("create product sku: %v", err)
 		}
 
-		err := skuRepository.CreateProductSKU(ctx, &model.ProductSKU{ProductID: product.ID, Specs: specs})
+		err := createProductSKU(ctx, skuRepository, &model.ProductSKU{ProductID: product.ID, Specs: specs})
 		requireErrorIs(t, err, apperr.ErrProductSKUAlreadyExists)
 	})
 
 	t.Run("rejects an unknown product", func(t *testing.T) {
 		resetDatabase(t)
 
-		err := skuRepository.CreateProductSKU(ctx, &model.ProductSKU{
+		err := createProductSKU(ctx, skuRepository, &model.ProductSKU{
 			ProductID: 404,
 			Specs:     map[string]string{"color": "black"},
 		})
@@ -124,14 +124,14 @@ func TestProductSKURepository(t *testing.T) {
 		shop := insertShop(t)
 		product := insertProduct(t, shop.ID)
 
-		if err := skuRepository.CreateProductSKU(ctx, &model.ProductSKU{
+		if err := createProductSKU(ctx, skuRepository, &model.ProductSKU{
 			ProductID: product.ID,
 			Specs:     map[string]string{"color": "black"},
 		}); err != nil {
 			t.Fatalf("create product sku: %v", err)
 		}
 
-		err := skuRepository.CreateProductSKU(ctx, &model.ProductSKU{
+		err := createProductSKU(ctx, skuRepository, &model.ProductSKU{
 			ProductID: product.ID,
 			Specs:     map[string]string{"size": "M"},
 		})
@@ -153,7 +153,7 @@ func TestProductSKURepository(t *testing.T) {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
-				errs[i] = skuRepository.CreateProductSKU(ctx, &model.ProductSKU{
+				errs[i] = createProductSKU(ctx, skuRepository, &model.ProductSKU{
 					ProductID: product.ID,
 					Specs:     specs[i],
 				})
@@ -253,7 +253,7 @@ func TestProductSKUUpdateAndDelete(t *testing.T) {
 		product := insertProduct(t, shop.ID)
 		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999)
 
-		if err := skuRepository.DeleteProductSKU(ctx, product.ID, sku.ID); err != nil {
+		if err := deleteProductSKU(ctx, skuRepository, product.ID, sku.ID); err != nil {
 			t.Fatalf("delete product sku: %v", err)
 		}
 		skus, err := skuRepository.ListProductSKUsByProductID(ctx, product.ID)
@@ -265,34 +265,12 @@ func TestProductSKUUpdateAndDelete(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects deleting a sku with inventory", func(t *testing.T) {
-		resetDatabase(t)
-		shop := insertShop(t)
-		product := insertProduct(t, shop.ID)
-		sku := createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999)
-
-		if _, err := testPool.Exec(ctx, `UPDATE inventory_items SET total_stock = 3 WHERE sku_id = $1`, sku.ID); err != nil {
-			t.Fatalf("set inventory: %v", err)
-		}
-
-		err := skuRepository.DeleteProductSKU(ctx, product.ID, sku.ID)
-		requireErrorIs(t, err, apperr.ErrProductSKUHasInventory)
-
-		skus, err := skuRepository.ListProductSKUsByProductID(ctx, product.ID)
-		if err != nil {
-			t.Fatalf("list product skus: %v", err)
-		}
-		if len(skus) != 1 {
-			t.Fatalf("product sku count = %d, want 1", len(skus))
-		}
-	})
-
 	t.Run("rejects deleting an unknown sku", func(t *testing.T) {
 		resetDatabase(t)
 		shop := insertShop(t)
 		product := insertProduct(t, shop.ID)
 
-		requireErrorIs(t, skuRepository.DeleteProductSKU(ctx, product.ID, 404), apperr.ErrProductSKUNotFound)
+		requireErrorIs(t, skuRepository.DeleteProductSKU(ctx, testPool, product.ID, 404), apperr.ErrProductSKUNotFound)
 	})
 }
 
@@ -305,7 +283,7 @@ func createTestSKU(t *testing.T, ctx context.Context, skuRepository *repository.
 		PriceCents: priceCents,
 		IsEnabled:  true,
 	}
-	if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
+	if err := createProductSKU(ctx, skuRepository, sku); err != nil {
 		t.Fatalf("create product sku: %v", err)
 	}
 	return sku

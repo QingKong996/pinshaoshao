@@ -82,6 +82,76 @@ WHERE sku_id = $2`
 	return item, nil
 }
 
+// CreateEmptyForSKU inserts the inventory row owned by a newly created SKU.
+func (r *InventoryRepository) CreateEmptyForSKU(ctx context.Context, db database.DBTX, skuID int) error {
+	if _, err := db.Exec(ctx, `INSERT INTO inventory_items (sku_id) VALUES ($1)`, skuID); err != nil {
+		return fmt.Errorf("repository.CreateEmptyForSKU: %w", err)
+	}
+	return nil
+}
+
+// DeleteEmptyForSKU removes an empty inventory row after verifying its product.
+func (r *InventoryRepository) DeleteEmptyForSKU(ctx context.Context, db database.DBTX, productID int, skuID int) error {
+	const lockQuery = `SELECT ii.total_stock, ii.frozen_stock
+FROM inventory_items ii
+JOIN product_skus ps ON ps.id = ii.sku_id
+WHERE ps.product_id = $1 AND ii.sku_id = $2
+FOR UPDATE OF ii`
+
+	var totalStock, frozenStock int
+	if err := db.QueryRow(ctx, lockQuery, productID, skuID).Scan(&totalStock, &frozenStock); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("repository.DeleteEmptyForSKU: %w", apperr.ErrInventoryItemNotFound)
+		}
+		return fmt.Errorf("repository.DeleteEmptyForSKU: %w", err)
+	}
+	if totalStock > 0 || frozenStock > 0 {
+		return fmt.Errorf("repository.DeleteEmptyForSKU: %w", apperr.ErrInventoryNotEmpty)
+	}
+
+	if _, err := db.Exec(ctx, `DELETE FROM inventory_items WHERE sku_id = $1`, skuID); err != nil {
+		return fmt.Errorf("repository.DeleteEmptyForSKU: %w", err)
+	}
+	return nil
+}
+
+// DeleteEmptyForProduct removes all empty inventory rows of a product.
+func (r *InventoryRepository) DeleteEmptyForProduct(ctx context.Context, db database.DBTX, productID int) error {
+	const lockQuery = `SELECT ii.sku_id, ii.total_stock, ii.frozen_stock
+FROM inventory_items ii
+JOIN product_skus ps ON ps.id = ii.sku_id
+WHERE ps.product_id = $1
+ORDER BY ii.sku_id
+FOR UPDATE OF ii`
+
+	rows, err := db.Query(ctx, lockQuery, productID)
+	if err != nil {
+		return fmt.Errorf("repository.DeleteEmptyForProduct: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var skuID, totalStock, frozenStock int
+		if err := rows.Scan(&skuID, &totalStock, &frozenStock); err != nil {
+			return fmt.Errorf("repository.DeleteEmptyForProduct: %w", err)
+		}
+		if totalStock > 0 || frozenStock > 0 {
+			return fmt.Errorf("repository.DeleteEmptyForProduct: %w", apperr.ErrInventoryNotEmpty)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("repository.DeleteEmptyForProduct: %w", err)
+	}
+	rows.Close()
+
+	const deleteQuery = `DELETE FROM inventory_items
+WHERE sku_id IN (SELECT id FROM product_skus WHERE product_id = $1)`
+	if _, err := db.Exec(ctx, deleteQuery, productID); err != nil {
+		return fmt.Errorf("repository.DeleteEmptyForProduct: %w", err)
+	}
+	return nil
+}
+
 func queryInventory(ctx context.Context, db database.DBTX, query string, args ...any) ([]model.InventoryItem, error) {
 	rows, err := db.Query(ctx, query, args...)
 	if err != nil {

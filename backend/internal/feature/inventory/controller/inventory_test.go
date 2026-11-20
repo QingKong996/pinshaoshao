@@ -12,8 +12,8 @@ import (
 	"pinshaoshao/internal/feature/inventory/dto"
 	"pinshaoshao/internal/feature/inventory/mocks"
 	"pinshaoshao/internal/feature/inventory/model"
+	shopmodule "pinshaoshao/internal/feature/shop"
 	shopmodel "pinshaoshao/internal/feature/shop/model"
-	"pinshaoshao/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/mock/gomock"
@@ -33,7 +33,7 @@ func newInventoryRouter(t *testing.T, inventoryController *controller.InventoryC
 
 	r := gin.New()
 	protected := r.Group("")
-	protected.Use(middleware.ShopAuth(stubShopAuthenticator{shop: shop}))
+	protected.Use(shopmodule.AuthMiddleware(stubShopAuthenticator{shop: shop}))
 	protected.GET("/inventory", inventoryController.List)
 	protected.PATCH("/inventory/:skuID", inventoryController.Update)
 	return r

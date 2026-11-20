@@ -11,6 +11,7 @@ package mocks
 
 import (
 	context "context"
+	database "pinshaoshao/internal/database"
 	model "pinshaoshao/internal/feature/product/model"
 	reflect "reflect"
 
@@ -56,17 +57,17 @@ func (mr *MockProductRepositoryMockRecorder) CreateProduct(ctx, product any) *go
 }
 
 // DeleteProduct mocks base method.
-func (m *MockProductRepository) DeleteProduct(ctx context.Context, shopID, productID int) error {
+func (m *MockProductRepository) DeleteProduct(ctx context.Context, db database.DBTX, shopID, productID int) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteProduct", ctx, shopID, productID)
+	ret := m.ctrl.Call(m, "DeleteProduct", ctx, db, shopID, productID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteProduct indicates an expected call of DeleteProduct.
-func (mr *MockProductRepositoryMockRecorder) DeleteProduct(ctx, shopID, productID any) *gomock.Call {
+func (mr *MockProductRepositoryMockRecorder) DeleteProduct(ctx, db, shopID, productID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteProduct", reflect.TypeOf((*MockProductRepository)(nil).DeleteProduct), ctx, shopID, productID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteProduct", reflect.TypeOf((*MockProductRepository)(nil).DeleteProduct), ctx, db, shopID, productID)
 }
 
 // GetProductSummaryByID mocks base method.
@@ -97,6 +98,20 @@ func (m *MockProductRepository) ListProductSummaries(ctx context.Context, shopID
 func (mr *MockProductRepositoryMockRecorder) ListProductSummaries(ctx, shopID, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProductSummaries", reflect.TypeOf((*MockProductRepository)(nil).ListProductSummaries), ctx, shopID, filter)
+}
+
+// LockProduct mocks base method.
+func (m *MockProductRepository) LockProduct(ctx context.Context, db database.DBTX, shopID, productID int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockProduct", ctx, db, shopID, productID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// LockProduct indicates an expected call of LockProduct.
+func (mr *MockProductRepositoryMockRecorder) LockProduct(ctx, db, shopID, productID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockProduct", reflect.TypeOf((*MockProductRepository)(nil).LockProduct), ctx, db, shopID, productID)
 }
 
 // UpdateProduct mocks base method.

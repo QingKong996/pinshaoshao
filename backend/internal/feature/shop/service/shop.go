@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"pinshaoshao/internal/feature/shared/security"
 	"pinshaoshao/internal/feature/shop/apperr"
 	"pinshaoshao/internal/feature/shop/model"
+	"pinshaoshao/internal/security"
 )
 
 type RegisterShopInput struct {

@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"testing"
 
-	"pinshaoshao/internal/feature/shared/security"
 	"pinshaoshao/internal/feature/user/apperr"
 	"pinshaoshao/internal/feature/user/mocks"
 	"pinshaoshao/internal/feature/user/model"
 	userservice "pinshaoshao/internal/feature/user/service"
+	"pinshaoshao/internal/security"
 
 	"go.uber.org/mock/gomock"
 )

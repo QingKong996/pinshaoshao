@@ -4,10 +4,10 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"pinshaoshao/internal/feature/shared/authctx"
 	"pinshaoshao/internal/feature/shop/apperr"
 	"pinshaoshao/internal/feature/shop/dto"
 	"pinshaoshao/internal/feature/shop/model"
+	"pinshaoshao/internal/http/authctx"
 
 	"github.com/gin-gonic/gin"
 )

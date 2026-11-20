@@ -9,7 +9,7 @@ import (
 	"pinshaoshao/internal/feature/inventory/dto"
 	"pinshaoshao/internal/feature/inventory/model"
 	"pinshaoshao/internal/feature/inventory/service"
-	"pinshaoshao/internal/feature/shared/authctx"
+	"pinshaoshao/internal/http/authctx"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

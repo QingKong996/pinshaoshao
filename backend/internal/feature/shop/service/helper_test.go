@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"pinshaoshao/internal/feature/shared/security"
+	"pinshaoshao/internal/security"
 )
 
 func mustHashPassword(t *testing.T, password string) string {
