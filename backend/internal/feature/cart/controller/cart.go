@@ -8,7 +8,7 @@ import (
 	"pinshaoshao/internal/feature/cart/apperr"
 	"pinshaoshao/internal/feature/cart/dto"
 	"pinshaoshao/internal/feature/cart/model"
-	"pinshaoshao/internal/feature/shared/authctx"
+	"pinshaoshao/internal/http/authctx"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

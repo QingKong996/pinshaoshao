@@ -33,9 +33,9 @@ func NewModule(pool *pgxpool.Pool) *Module {
 	}
 }
 
-// Authenticator returns the session authenticator used by authentication middleware.
-func (m *Module) Authenticator() SessionAuthenticator {
-	return m.service
+// AuthMiddleware protects user routes with the module's session authenticator.
+func (m *Module) AuthMiddleware() gin.HandlerFunc {
+	return AuthMiddleware(m.service)
 }
 
 // Register mounts the user routes on the engine.

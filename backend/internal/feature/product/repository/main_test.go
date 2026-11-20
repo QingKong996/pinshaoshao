@@ -11,11 +11,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	inventoryrepository "pinshaoshao/internal/feature/inventory/repository"
 	"pinshaoshao/internal/feature/product/model"
 	productrepository "pinshaoshao/internal/feature/product/repository"
 	shopmodel "pinshaoshao/internal/feature/shop/model"
 	shoprepository "pinshaoshao/internal/feature/shop/repository"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -133,4 +135,37 @@ func insertProduct(t *testing.T, shopID int) *model.Product {
 		t.Fatalf("create product: %v", err)
 	}
 	return product
+}
+
+func createProductSKU(ctx context.Context, skuRepository *productrepository.ProductSKURepository, sku *model.ProductSKU) error {
+	return pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+		if err := skuRepository.CreateProductSKU(ctx, tx, sku); err != nil {
+			return err
+		}
+		return inventoryrepository.NewInventoryRepository(testPool).CreateEmptyForSKU(ctx, tx, sku.ID)
+	})
+}
+
+func deleteProductSKU(ctx context.Context, skuRepository *productrepository.ProductSKURepository, productID int, skuID int) error {
+	return pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+		if err := skuRepository.LockProduct(ctx, tx, productID); err != nil {
+			return err
+		}
+		if err := inventoryrepository.NewInventoryRepository(testPool).DeleteEmptyForSKU(ctx, tx, productID, skuID); err != nil {
+			return err
+		}
+		return skuRepository.DeleteProductSKU(ctx, tx, productID, skuID)
+	})
+}
+
+func deleteProduct(ctx context.Context, productRepository *productrepository.ProductRepository, shopID int, productID int) error {
+	return pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+		if err := productRepository.LockProduct(ctx, tx, shopID, productID); err != nil {
+			return err
+		}
+		if err := inventoryrepository.NewInventoryRepository(testPool).DeleteEmptyForProduct(ctx, tx, productID); err != nil {
+			return err
+		}
+		return productRepository.DeleteProduct(ctx, tx, shopID, productID)
+	})
 }

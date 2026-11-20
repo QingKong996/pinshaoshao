@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"pinshaoshao/internal/feature/shared/security"
+	"pinshaoshao/internal/security"
 )
 
 func TestPasswordHashing(t *testing.T) {

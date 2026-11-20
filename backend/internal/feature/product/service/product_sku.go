@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"pinshaoshao/internal/database"
+	"pinshaoshao/internal/feature/inventory"
+	inventoryapperr "pinshaoshao/internal/feature/inventory/apperr"
 	"pinshaoshao/internal/feature/product/apperr"
 	"pinshaoshao/internal/feature/product/model"
 	"strings"
@@ -29,21 +32,31 @@ type ProductReader interface {
 
 // ProductSKURepository is the persistence the SKU service depends on.
 type ProductSKURepository interface {
-	CreateProductSKU(ctx context.Context, sku *model.ProductSKU) error
+	CreateProductSKU(ctx context.Context, db database.DBTX, sku *model.ProductSKU) error
 	ListProductSKUsByProductID(ctx context.Context, productID int) ([]model.ProductSKU, error)
 	UpdateProductSKU(ctx context.Context, productID int, skuID int, update *model.ProductSKUUpdate) (*model.ProductSKU, error)
-	DeleteProductSKU(ctx context.Context, productID int, skuID int) error
+	LockProduct(ctx context.Context, db database.DBTX, productID int) error
+	DeleteProductSKU(ctx context.Context, db database.DBTX, productID int, skuID int) error
 }
 
 type ProductSKUService struct {
 	productRepository ProductReader
 	skuRepository     ProductSKURepository
+	inventory         inventory.Lifecycle
+	transactor        Transactor
 }
 
-func NewProductSKUService(productRepository ProductReader, skuRepository ProductSKURepository) *ProductSKUService {
+func NewProductSKUService(
+	productRepository ProductReader,
+	skuRepository ProductSKURepository,
+	inventoryLifecycle inventory.Lifecycle,
+	transactor Transactor,
+) *ProductSKUService {
 	return &ProductSKUService{
 		productRepository: productRepository,
 		skuRepository:     skuRepository,
+		inventory:         inventoryLifecycle,
+		transactor:        transactor,
 	}
 }
 
@@ -70,7 +83,13 @@ func (s *ProductSKUService) Create(ctx context.Context, shopID int, productID in
 		IsEnabled:  isEnabled,
 	}
 
-	if err := s.skuRepository.CreateProductSKU(ctx, sku); err != nil {
+	err = s.transactor.WithinTx(ctx, func(ctx context.Context, db database.DBTX) error {
+		if err := s.skuRepository.CreateProductSKU(ctx, db, sku); err != nil {
+			return err
+		}
+		return s.inventory.CreateEmptyForSKU(ctx, db, sku.ID)
+	})
+	if err != nil {
 		return nil, fmt.Errorf("service.CreateProductSKU: %w", err)
 	}
 	return sku, nil
@@ -121,7 +140,23 @@ func (s *ProductSKUService) Delete(ctx context.Context, shopID int, productID in
 		return fmt.Errorf("service.DeleteProductSKU: %w", err)
 	}
 
-	if err := s.skuRepository.DeleteProductSKU(ctx, productID, skuID); err != nil {
+	err := s.transactor.WithinTx(ctx, func(ctx context.Context, db database.DBTX) error {
+		if err := s.skuRepository.LockProduct(ctx, db, productID); err != nil {
+			return err
+		}
+		if err := s.inventory.DeleteEmptyForSKU(ctx, db, productID, skuID); err != nil {
+			switch {
+			case errors.Is(err, inventoryapperr.ErrInventoryNotEmpty):
+				return apperr.ErrProductSKUHasInventory
+			case errors.Is(err, inventoryapperr.ErrInventoryItemNotFound):
+				return apperr.ErrProductSKUNotFound
+			default:
+				return err
+			}
+		}
+		return s.skuRepository.DeleteProductSKU(ctx, db, productID, skuID)
+	})
+	if err != nil {
 		return fmt.Errorf("service.DeleteProductSKU: %w", err)
 	}
 	return nil

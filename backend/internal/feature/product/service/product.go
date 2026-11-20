@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"pinshaoshao/internal/database"
+	"pinshaoshao/internal/feature/inventory"
+	inventoryapperr "pinshaoshao/internal/feature/inventory/apperr"
 	"pinshaoshao/internal/feature/product/apperr"
 	"pinshaoshao/internal/feature/product/model"
 	"strings"
@@ -35,7 +38,8 @@ type ProductRepository interface {
 	GetProductSummaryByID(ctx context.Context, shopID int, productID int) (*model.ProductSummary, error)
 	ListProductSummaries(ctx context.Context, shopID int, filter model.ProductListFilter) (*model.ProductListResult, error)
 	UpdateProduct(ctx context.Context, product *model.Product) error
-	DeleteProduct(ctx context.Context, shopID int, productID int) error
+	LockProduct(ctx context.Context, db database.DBTX, shopID int, productID int) error
+	DeleteProduct(ctx context.Context, db database.DBTX, shopID int, productID int) error
 }
 
 // ProductCategoryReader is the category lookup the product service depends on.
@@ -46,12 +50,21 @@ type ProductCategoryReader interface {
 type ProductService struct {
 	productRepository ProductRepository
 	categoryReader    ProductCategoryReader
+	inventory         inventory.Lifecycle
+	transactor        Transactor
 }
 
-func NewProductService(productRepository ProductRepository, categoryReader ProductCategoryReader) *ProductService {
+func NewProductService(
+	productRepository ProductRepository,
+	categoryReader ProductCategoryReader,
+	inventoryLifecycle inventory.Lifecycle,
+	transactor Transactor,
+) *ProductService {
 	return &ProductService{
 		productRepository: productRepository,
 		categoryReader:    categoryReader,
+		inventory:         inventoryLifecycle,
+		transactor:        transactor,
 	}
 }
 
@@ -141,7 +154,19 @@ func (s *ProductService) Update(ctx context.Context, shopID int, productID int, 
 
 // Delete removes a product of the shop; its SKUs are removed with it.
 func (s *ProductService) Delete(ctx context.Context, shopID int, productID int) error {
-	if err := s.productRepository.DeleteProduct(ctx, shopID, productID); err != nil {
+	err := s.transactor.WithinTx(ctx, func(ctx context.Context, db database.DBTX) error {
+		if err := s.productRepository.LockProduct(ctx, db, shopID, productID); err != nil {
+			return err
+		}
+		if err := s.inventory.DeleteEmptyForProduct(ctx, db, productID); err != nil {
+			if errors.Is(err, inventoryapperr.ErrInventoryNotEmpty) {
+				return apperr.ErrProductHasInventory
+			}
+			return err
+		}
+		return s.productRepository.DeleteProduct(ctx, db, shopID, productID)
+	})
+	if err != nil {
 		return fmt.Errorf("service.DeleteProduct: %w", err)
 	}
 	return nil

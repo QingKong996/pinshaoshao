@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
+	shopmodule "pinshaoshao/internal/feature/shop"
 	"pinshaoshao/internal/feature/shop/apperr"
 	shopcontroller "pinshaoshao/internal/feature/shop/controller"
 	"pinshaoshao/internal/feature/shop/dto"
 	"pinshaoshao/internal/feature/shop/mocks"
 	"pinshaoshao/internal/feature/shop/model"
 	shopservice "pinshaoshao/internal/feature/shop/service"
-	"pinshaoshao/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/mock/gomock"
@@ -39,7 +39,7 @@ func newShopLogoutRouter(t *testing.T, shopController *shopcontroller.ShopContro
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.POST("/logout", middleware.ShopAuth(stubShopAuthenticator{shop: shop}), shopController.Logout)
+	r.POST("/logout", shopmodule.AuthMiddleware(stubShopAuthenticator{shop: shop}), shopController.Logout)
 	return r
 }
 
@@ -50,7 +50,7 @@ func newShopProfileRouter(t *testing.T, shopController *shopcontroller.ShopContr
 
 	r := gin.New()
 	protected := r.Group("")
-	protected.Use(middleware.ShopAuth(stubShopAuthenticator{shop: shop}))
+	protected.Use(shopmodule.AuthMiddleware(stubShopAuthenticator{shop: shop}))
 	protected.GET("/shop", shopController.GetProfile)
 	protected.PATCH("/shop", shopController.UpdateProfile)
 	return r

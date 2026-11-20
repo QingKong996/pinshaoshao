@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"pinshaoshao/internal/database"
+	inventoryapperr "pinshaoshao/internal/feature/inventory/apperr"
 	"pinshaoshao/internal/feature/product/apperr"
 	"pinshaoshao/internal/feature/product/mocks"
 	"pinshaoshao/internal/feature/product/model"
@@ -22,7 +24,12 @@ func newTestProductSKUService(t *testing.T) (*service.ProductSKUService, *mocks.
 	ctrl := gomock.NewController(t)
 	productReader := mocks.NewMockProductReader(ctrl)
 	skuRepository := mocks.NewMockProductSKURepository(ctrl)
-	return service.NewProductSKUService(productReader, skuRepository), productReader, skuRepository
+	return service.NewProductSKUService(
+		productReader,
+		skuRepository,
+		testInventoryLifecycle{},
+		testTransactor{},
+	), productReader, skuRepository
 }
 
 func TestCreateProductSKU(t *testing.T) {
@@ -32,7 +39,7 @@ func TestCreateProductSKU(t *testing.T) {
 		skuService, productReader, skuRepository := newTestProductSKUService(t)
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
-		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, sku *model.ProductSKU) error {
+		skuRepository.EXPECT().CreateProductSKU(ctx, nil, gomock.Any()).DoAndReturn(func(_ context.Context, _ database.DBTX, sku *model.ProductSKU) error {
 			sku.ID = 1
 			return nil
 		})
@@ -63,7 +70,7 @@ func TestCreateProductSKU(t *testing.T) {
 		disabled := false
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
-		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).Return(nil)
+		skuRepository.EXPECT().CreateProductSKU(ctx, nil, gomock.Any()).Return(nil)
 
 		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
 			Specs:     map[string]string{"color": "black"},
@@ -81,7 +88,7 @@ func TestCreateProductSKU(t *testing.T) {
 		skuService, productReader, skuRepository := newTestProductSKUService(t)
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
-		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).Return(nil)
+		skuRepository.EXPECT().CreateProductSKU(ctx, nil, gomock.Any()).Return(nil)
 
 		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{})
 		if err != nil {
@@ -99,7 +106,7 @@ func TestCreateProductSKU(t *testing.T) {
 		skuService, productReader, skuRepository := newTestProductSKUService(t)
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
-		skuRepository.EXPECT().CreateProductSKU(ctx, gomock.Any()).Return(nil)
+		skuRepository.EXPECT().CreateProductSKU(ctx, nil, gomock.Any()).Return(nil)
 
 		sku, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
 			Specs: map[string]string{" color ": " black "},
@@ -168,7 +175,7 @@ func TestCreateProductSKU(t *testing.T) {
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
 		skuRepository.EXPECT().
-			CreateProductSKU(ctx, gomock.Any()).
+			CreateProductSKU(ctx, nil, gomock.Any()).
 			Return(fmt.Errorf("sku repository: %w", apperr.ErrProductSKUAlreadyExists))
 
 		_, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
@@ -183,7 +190,7 @@ func TestCreateProductSKU(t *testing.T) {
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
 		skuRepository.EXPECT().
-			CreateProductSKU(ctx, gomock.Any()).
+			CreateProductSKU(ctx, nil, gomock.Any()).
 			Return(fmt.Errorf("sku repository: %w", apperr.ErrProductSKUSpecsMismatch))
 
 		_, err := skuService.Create(ctx, testProduct.ShopID, 1, service.CreateProductSKUInput{
@@ -416,7 +423,8 @@ func TestDeleteProductSKU(t *testing.T) {
 		skuService, productReader, skuRepository := newTestProductSKUService(t)
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
-		skuRepository.EXPECT().DeleteProductSKU(ctx, 1, 5).Return(nil)
+		skuRepository.EXPECT().LockProduct(ctx, nil, 1).Return(nil)
+		skuRepository.EXPECT().DeleteProductSKU(ctx, nil, 1, 5).Return(nil)
 
 		if err := skuService.Delete(ctx, testProduct.ShopID, 1, 5); err != nil {
 			t.Fatalf("delete sku: %v", err)
@@ -448,11 +456,32 @@ func TestDeleteProductSKU(t *testing.T) {
 		skuService, productReader, skuRepository := newTestProductSKUService(t)
 
 		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
+		skuRepository.EXPECT().LockProduct(ctx, nil, 1).Return(nil)
 		skuRepository.EXPECT().
-			DeleteProductSKU(ctx, 1, 99).
+			DeleteProductSKU(ctx, nil, 1, 99).
 			Return(fmt.Errorf("sku repository: %w", apperr.ErrProductSKUNotFound))
 
 		err := skuService.Delete(ctx, testProduct.ShopID, 1, 99)
 		requireErrorIs(t, err, apperr.ErrProductSKUNotFound)
+	})
+
+	t.Run("rejects a SKU with inventory", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		productReader := mocks.NewMockProductReader(ctrl)
+		skuRepository := mocks.NewMockProductSKURepository(ctrl)
+		skuService := service.NewProductSKUService(
+			productReader,
+			skuRepository,
+			testInventoryLifecycle{
+				deleteSKUErr: fmt.Errorf("inventory: %w", inventoryapperr.ErrInventoryNotEmpty),
+			},
+			testTransactor{},
+		)
+
+		productReader.EXPECT().GetProductByID(ctx, 1).Return(testProduct, nil)
+		skuRepository.EXPECT().LockProduct(ctx, nil, 1).Return(nil)
+
+		err := skuService.Delete(ctx, testProduct.ShopID, 1, 5)
+		requireErrorIs(t, err, apperr.ErrProductSKUHasInventory)
 	})
 }

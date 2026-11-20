@@ -12,14 +12,13 @@ import (
 	cartmodule "pinshaoshao/internal/feature/cart"
 	inventorymodule "pinshaoshao/internal/feature/inventory"
 	productmodule "pinshaoshao/internal/feature/product"
-	"pinshaoshao/internal/feature/shared/httpx"
 	shopmodule "pinshaoshao/internal/feature/shop"
 	shopapperr "pinshaoshao/internal/feature/shop/apperr"
 	shopmodel "pinshaoshao/internal/feature/shop/model"
 	usermodule "pinshaoshao/internal/feature/user"
 	userapperr "pinshaoshao/internal/feature/user/apperr"
 	usermodel "pinshaoshao/internal/feature/user/model"
-	"pinshaoshao/internal/middleware"
+	"pinshaoshao/internal/http/httpx"
 	"pinshaoshao/internal/router"
 
 	"github.com/gin-gonic/gin"
@@ -79,15 +78,16 @@ var routeCases = []routeCase{
 func newTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
+	inventoryModule := inventorymodule.NewModule(nil)
 	r := gin.New()
 	router.Register(r, router.Modules{
 		User:      usermodule.NewModule(nil),
 		Shop:      shopmodule.NewModule(nil),
-		Product:   productmodule.NewModule(nil),
-		Inventory: inventorymodule.NewModule(nil),
+		Product:   productmodule.NewModule(nil, inventoryModule.Lifecycle()),
+		Inventory: inventoryModule,
 		Cart:      cartmodule.NewModule(nil),
-		UserAuth:  middleware.UserAuth(invalidUserSession{}),
-		ShopAuth:  middleware.ShopAuth(invalidShopSession{}),
+		UserAuth:  usermodule.AuthMiddleware(invalidUserSession{}),
+		ShopAuth:  shopmodule.AuthMiddleware(invalidShopSession{}),
 	})
 	return r
 }

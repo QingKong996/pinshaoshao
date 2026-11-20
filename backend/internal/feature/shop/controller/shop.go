@@ -5,12 +5,12 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"pinshaoshao/internal/feature/shared/authctx"
-	"pinshaoshao/internal/feature/shared/httpx"
 	"pinshaoshao/internal/feature/shop/apperr"
 	"pinshaoshao/internal/feature/shop/dto"
 	"pinshaoshao/internal/feature/shop/model"
 	shopservice "pinshaoshao/internal/feature/shop/service"
+	"pinshaoshao/internal/http/authctx"
+	"pinshaoshao/internal/http/httpx"
 
 	"github.com/gin-gonic/gin"
 )

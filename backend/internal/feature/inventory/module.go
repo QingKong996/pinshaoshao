@@ -12,6 +12,7 @@ import (
 // Module wires the inventory feature and owns its routes.
 type Module struct {
 	controller *inventorycontroller.InventoryController
+	lifecycle  Lifecycle
 }
 
 // NewModule builds the inventory feature from its dependencies.
@@ -20,7 +21,13 @@ func NewModule(pool *pgxpool.Pool) *Module {
 	inventoryService := inventoryservice.NewInventoryService(inventoryRepository)
 	return &Module{
 		controller: inventorycontroller.NewInventoryController(inventoryService),
+		lifecycle:  inventoryRepository,
 	}
+}
+
+// Lifecycle returns the inventory operations used by catalog writes.
+func (m *Module) Lifecycle() Lifecycle {
+	return m.lifecycle
 }
 
 // Register mounts the inventory routes on the engine.

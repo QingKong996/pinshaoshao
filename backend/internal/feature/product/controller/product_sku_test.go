@@ -13,8 +13,8 @@ import (
 	"pinshaoshao/internal/feature/product/dto"
 	"pinshaoshao/internal/feature/product/mocks"
 	"pinshaoshao/internal/feature/product/model"
+	shopmodule "pinshaoshao/internal/feature/shop"
 	shopmodel "pinshaoshao/internal/feature/shop/model"
-	"pinshaoshao/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/mock/gomock"
@@ -36,7 +36,7 @@ func newSKURouter(t *testing.T, skuController *controller.ProductSKUController, 
 
 	r := gin.New()
 	protected := r.Group("")
-	protected.Use(middleware.ShopAuth(stubShopAuthenticator{shop: shop}))
+	protected.Use(shopmodule.AuthMiddleware(stubShopAuthenticator{shop: shop}))
 	protected.GET("/products/:productID/skus", skuController.List)
 	protected.POST("/products/:productID/skus", skuController.Create)
 	protected.PATCH("/products/:productID/skus/:skuID", skuController.Update)

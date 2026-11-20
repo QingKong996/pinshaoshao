@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	inventoryapperr "pinshaoshao/internal/feature/inventory/apperr"
 	"pinshaoshao/internal/feature/product/apperr"
 	"pinshaoshao/internal/feature/product/model"
 	"pinshaoshao/internal/feature/product/repository"
@@ -111,7 +112,7 @@ func TestProductRepository(t *testing.T) {
 		skuRepository := repository.NewProductSKURepository(testPool)
 		createTestSKU(t, ctx, skuRepository, product.ID, map[string]string{"color": "black"}, 1999)
 
-		if err := productRepository.DeleteProduct(ctx, shop.ID, product.ID); err != nil {
+		if err := deleteProduct(ctx, productRepository, shop.ID, product.ID); err != nil {
 			t.Fatalf("delete product: %v", err)
 		}
 
@@ -138,8 +139,8 @@ func TestProductRepository(t *testing.T) {
 			t.Fatalf("set inventory: %v", err)
 		}
 
-		err := productRepository.DeleteProduct(ctx, shop.ID, product.ID)
-		requireErrorIs(t, err, apperr.ErrProductHasInventory)
+		err := deleteProduct(ctx, productRepository, shop.ID, product.ID)
+		requireErrorIs(t, err, inventoryapperr.ErrInventoryNotEmpty)
 	})
 
 	t.Run("does not delete a product from another shop", func(t *testing.T) {
@@ -148,7 +149,7 @@ func TestProductRepository(t *testing.T) {
 		otherShop := insertShopWithUsername(t, ctx, "shop02", "shop02@example.com")
 		otherProduct := insertProduct(t, otherShop.ID)
 
-		err := productRepository.DeleteProduct(ctx, shop.ID, otherProduct.ID)
+		err := deleteProduct(ctx, productRepository, shop.ID, otherProduct.ID)
 		requireErrorIs(t, err, apperr.ErrProductNotFound)
 
 		if _, err := productRepository.GetProductByID(ctx, otherProduct.ID); err != nil {
@@ -222,7 +223,7 @@ func TestProductSummaryList(t *testing.T) {
 				PriceCents: price,
 				IsEnabled:  true,
 			}
-			if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
+			if err := createProductSKU(ctx, skuRepository, sku); err != nil {
 				t.Fatalf("create sku for %q: %v", product.Name, err)
 			}
 		}

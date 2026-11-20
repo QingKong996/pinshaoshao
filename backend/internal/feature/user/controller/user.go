@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"pinshaoshao/internal/feature/shared/authctx"
-	"pinshaoshao/internal/feature/shared/httpx"
 	"pinshaoshao/internal/feature/user/apperr"
 	"pinshaoshao/internal/feature/user/dto"
 	userservice "pinshaoshao/internal/feature/user/service"
+	"pinshaoshao/internal/http/authctx"
+	"pinshaoshao/internal/http/httpx"
 
 	"github.com/gin-gonic/gin"
 )

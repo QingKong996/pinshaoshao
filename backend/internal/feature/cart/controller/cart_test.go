@@ -15,8 +15,8 @@ import (
 	"pinshaoshao/internal/feature/cart/dto"
 	"pinshaoshao/internal/feature/cart/mocks"
 	"pinshaoshao/internal/feature/cart/model"
+	usermodule "pinshaoshao/internal/feature/user"
 	usermodel "pinshaoshao/internal/feature/user/model"
-	"pinshaoshao/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/mock/gomock"
@@ -44,7 +44,7 @@ func newCartRouter(t *testing.T, cartController *controller.CartController, user
 
 	r := gin.New()
 	protected := r.Group("")
-	protected.Use(middleware.UserAuth(stubUserAuthenticator{user: user}))
+	protected.Use(usermodule.AuthMiddleware(stubUserAuthenticator{user: user}))
 	protected.GET("/cart", cartController.List)
 	protected.POST("/cart/items", cartController.Add)
 	protected.PATCH("/cart/items/:itemID", cartController.UpdateQuantity)

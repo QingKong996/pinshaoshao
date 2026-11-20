@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	cartrepository "pinshaoshao/internal/feature/cart/repository"
+	inventoryrepository "pinshaoshao/internal/feature/inventory/repository"
 	productmodel "pinshaoshao/internal/feature/product/model"
 	productrepository "pinshaoshao/internal/feature/product/repository"
 	shopmodel "pinshaoshao/internal/feature/shop/model"
@@ -19,6 +20,7 @@ import (
 	usermodel "pinshaoshao/internal/feature/user/model"
 	userrepository "pinshaoshao/internal/feature/user/repository"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -141,7 +143,12 @@ func insertCatalogSKU(t *testing.T, status productmodel.ProductStatus, enabled b
 		PriceCents: 1999,
 		IsEnabled:  enabled,
 	}
-	if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
+	if err := pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+		if err := skuRepository.CreateProductSKU(ctx, tx, sku); err != nil {
+			return err
+		}
+		return inventoryrepository.NewInventoryRepository(testPool).CreateEmptyForSKU(ctx, tx, sku.ID)
+	}); err != nil {
 		t.Fatalf("create sku: %v", err)
 	}
 	if _, err := testPool.Exec(ctx, `UPDATE inventory_items SET total_stock = $1 WHERE sku_id = $2`, totalStock, sku.ID); err != nil {

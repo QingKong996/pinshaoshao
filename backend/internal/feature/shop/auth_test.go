@@ -1,4 +1,4 @@
-package middleware
+package shop
 
 import (
 	"context"
@@ -6,35 +6,36 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"pinshaoshao/internal/feature/user/apperr"
-	"pinshaoshao/internal/feature/user/model"
+	"pinshaoshao/internal/feature/shop/apperr"
+	"pinshaoshao/internal/feature/shop/model"
+	"pinshaoshao/internal/http/authctx"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 )
 
-type stubUserAuthenticator struct {
-	user  *model.User
+type stubShopAuthenticator struct {
+	shop  *model.Shop
 	err   error
 	calls int
 	token string
 }
 
-func (s *stubUserAuthenticator) Authenticate(_ context.Context, token string) (*model.User, error) {
+func (s *stubShopAuthenticator) Authenticate(_ context.Context, token string) (*model.Shop, error) {
 	s.calls++
 	s.token = token
-	return s.user, s.err
+	return s.shop, s.err
 }
 
-func TestUserAuth(t *testing.T) {
+func TestShopAuth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	activeUser := &model.User{ID: 1, Username: "alice", Status: model.UserStatusActive}
+	activeShop := &model.Shop{ID: 1, Username: "shop01", Status: model.ShopStatusActive}
 
 	tests := []struct {
 		name           string
 		authorization  string
-		authenticator  *stubUserAuthenticator
+		authenticator  *stubShopAuthenticator
 		wantStatus     int
 		wantError      string
 		wantHandler    bool
@@ -45,69 +46,55 @@ func TestUserAuth(t *testing.T) {
 	}{
 		{
 			name:          "missing header",
-			authenticator: &stubUserAuthenticator{},
+			authenticator: &stubShopAuthenticator{},
 			wantStatus:    http.StatusUnauthorized,
 			wantError:     apperr.ErrUnauthorized.Error(),
 		},
 		{
 			name:          "wrong scheme",
 			authorization: "Basic abc",
-			authenticator: &stubUserAuthenticator{},
-			wantStatus:    http.StatusUnauthorized,
-			wantError:     apperr.ErrUnauthorized.Error(),
-		},
-		{
-			name:          "missing token",
-			authorization: "Bearer",
-			authenticator: &stubUserAuthenticator{},
+			authenticator: &stubShopAuthenticator{},
 			wantStatus:    http.StatusUnauthorized,
 			wantError:     apperr.ErrUnauthorized.Error(),
 		},
 		{
 			name:          "blank token",
 			authorization: "Bearer    ",
-			authenticator: &stubUserAuthenticator{},
-			wantStatus:    http.StatusUnauthorized,
-			wantError:     apperr.ErrUnauthorized.Error(),
-		},
-		{
-			name:          "token containing whitespace",
-			authorization: "Bearer abc def",
-			authenticator: &stubUserAuthenticator{},
+			authenticator: &stubShopAuthenticator{},
 			wantStatus:    http.StatusUnauthorized,
 			wantError:     apperr.ErrUnauthorized.Error(),
 		},
 		{
 			name:          "invalid session",
 			authorization: "Bearer expired-token",
-			authenticator: &stubUserAuthenticator{err: apperr.ErrInvalidSession},
+			authenticator: &stubShopAuthenticator{err: apperr.ErrInvalidShopSession},
 			wantStatus:    http.StatusUnauthorized,
-			wantError:     apperr.ErrInvalidSession.Error(),
+			wantError:     apperr.ErrInvalidShopSession.Error(),
 			wantCalls:     1,
 			wantTokenSent: "expired-token",
 		},
 		{
 			name:          "authenticator requires authentication",
 			authorization: "Bearer empty-token",
-			authenticator: &stubUserAuthenticator{err: apperr.ErrUnauthorized},
+			authenticator: &stubShopAuthenticator{err: apperr.ErrUnauthorized},
 			wantStatus:    http.StatusUnauthorized,
 			wantError:     apperr.ErrUnauthorized.Error(),
 			wantCalls:     1,
 			wantTokenSent: "empty-token",
 		},
 		{
-			name:          "banned user",
+			name:          "banned shop",
 			authorization: "Bearer banned-token",
-			authenticator: &stubUserAuthenticator{err: apperr.ErrUserBanned},
+			authenticator: &stubShopAuthenticator{err: apperr.ErrShopBanned},
 			wantStatus:    http.StatusForbidden,
-			wantError:     apperr.ErrUserBanned.Error(),
+			wantError:     apperr.ErrShopBanned.Error(),
 			wantCalls:     1,
 			wantTokenSent: "banned-token",
 		},
 		{
 			name:          "authenticator failure",
 			authorization: "Bearer some-token",
-			authenticator: &stubUserAuthenticator{err: errors.New("database is down")},
+			authenticator: &stubShopAuthenticator{err: errors.New("database is down")},
 			wantStatus:    http.StatusInternalServerError,
 			wantError:     apperr.ErrInternalServer.Error(),
 			wantCalls:     1,
@@ -116,24 +103,24 @@ func TestUserAuth(t *testing.T) {
 		{
 			name:           "valid token",
 			authorization:  "Bearer good-token",
-			authenticator:  &stubUserAuthenticator{user: activeUser},
+			authenticator:  &stubShopAuthenticator{shop: activeShop},
 			wantStatus:     http.StatusOK,
 			wantHandler:    true,
 			wantCalls:      1,
 			wantTokenSent:  "good-token",
 			wantTokenInCtx: "good-token",
-			wantUsername:   "alice",
+			wantUsername:   "shop01",
 		},
 		{
 			name:           "scheme is case insensitive",
 			authorization:  "bearer good-token",
-			authenticator:  &stubUserAuthenticator{user: activeUser},
+			authenticator:  &stubShopAuthenticator{shop: activeShop},
 			wantStatus:     http.StatusOK,
 			wantHandler:    true,
 			wantCalls:      1,
 			wantTokenSent:  "good-token",
 			wantTokenInCtx: "good-token",
-			wantUsername:   "alice",
+			wantUsername:   "shop01",
 		},
 	}
 
@@ -142,17 +129,22 @@ func TestUserAuth(t *testing.T) {
 			handlerCalled := false
 
 			r := gin.New()
-			r.GET("/protected", UserAuth(tt.authenticator), func(c *gin.Context) {
+			r.GET("/protected", AuthMiddleware(tt.authenticator), func(c *gin.Context) {
 				handlerCalled = true
 
-				user, ok := CurrentUser(c)
+				shop, ok := CurrentShop(c)
 				if !ok {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "user missing from context"})
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "shop missing from context"})
 					return
 				}
-				token := MustUserSessionToken(c)
+				shopID, ok := authctx.ShopID(c)
+				if !ok || shopID != shop.ID {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "shop ID missing from context"})
+					return
+				}
+				token := MustShopSessionToken(c)
 				c.JSON(http.StatusOK, gin.H{
-					"username": user.Username,
+					"username": shop.Username,
 					"token":    token,
 				})
 			})
@@ -207,17 +199,17 @@ func TestUserAuth(t *testing.T) {
 	}
 }
 
-func TestMustUserSessionTokenPanicsWithoutAuth(t *testing.T) {
+func TestMustShopSessionTokenPanicsWithoutAuth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
 	r.GET("/unprotected", func(c *gin.Context) {
-		_ = MustUserSessionToken(c)
+		_ = MustShopSessionToken(c)
 	})
 
 	defer func() {
 		if recover() == nil {
-			t.Fatal("expected MustUserSessionToken to panic outside UserAuth")
+			t.Fatal("expected MustShopSessionToken to panic outside AuthMiddleware")
 		}
 	}()
 

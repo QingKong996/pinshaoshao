@@ -11,6 +11,7 @@ package mocks
 
 import (
 	context "context"
+	database "pinshaoshao/internal/database"
 	model "pinshaoshao/internal/feature/product/model"
 	reflect "reflect"
 
@@ -81,31 +82,31 @@ func (m *MockProductSKURepository) EXPECT() *MockProductSKURepositoryMockRecorde
 }
 
 // CreateProductSKU mocks base method.
-func (m *MockProductSKURepository) CreateProductSKU(ctx context.Context, sku *model.ProductSKU) error {
+func (m *MockProductSKURepository) CreateProductSKU(ctx context.Context, db database.DBTX, sku *model.ProductSKU) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateProductSKU", ctx, sku)
+	ret := m.ctrl.Call(m, "CreateProductSKU", ctx, db, sku)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateProductSKU indicates an expected call of CreateProductSKU.
-func (mr *MockProductSKURepositoryMockRecorder) CreateProductSKU(ctx, sku any) *gomock.Call {
+func (mr *MockProductSKURepositoryMockRecorder) CreateProductSKU(ctx, db, sku any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateProductSKU", reflect.TypeOf((*MockProductSKURepository)(nil).CreateProductSKU), ctx, sku)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateProductSKU", reflect.TypeOf((*MockProductSKURepository)(nil).CreateProductSKU), ctx, db, sku)
 }
 
 // DeleteProductSKU mocks base method.
-func (m *MockProductSKURepository) DeleteProductSKU(ctx context.Context, productID, skuID int) error {
+func (m *MockProductSKURepository) DeleteProductSKU(ctx context.Context, db database.DBTX, productID, skuID int) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteProductSKU", ctx, productID, skuID)
+	ret := m.ctrl.Call(m, "DeleteProductSKU", ctx, db, productID, skuID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteProductSKU indicates an expected call of DeleteProductSKU.
-func (mr *MockProductSKURepositoryMockRecorder) DeleteProductSKU(ctx, productID, skuID any) *gomock.Call {
+func (mr *MockProductSKURepositoryMockRecorder) DeleteProductSKU(ctx, db, productID, skuID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteProductSKU", reflect.TypeOf((*MockProductSKURepository)(nil).DeleteProductSKU), ctx, productID, skuID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteProductSKU", reflect.TypeOf((*MockProductSKURepository)(nil).DeleteProductSKU), ctx, db, productID, skuID)
 }
 
 // ListProductSKUsByProductID mocks base method.
@@ -121,6 +122,20 @@ func (m *MockProductSKURepository) ListProductSKUsByProductID(ctx context.Contex
 func (mr *MockProductSKURepositoryMockRecorder) ListProductSKUsByProductID(ctx, productID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProductSKUsByProductID", reflect.TypeOf((*MockProductSKURepository)(nil).ListProductSKUsByProductID), ctx, productID)
+}
+
+// LockProduct mocks base method.
+func (m *MockProductSKURepository) LockProduct(ctx context.Context, db database.DBTX, productID int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockProduct", ctx, db, productID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// LockProduct indicates an expected call of LockProduct.
+func (mr *MockProductSKURepositoryMockRecorder) LockProduct(ctx, db, productID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockProduct", reflect.TypeOf((*MockProductSKURepository)(nil).LockProduct), ctx, db, productID)
 }
 
 // UpdateProductSKU mocks base method.

@@ -11,11 +11,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	inventoryrepository "pinshaoshao/internal/feature/inventory/repository"
 	productmodel "pinshaoshao/internal/feature/product/model"
 	productrepository "pinshaoshao/internal/feature/product/repository"
 	"pinshaoshao/internal/feature/shop/model"
 	shoprepository "pinshaoshao/internal/feature/shop/repository"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -130,7 +132,12 @@ func createTestSKU(t *testing.T, ctx context.Context, skuRepository *productrepo
 		PriceCents: priceCents,
 		IsEnabled:  true,
 	}
-	if err := skuRepository.CreateProductSKU(ctx, sku); err != nil {
+	if err := pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+		if err := skuRepository.CreateProductSKU(ctx, tx, sku); err != nil {
+			return err
+		}
+		return inventoryrepository.NewInventoryRepository(testPool).CreateEmptyForSKU(ctx, tx, sku.ID)
+	}); err != nil {
 		t.Fatalf("create product sku: %v", err)
 	}
 	return sku
