@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	cartmodule "pinshaoshao/internal/feature/cart"
 	inventorymodule "pinshaoshao/internal/feature/inventory"
 	productmodule "pinshaoshao/internal/feature/product"
 	"pinshaoshao/internal/feature/shared/httpx"
@@ -48,6 +49,10 @@ var routeCases = []routeCase{
 	{method: http.MethodPost, pattern: "/api/v1/login", requestPath: "/api/v1/login", public: true},
 	{method: http.MethodPost, pattern: "/api/v1/register", requestPath: "/api/v1/register", public: true},
 	{method: http.MethodPost, pattern: "/api/v1/logout", requestPath: "/api/v1/logout", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodGet, pattern: "/api/v1/cart", requestPath: "/api/v1/cart", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/api/v1/cart/items", requestPath: "/api/v1/cart/items", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodPatch, pattern: "/api/v1/cart/items/:itemID", requestPath: "/api/v1/cart/items/1", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodDelete, pattern: "/api/v1/cart/items/:itemID", requestPath: "/api/v1/cart/items/1", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/merchant/login", requestPath: "/api/v1/merchant/login", public: true},
 	{method: http.MethodPost, pattern: "/api/v1/merchant/register", requestPath: "/api/v1/merchant/register", public: true},
 	{method: http.MethodPost, pattern: "/api/v1/merchant/logout", requestPath: "/api/v1/merchant/logout", authError: shopapperr.ErrInvalidShopSession.Error()},
@@ -80,6 +85,7 @@ func newTestRouter() *gin.Engine {
 		Shop:      shopmodule.NewModule(nil),
 		Product:   productmodule.NewModule(nil),
 		Inventory: inventorymodule.NewModule(nil),
+		Cart:      cartmodule.NewModule(nil),
 		UserAuth:  middleware.UserAuth(invalidUserSession{}),
 		ShopAuth:  middleware.ShopAuth(invalidShopSession{}),
 	})

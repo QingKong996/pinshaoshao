@@ -15,6 +15,7 @@ type Modules struct {
 	Shop      Module
 	Product   Module
 	Inventory Module
+	Cart      Module
 	UserAuth  gin.HandlerFunc
 	ShopAuth  gin.HandlerFunc
 }
@@ -25,4 +26,5 @@ func Register(r *gin.Engine, modules Modules) {
 	modules.Shop.Register(r, modules.ShopAuth)
 	modules.Product.Register(r, modules.ShopAuth)
 	modules.Inventory.Register(r, modules.ShopAuth)
+	modules.Cart.Register(r, modules.UserAuth)
 }

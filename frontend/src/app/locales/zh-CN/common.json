@@ -1,7 +1,8 @@
 {
   "nav": {
     "features": "平台特色",
-    "howItWorks": "拼团玩法"
+    "howItWorks": "拼团玩法",
+    "cart": "购物车"
   },
   "auth": {
     "signIn": "登录",
