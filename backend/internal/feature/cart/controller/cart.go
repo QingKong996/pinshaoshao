@@ -36,9 +36,9 @@ func NewCartController(cartService CartService) *CartController {
 // @Tags        Cart
 // @Produce     json
 // @Success     200 {array} dto.CartItemResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /cart [get]
 func (c *CartController) List(ctx *gin.Context) {
@@ -65,12 +65,12 @@ func (c *CartController) List(ctx *gin.Context) {
 // @Produce     json
 // @Param       request body dto.AddCartItemRequest true "SKU and quantity"
 // @Success     201 {object} dto.CartItemResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     409 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     409 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /cart/items [post]
 func (c *CartController) Add(ctx *gin.Context) {
@@ -103,11 +103,11 @@ func (c *CartController) Add(ctx *gin.Context) {
 // @Param       itemID path int true "Cart item ID"
 // @Param       request body dto.UpdateCartItemRequest true "Quantity"
 // @Success     200 {object} dto.CartItemResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /cart/items/{itemID} [patch]
 func (c *CartController) UpdateQuantity(ctx *gin.Context) {
@@ -143,11 +143,11 @@ func (c *CartController) UpdateQuantity(ctx *gin.Context) {
 // @Tags        Cart
 // @Param       itemID path int true "Cart item ID"
 // @Success     204
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     404 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /cart/items/{itemID} [delete]
 func (c *CartController) Delete(ctx *gin.Context) {
