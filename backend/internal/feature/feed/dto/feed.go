@@ -24,7 +24,3 @@ type FeedListResponse struct {
 	Total      int64              `json:"total" example:"42"`
 	TotalPages int                `json:"total_pages" example:"3"`
 }
-
-type ErrorResponse struct {
-	Error string `json:"error" example:"invalid feed query"`
-}
