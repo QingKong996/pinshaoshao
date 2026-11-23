@@ -137,9 +137,6 @@ func TestFeedRepositoryFiltersSortsAndPaginates(t *testing.T) {
 	if aggregated.MinPriceCents != 1000 || aggregated.MaxPriceCents != 2000 {
 		t.Fatalf("aggregated price = %d/%d, want 1000/2000", aggregated.MinPriceCents, aggregated.MaxPriceCents)
 	}
-	if aggregated.AvailableStock != 6 {
-		t.Fatalf("aggregated available stock = %d, want 6", aggregated.AvailableStock)
-	}
 
 	repeated, err := feedRepository.List(ctx, 7, 1, 5)
 	if err != nil {

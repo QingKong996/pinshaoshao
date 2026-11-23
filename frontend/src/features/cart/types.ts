@@ -16,7 +16,6 @@ export type CartItem = {
   unit_price_cents: number
   quantity: number
   line_total_cents: number
-  available_stock: number | null
   availability: CartItemAvailability
   created_at: string
   updated_at: string

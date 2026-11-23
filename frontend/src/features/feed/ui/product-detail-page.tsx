@@ -30,11 +30,21 @@ import {
   describeProductActionError,
   describeProductError,
 } from "../model/errors"
-import { isSKUPurchasable } from "../model/product"
+import {
+  findPreferredSKU,
+  getSKUStatus,
+} from "../model/product"
 import { useProductDetail } from "../model/queries"
+import {
+  buildSKUDimensions,
+  findSKUBySelection,
+  type ProductSKUSelection,
+} from "../model/sku-options"
 import type { ProductDetail, ProductSKU } from "../types"
 import { formatProductSpecs } from "./format-specs"
 import { ProductSKUPicker } from "./product-sku-picker"
+
+const MAX_ORDER_QUANTITY = 99
 
 export function ProductDetailPage({
   token,
@@ -48,7 +58,11 @@ export function ProductDetailPage({
   const { t } = useTranslation("feed")
   const validProductID = Number.isInteger(productID) && productID > 0
   const productQuery = useProductDetail(token, productID, validProductID)
-  const [selectedSKUID, setSelectedSKUID] = useState<number | null>(null)
+  const [selectedSpecs, setSelectedSpecs] =
+    useState<ProductSKUSelection | null>(null)
+  const [selectedFlatSKUID, setSelectedFlatSKUID] = useState<number | null>(
+    null,
+  )
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
@@ -96,13 +110,20 @@ export function ProductDetailPage({
   return (
     <ProductDetailContent
       product={productQuery.data}
-      selectedSKUID={selectedSKUID}
+      selectedSpecs={selectedSpecs}
+      selectedFlatSKUID={selectedFlatSKUID}
       quantity={quantity}
       added={added}
       actionError={actionError}
       isAdding={isAdding}
-      onSelect={(sku) => {
-        setSelectedSKUID(sku.id)
+      onSelectSpecs={(nextSelection) => {
+        setSelectedSpecs(nextSelection)
+        setQuantity(1)
+        setAdded(false)
+        setActionError(null)
+      }}
+      onSelectFlatSKU={(sku) => {
+        setSelectedFlatSKUID(sku.id)
         setQuantity(1)
         setAdded(false)
         setActionError(null)
@@ -131,34 +152,50 @@ export function ProductDetailPage({
 
 function ProductDetailContent({
   product,
-  selectedSKUID,
+  selectedSpecs,
+  selectedFlatSKUID,
   quantity,
   added,
   actionError,
   isAdding,
-  onSelect,
+  onSelectSpecs,
+  onSelectFlatSKU,
   onQuantityChange,
   onAddToCart,
 }: {
   product: ProductDetail
-  selectedSKUID: number | null
+  selectedSpecs: ProductSKUSelection | null
+  selectedFlatSKUID: number | null
   quantity: number
   added: boolean
   actionError: unknown
   isAdding: boolean
-  onSelect: (sku: ProductSKU) => void
+  onSelectSpecs: (selection: ProductSKUSelection) => void
+  onSelectFlatSKU: (sku: ProductSKU) => void
   onQuantityChange: (quantity: number) => void
   onAddToCart: (sku: ProductSKU) => Promise<void>
 }) {
   const { t } = useTranslation("feed")
-  const firstPurchasable = product.skus.find(isSKUPurchasable)
-  const selectedSKU =
-    product.skus.find((sku) => sku.id === selectedSKUID) ?? firstPurchasable
-  const purchasable = selectedSKU ? isSKUPurchasable(selectedSKU) : false
-  const maxQuantity =
-    selectedSKU && selectedSKU.available_stock > 0
-      ? selectedSKU.available_stock
-      : 1
+  const preferredSKU = findPreferredSKU(product.skus)
+  const dimensions = buildSKUDimensions(product.skus, {})
+  const selectedSKU = dimensions
+    ? findSKUBySelection(
+        product.skus,
+        selectedSpecs ?? preferredSKU?.specs ?? {},
+      )
+    : (product.skus.find((sku) => sku.id === selectedFlatSKUID) ??
+      preferredSKU)
+  const effectiveSpecs = dimensions
+    ? (selectedSpecs ?? preferredSKU?.specs ?? {})
+    : (selectedSKU?.specs ?? {})
+  const selectedStatus = selectedSKU ? getSKUStatus(selectedSKU) : null
+  const selectedStatusLabel =
+    selectedStatus === "out_of_stock"
+      ? t("detail.skus.outOfStock")
+      : selectedStatus === "unavailable"
+        ? t("detail.skus.unavailable")
+        : null
+  const purchasable = selectedStatus === "available"
   const directCheckoutHref =
     selectedSKU && purchasable
       ? `/checkout?product_id=${product.id}&sku_id=${selectedSKU.id}&quantity=${quantity}`
@@ -209,20 +246,38 @@ function ProductDetailContent({
             ) : null}
           </div>
 
-          <div className="flex items-baseline gap-2">
-            <span className="font-heading text-2xl font-semibold tabular-nums">
-              {selectedSKU
-                ? formatPriceCents(selectedSKU.price_cents)
-                : t("detail.skus.unavailable")}
-            </span>
+          <div
+            className="flex flex-wrap items-center gap-2"
+            aria-live="polite"
+          >
             {selectedSKU ? (
-              <span className="text-sm text-muted-foreground">
-                {formatProductSpecs(
-                  selectedSKU.specs,
-                  t("detail.skus.noSpecs"),
-                )}
+              <>
+                <span className="font-heading text-2xl font-semibold tabular-nums">
+                  {formatPriceCents(selectedSKU.price_cents)}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {formatProductSpecs(
+                    selectedSKU.specs,
+                    t("detail.skus.noSpecs"),
+                  )}
+                </span>
+                {selectedStatusLabel ? (
+                  <Badge
+                    variant={
+                      selectedStatus === "out_of_stock"
+                        ? "destructive"
+                        : "outline"
+                    }
+                  >
+                    {selectedStatusLabel}
+                  </Badge>
+                ) : null}
+              </>
+            ) : (
+              <span className="font-heading text-lg font-medium text-muted-foreground">
+                {t("detail.skus.chooseSpecs")}
               </span>
-            ) : null}
+            )}
           </div>
 
           <Separator />
@@ -241,8 +296,10 @@ function ProductDetailContent({
             </div>
             <ProductSKUPicker
               skus={product.skus}
-              selectedSKUID={selectedSKU?.id ?? null}
-              onSelect={onSelect}
+              selectedSKU={selectedSKU}
+              selectedSpecs={effectiveSpecs}
+              onSelectSpecs={onSelectSpecs}
+              onSelectSKU={onSelectFlatSKU}
             />
           </section>
 
@@ -276,7 +333,7 @@ function ProductDetailContent({
                 <Input
                   type="number"
                   min={1}
-                  max={maxQuantity}
+                  max={MAX_ORDER_QUANTITY}
                   value={quantity}
                   aria-label={t("detail.quantity")}
                   disabled={!purchasable || isAdding}
@@ -284,7 +341,7 @@ function ProductDetailContent({
                   onChange={(event) => {
                     const next = Number(event.target.value)
                     if (Number.isInteger(next) && next >= 1) {
-                      onQuantityChange(Math.min(next, maxQuantity))
+                      onQuantityChange(Math.min(next, MAX_ORDER_QUANTITY))
                     }
                   }}
                 />
@@ -293,7 +350,9 @@ function ProductDetailContent({
                   size="icon-sm"
                   aria-label={t("detail.increase")}
                   disabled={
-                    !purchasable || isAdding || quantity >= maxQuantity
+                    !purchasable ||
+                    isAdding ||
+                    quantity >= MAX_ORDER_QUANTITY
                   }
                   onClick={() => onQuantityChange(quantity + 1)}
                 >

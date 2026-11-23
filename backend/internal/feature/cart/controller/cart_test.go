@@ -90,6 +90,9 @@ func TestCartList(t *testing.T) {
 	if body[0].ID != 1 || body[0].LineTotalCents != 3998 || body[0].Availability != "available" {
 		t.Fatalf("item = %+v, want cart snapshot values", body[0])
 	}
+	if strings.Contains(rec.Body.String(), "available_stock") {
+		t.Fatalf("cart response exposes available stock: %s", rec.Body.String())
+	}
 }
 
 func TestCartAdd(t *testing.T) {

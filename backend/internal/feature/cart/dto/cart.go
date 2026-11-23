@@ -20,7 +20,6 @@ type CartItemResponse struct {
 	UnitPriceCents int64             `json:"unit_price_cents" example:"1999"`
 	Quantity       int               `json:"quantity" example:"2"`
 	LineTotalCents int64             `json:"line_total_cents" example:"3998"`
-	AvailableStock *int              `json:"available_stock" example:"8"`
 	Availability   string            `json:"availability" example:"available"`
 	CreatedAt      time.Time         `json:"created_at" example:"2026-11-19T12:00:00Z"`
 	UpdatedAt      time.Time         `json:"updated_at" example:"2026-11-19T12:00:00Z"`

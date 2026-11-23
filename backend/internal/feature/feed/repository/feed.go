@@ -13,8 +13,7 @@ import (
 )
 
 const feedProductSelect = `SELECT p.id, p.shop_id, s.name, p.name, p.description, pc.name,
-       MIN(ps.price_cents)::BIGINT, MAX(ps.price_cents)::BIGINT,
-       SUM(ii.total_stock - ii.frozen_stock)::BIGINT
+       MIN(ps.price_cents)::BIGINT, MAX(ps.price_cents)::BIGINT
 FROM products p
 JOIN shops s ON s.id = p.shop_id
 JOIN product_skus ps ON ps.product_id = p.id AND ps.is_enabled
@@ -94,7 +93,6 @@ func scanFeedItem(row pgx.Row) (*model.FeedItem, error) {
 		&item.CategoryName,
 		&item.MinPriceCents,
 		&item.MaxPriceCents,
-		&item.AvailableStock,
 	)
 	if err != nil {
 		return nil, err

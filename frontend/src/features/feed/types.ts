@@ -7,7 +7,6 @@ export type FeedItem = {
   category_name: string | null
   min_price_cents: number
   max_price_cents: number
-  available_stock: number
 }
 
 export type FeedListResponse = {
@@ -23,7 +22,7 @@ export type ProductSKU = {
   specs: Record<string, string>
   price_cents: number
   is_enabled: boolean
-  available_stock: number
+  in_stock: boolean
 }
 
 export type ProductDetail = {

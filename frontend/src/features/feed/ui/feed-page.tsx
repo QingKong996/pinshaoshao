@@ -190,14 +190,9 @@ function FeedCard({ item }: { item: FeedItem }) {
               {item.description}
             </p>
           ) : null}
-          <div className="mt-auto flex items-end justify-between gap-2 pt-1">
-            <p className="font-heading text-base font-semibold tabular-nums">
-              {price}
-            </p>
-            <p className="shrink-0 text-xs text-muted-foreground">
-              {t("availableStock", { count: item.available_stock })}
-            </p>
-          </div>
+          <p className="mt-auto pt-1 font-heading text-base font-semibold tabular-nums">
+            {price}
+          </p>
         </div>
       </Card>
     </Link>

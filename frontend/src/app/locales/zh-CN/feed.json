@@ -3,7 +3,6 @@
   "description": "用你的专属顺序浏览在售商品，只展示仍有库存的好物。",
   "imagePlaceholder": "商品图片占位",
   "uncategorized": "未分类",
-  "availableStock": "库存 {{count}}",
   "loadingMore": "加载中…",
   "progress": "已展示 {{loaded}} / {{total}} 件商品",
   "end": "已经到底了",
@@ -15,13 +14,13 @@
     "price": "起售",
     "skus": {
       "title": "选择规格",
-      "description": "这里列出该商品的全部规格，不可购买的规格会明确标注。",
+      "description": "请依次选择各项规格，不存在的组合将被禁用。",
       "specs": "规格",
       "price": "价格",
-      "stock": "库存",
       "noSpecs": "无规格",
-      "available": "可售 {{count}} 件",
+      "outOfStock": "缺货",
       "unavailable": "暂不可购买",
+      "chooseSpecs": "请选择完整规格",
       "empty": "该商品暂时没有可选规格。",
       "selected": "已选择"
     },
@@ -44,7 +43,7 @@
   },
   "productSignedOut": {
     "title": "登录后查看商品详情",
-    "description": "商品详情、规格价格和库存仅对已登录买家展示。",
+    "description": "商品详情和规格价格仅对已登录买家展示。",
     "action": "去登录"
   },
   "errors": {

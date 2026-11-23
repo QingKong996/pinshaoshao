@@ -17,7 +17,6 @@ const items: CartItem[] = [
     unit_price_cents: 1999,
     quantity: 2,
     line_total_cents: 3998,
-    available_stock: 8,
     availability: "available",
     created_at: "2026-11-19T08:00:00Z",
     updated_at: "2026-11-19T08:00:00Z",
@@ -31,7 +30,6 @@ const items: CartItem[] = [
     unit_price_cents: 990,
     quantity: 1,
     line_total_cents: 990,
-    available_stock: 3,
     availability: "product_off_shelf",
     created_at: "2026-11-19T09:00:00Z",
     updated_at: "2026-11-19T09:00:00Z",
@@ -60,6 +58,8 @@ describe("CartPage", () => {
     expect(await screen.findByText("Cotton T-shirt")).toBeVisible()
     expect(screen.getByText("Color: Blue / Size: M")).toBeVisible()
     expect(screen.getByText("Product is off shelf")).toBeVisible()
+    expect(screen.queryByText("Available")).not.toBeInTheDocument()
+    expect(screen.queryByText("8 available")).not.toBeInTheDocument()
 
     const unavailable = screen.getByRole("checkbox", {
       name: "Select Canvas Bag for checkout",
@@ -125,5 +125,19 @@ describe("CartPage", () => {
     await waitFor(() => {
       expect(deleteRequest).toHaveBeenCalledOnce()
     })
+  })
+
+  it("does not reveal the remaining quantity when stock is insufficient", async () => {
+    mockCart([
+      {
+        ...items[0],
+        availability: "insufficient_stock",
+      },
+    ])
+
+    renderCartPage()
+
+    expect(await screen.findByText("Insufficient stock")).toBeVisible()
+    expect(screen.queryByText(/only 1 left/i)).not.toBeInTheDocument()
   })
 })

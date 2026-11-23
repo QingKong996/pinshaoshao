@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"pinshaoshao/internal/feature/feed/apperr"
@@ -85,15 +86,14 @@ func TestFeedList(t *testing.T) {
 	feedService := &stubFeedService{
 		result: &model.FeedResult{
 			Items: []model.FeedItem{{
-				ID:             1,
-				ShopID:         2,
-				ShopName:       "Example shop",
-				Name:           "Coffee",
-				Description:    "Roasted beans",
-				CategoryName:   &categoryName,
-				MinPriceCents:  1999,
-				MaxPriceCents:  2999,
-				AvailableStock: 8,
+				ID:            1,
+				ShopID:        2,
+				ShopName:      "Example shop",
+				Name:          "Coffee",
+				Description:   "Roasted beans",
+				CategoryName:  &categoryName,
+				MinPriceCents: 1999,
+				MaxPriceCents: 2999,
 			}},
 			Page:     2,
 			PageSize: 10,
@@ -124,10 +124,12 @@ func TestFeedList(t *testing.T) {
 	if len(body.Items) != 1 || body.Items[0].Name != "Coffee" {
 		t.Fatalf("items = %+v", body.Items)
 	}
-	if body.Items[0].AvailableStock != 8 ||
-		body.Items[0].MinPriceCents != 1999 ||
+	if body.Items[0].MinPriceCents != 1999 ||
 		body.Items[0].MaxPriceCents != 2999 {
 		t.Fatalf("item = %+v", body.Items[0])
+	}
+	if strings.Contains(rec.Body.String(), "available_stock") {
+		t.Fatalf("feed response exposes available stock: %s", rec.Body.String())
 	}
 	if body.Page != 2 || body.PageSize != 10 || body.Total != 25 || body.TotalPages != 3 {
 		t.Fatalf("pagination = %+v", body)
@@ -242,8 +244,15 @@ func TestFeedGet(t *testing.T) {
 					ID:             6,
 					Specs:          map[string]string{"weight": "500g"},
 					PriceCents:     3499,
-					IsEnabled:      false,
+					IsEnabled:      true,
 					AvailableStock: 0,
+				},
+				{
+					ID:             7,
+					Specs:          map[string]string{"weight": "1kg"},
+					PriceCents:     5999,
+					IsEnabled:      false,
+					AvailableStock: 5,
 				},
 			},
 		},
@@ -267,13 +276,25 @@ func TestFeedGet(t *testing.T) {
 	if body.ID != 10 || body.Name != "Coffee" || body.CategoryName == nil {
 		t.Fatalf("product detail = %+v", body)
 	}
-	if len(body.SKUs) != 2 {
-		t.Fatalf("sku count = %d, want 2", len(body.SKUs))
+	if len(body.SKUs) != 3 {
+		t.Fatalf("sku count = %d, want 3", len(body.SKUs))
 	}
 	if body.SKUs[0].Specs["weight"] != "250g" ||
 		body.SKUs[0].PriceCents != 1999 ||
-		body.SKUs[0].AvailableStock != 8 {
+		!body.SKUs[0].InStock {
 		t.Fatalf("first sku = %+v", body.SKUs[0])
+	}
+	if body.SKUs[1].InStock {
+		t.Fatalf("second sku = %+v, want out of stock", body.SKUs[1])
+	}
+	if !body.SKUs[2].InStock || body.SKUs[2].IsEnabled {
+		t.Fatalf("third sku = %+v, want disabled with stock", body.SKUs[2])
+	}
+	if strings.Contains(rec.Body.String(), "available_stock") {
+		t.Fatalf(
+			"product detail response exposes available stock: %s",
+			rec.Body.String(),
+		)
 	}
 }
 

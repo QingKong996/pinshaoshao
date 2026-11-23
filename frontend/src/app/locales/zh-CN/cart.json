@@ -15,8 +15,6 @@
     "select": "选择 {{name}} 参与结算",
     "defaultSpecs": "无规格",
     "snapshotPrice": "加入时价格 {{price}}",
-    "availableStock": "可售 {{count}} 件",
-    "stockUnknown": "暂时无法获取库存",
     "lineTotal": "小计",
     "quantity": "数量",
     "decrease": "减少数量",
@@ -30,7 +28,7 @@
     "skuDeleted": "该规格已删除",
     "skuDisabled": "该规格已停用",
     "outOfStock": "已售罄",
-    "insufficientStock": "仅剩 {{count}} 件"
+    "insufficientStock": "库存不足"
   },
   "summary": {
     "title": "已选商品",

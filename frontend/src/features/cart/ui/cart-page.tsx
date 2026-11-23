@@ -135,7 +135,7 @@ export function CartPage({ token }: { token: string }) {
           </div>
         </Card>
       ) : (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <Card className="gap-0 overflow-hidden p-0">
             <ul className="divide-y">
               {items.map((item) => (
@@ -156,18 +156,18 @@ export function CartPage({ token }: { token: string }) {
             </ul>
           </Card>
 
-          <Card className="gap-4 lg:sticky lg:top-24">
+          <Card className="gap-5 p-5 lg:sticky lg:top-24">
             <h2 className="font-heading text-base font-medium">
               {t("summary.title")}
             </h2>
-            <dl className="space-y-3">
+            <dl className="space-y-3 border-y py-4">
               <div className="flex items-center justify-between gap-4">
                 <dt className="text-muted-foreground">
                   {t("summary.selected")}
                 </dt>
                 <dd>{t("summary.itemCount", { count: summary.count })}</dd>
               </div>
-              <div className="flex items-center justify-between gap-4 border-t pt-3">
+              <div className="flex items-center justify-between gap-4">
                 <dt className="font-medium">{t("summary.subtotal")}</dt>
                 <dd className="font-heading text-lg font-semibold tabular-nums">
                   {formatPriceCents(summary.subtotalCents)}
@@ -270,13 +270,6 @@ function CartItemRow({
             {t("item.snapshotPrice", {
               price: formatPriceCents(item.unit_price_cents),
             })}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {item.available_stock === null
-              ? t("item.stockUnknown")
-              : t("item.availableStock", {
-                  count: item.available_stock,
-                })}
           </p>
         </div>
 
@@ -391,9 +384,7 @@ function availabilityLabel(
     case "out_of_stock":
       return t("availability.outOfStock")
     case "insufficient_stock":
-      return t("availability.insufficientStock", {
-        count: item.available_stock ?? 0,
-      })
+      return t("availability.insufficientStock")
     default:
       return t("availability.available")
   }
