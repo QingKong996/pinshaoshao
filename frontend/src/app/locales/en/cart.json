@@ -15,8 +15,6 @@
     "select": "Select {{name}} for checkout",
     "defaultSpecs": "No specifications",
     "snapshotPrice": "{{price}} at the time it was added",
-    "availableStock": "{{count}} available",
-    "stockUnknown": "Availability unavailable",
     "lineTotal": "Line total",
     "quantity": "Quantity",
     "decrease": "Decrease quantity",
@@ -30,7 +28,7 @@
     "skuDeleted": "This option is no longer available",
     "skuDisabled": "This option is disabled",
     "outOfStock": "Out of stock",
-    "insufficientStock": "Only {{count}} left"
+    "insufficientStock": "Insufficient stock"
   },
   "summary": {
     "title": "Selected items",

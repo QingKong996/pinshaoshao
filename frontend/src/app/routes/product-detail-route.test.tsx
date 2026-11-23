@@ -22,7 +22,7 @@ const product = {
       specs: { Color: "Black" },
       price_cents: 1999,
       is_enabled: true,
-      available_stock: 4,
+      in_stock: true,
     },
   ],
 }

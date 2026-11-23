@@ -32,7 +32,7 @@ func NewFeedController(feedService FeedService) *FeedController {
 // List returns a seeded page of available products for the authenticated buyer.
 //
 // @Summary     List the buyer feed
-// @Description List on-shelf products with available stock, personalized by the authenticated buyer ID.
+// @Description List in-stock, on-shelf products personalized by the authenticated buyer ID.
 // @Tags        Feed
 // @Produce     json
 // @Param       page query int false "Page number" default(1)
@@ -103,7 +103,7 @@ func (c *FeedController) List(ctx *gin.Context) {
 // Get returns an on-shelf product with every SKU for the authenticated buyer.
 //
 // @Summary     Get a buyer product
-// @Description Return an on-shelf product with all of its SKUs, specifications, prices and available stock.
+// @Description Return an on-shelf product with all of its SKUs, specifications, prices and stock status.
 // @Tags        Feed
 // @Produce     json
 // @Param       productID path int true "Product ID"
@@ -149,15 +149,14 @@ func (c *FeedController) Get(ctx *gin.Context) {
 
 func newFeedItemResponse(item *model.FeedItem) dto.FeedItemResponse {
 	return dto.FeedItemResponse{
-		ID:             item.ID,
-		ShopID:         item.ShopID,
-		ShopName:       item.ShopName,
-		Name:           item.Name,
-		Description:    item.Description,
-		CategoryName:   item.CategoryName,
-		MinPriceCents:  item.MinPriceCents,
-		MaxPriceCents:  item.MaxPriceCents,
-		AvailableStock: item.AvailableStock,
+		ID:            item.ID,
+		ShopID:        item.ShopID,
+		ShopName:      item.ShopName,
+		Name:          item.Name,
+		Description:   item.Description,
+		CategoryName:  item.CategoryName,
+		MinPriceCents: item.MinPriceCents,
+		MaxPriceCents: item.MaxPriceCents,
 	}
 }
 
@@ -166,11 +165,11 @@ func newProductDetailResponse(product *model.ProductDetail) dto.ProductDetailRes
 	for i := range product.SKUs {
 		sku := &product.SKUs[i]
 		skus = append(skus, dto.ProductDetailSKUResponse{
-			ID:             sku.ID,
-			Specs:          sku.Specs,
-			PriceCents:     sku.PriceCents,
-			IsEnabled:      sku.IsEnabled,
-			AvailableStock: sku.AvailableStock,
+			ID:         sku.ID,
+			Specs:      sku.Specs,
+			PriceCents: sku.PriceCents,
+			IsEnabled:  sku.IsEnabled,
+			InStock:    sku.InStock(),
 		})
 	}
 

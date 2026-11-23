@@ -17,11 +17,10 @@ function feedItem(id: number, name: string) {
     shop_id: 1,
     shop_name: "Example shop",
     name,
-    description: "In stock",
+    description: "Freshly listed",
     category_name: "Food",
     min_price_cents: 1999,
     max_price_cents: 2999,
-    available_stock: 8,
   }
 }
 
@@ -75,6 +74,8 @@ describe("FeedPage", () => {
     expect(
       screen.getAllByRole("img", { name: "Product image placeholder" }),
     ).toHaveLength(3)
+    expect(screen.queryByText("In stock")).not.toBeInTheDocument()
+    expect(screen.queryByText("8 left")).not.toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: "Load more" }),
     ).not.toBeInTheDocument()

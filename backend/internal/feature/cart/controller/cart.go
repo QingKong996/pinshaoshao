@@ -196,7 +196,6 @@ func newCartItemResponse(item *model.CartItem) dto.CartItemResponse {
 		UnitPriceCents: item.UnitPriceCents,
 		Quantity:       item.Quantity,
 		LineTotalCents: item.LineTotalCents(),
-		AvailableStock: item.AvailableStock,
 		Availability:   string(item.Availability()),
 		CreatedAt:      item.CreatedAt,
 		UpdatedAt:      item.UpdatedAt,

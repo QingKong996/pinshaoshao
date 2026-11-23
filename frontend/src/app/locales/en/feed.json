@@ -3,7 +3,6 @@
   "description": "Browse in-stock products in your own stable order, with sold-out items filtered out.",
   "imagePlaceholder": "Product image placeholder",
   "uncategorized": "Uncategorized",
-  "availableStock": "{{count}} left",
   "loadingMore": "Loading…",
   "progress": "Showing {{loaded}} of {{total}} products",
   "end": "You've reached the end",
@@ -15,13 +14,13 @@
     "price": "From",
     "skus": {
       "title": "Choose an option",
-      "description": "Every option for this product is listed here. Unavailable options cannot be purchased.",
+      "description": "Choose each specification in turn. Combinations that do not exist are disabled.",
       "specs": "Specifications",
       "price": "Price",
-      "stock": "Stock",
       "noSpecs": "No specifications",
-      "available": "{{count}} available",
+      "outOfStock": "Out of stock",
       "unavailable": "Unavailable",
+      "chooseSpecs": "Select all options",
       "empty": "No options are available for this product.",
       "selected": "Selected"
     },
@@ -44,7 +43,7 @@
   },
   "productSignedOut": {
     "title": "Sign in to view product details",
-    "description": "Product details, prices and stock are available to signed-in buyers.",
+    "description": "Product details and prices are available to signed-in buyers.",
     "action": "Sign in"
   },
   "errors": {

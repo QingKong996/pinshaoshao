@@ -11,6 +11,7 @@ import {
 import {
   describeProductError,
   feedQueryKeys,
+  isSKUPurchasable,
   useProductDetail,
 } from "@/features/feed"
 import {
@@ -119,13 +120,8 @@ export function CheckoutRoute() {
       const sku = productQuery.data.skus.find(
         (candidate) => candidate.id === directSKUID,
       )
-      const available =
-        sku &&
-        sku.is_enabled &&
-        sku.available_stock >= directQuantity &&
-        directQuantity > 0
 
-      if (!sku || !available) {
+      if (!sku || !isSKUPurchasable(sku)) {
         content = (
           <QueryError
             title={t("checkout.direct.unavailableTitle")}
