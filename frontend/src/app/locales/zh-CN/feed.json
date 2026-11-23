@@ -7,6 +7,32 @@
   "loadingMore": "加载中…",
   "progress": "已展示 {{loaded}} / {{total}} 件商品",
   "end": "已经到底了",
+  "detail": {
+    "documentTitle": "{{name}} · {{brand}}",
+    "back": "返回商品流",
+    "shop": "店铺",
+    "category": "分类",
+    "price": "起售",
+    "skus": {
+      "title": "选择规格",
+      "description": "这里列出该商品的全部规格，不可购买的规格会明确标注。",
+      "specs": "规格",
+      "price": "价格",
+      "stock": "库存",
+      "noSpecs": "无规格",
+      "available": "可售 {{count}} 件",
+      "unavailable": "暂不可购买",
+      "empty": "该商品暂时没有可选规格。",
+      "selected": "已选择"
+    },
+    "quantity": "数量",
+    "decrease": "减少数量",
+    "increase": "增加数量",
+    "addToCart": "加入购物车",
+    "buyNow": "立即购买",
+    "added": "已加入购物车。",
+    "unavailable": "该规格当前不可购买。"
+  },
   "empty": {
     "title": "暂时没有可逛的商品",
     "description": "等商家上架有库存的新商品后，再来看看吧。"
@@ -16,12 +42,22 @@
     "description": "登录后，我们会为你生成稳定的个性化排序，把有货的好物一一铺开。",
     "action": "去登录"
   },
+  "productSignedOut": {
+    "title": "登录后查看商品详情",
+    "description": "商品详情、规格价格和库存仅对已登录买家展示。",
+    "action": "去登录"
+  },
   "errors": {
     "loadTitle": "商品流加载失败",
+    "productLoadTitle": "商品详情加载失败",
     "unknown": "操作失败，请稍后重试。",
     "network": "无法连接服务器，请检查网络后重试。",
     "unauthorized": "登录状态已失效，请重新登录。",
     "invalidQuery": "分页参数有误，请刷新后重试。",
+    "invalidProduct": "商品链接无效。",
+    "productNotFound": "该商品当前不可购买。",
+    "invalidCartItem": "请检查购买数量后重试。",
+    "unavailable": "该规格当前不可购买。",
     "server": "服务器暂时无法加载商品流，请稍后重试。",
     "retry": "重试"
   }

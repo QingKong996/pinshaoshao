@@ -5,12 +5,14 @@ package repository_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
 
+	"pinshaoshao/internal/feature/feed/apperr"
 	"pinshaoshao/internal/feature/feed/model"
 	"pinshaoshao/internal/feature/feed/repository"
 
@@ -158,6 +160,61 @@ func TestFeedRepositoryFiltersSortsAndPaginates(t *testing.T) {
 		}
 	}
 	t.Fatal("expected at least one user seed to produce a different feed order")
+}
+
+func TestFeedRepositoryGetReturnsEverySKU(t *testing.T) {
+	ctx := context.Background()
+	resetDatabase(t)
+	shopID := insertShop(t, "feed-shop")
+	productID := insertProduct(t, shopID, "Coffee", "on_shelf", []skuFixture{
+		{spec: "500g", priceCents: 3499, totalStock: 3, enabled: true},
+		{spec: "250g", priceCents: 1999, totalStock: 4, frozenStock: 1, enabled: true},
+		{spec: "1kg", priceCents: 5999, totalStock: 5, enabled: false},
+	})
+
+	detail, err := repository.NewFeedRepository(testPool).Get(ctx, productID)
+	if err != nil {
+		t.Fatalf("get product detail: %v", err)
+	}
+	if detail.ID != productID ||
+		detail.ShopID != shopID ||
+		detail.ShopName != "Feed shop" ||
+		detail.Name != "Coffee" {
+		t.Fatalf("product detail = %+v", detail)
+	}
+	if len(detail.SKUs) != 3 {
+		t.Fatalf("sku count = %d, want 3", len(detail.SKUs))
+	}
+
+	first := detail.SKUs[0]
+	if first.Specs["variant"] != "250g" ||
+		first.PriceCents != 1999 ||
+		first.AvailableStock != 3 ||
+		!first.IsEnabled {
+		t.Fatalf("first sku = %+v", first)
+	}
+	if last := detail.SKUs[2]; last.Specs["variant"] != "1kg" || last.IsEnabled {
+		t.Fatalf("last sku = %+v, want disabled 1kg", last)
+	}
+}
+
+func TestFeedRepositoryGetRejectsUnavailableProduct(t *testing.T) {
+	ctx := context.Background()
+	resetDatabase(t)
+	shopID := insertShop(t, "feed-shop")
+	offShelfID := insertProduct(t, shopID, "Hidden", "off_shelf", []skuFixture{{
+		spec: "default", priceCents: 1000, totalStock: 1, enabled: true,
+	}})
+	feedRepository := repository.NewFeedRepository(testPool)
+
+	_, err := feedRepository.Get(ctx, offShelfID)
+	if !errors.Is(err, apperr.ErrProductNotFound) {
+		t.Fatalf("off-shelf error = %v, want %v", err, apperr.ErrProductNotFound)
+	}
+	_, err = feedRepository.Get(ctx, 999999)
+	if !errors.Is(err, apperr.ErrProductNotFound) {
+		t.Fatalf("missing product error = %v, want %v", err, apperr.ErrProductNotFound)
+	}
 }
 
 type skuFixture struct {

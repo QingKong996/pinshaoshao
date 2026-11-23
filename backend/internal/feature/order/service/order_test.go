@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"math"
 	"strings"
 	"testing"
 
@@ -131,6 +132,196 @@ func TestOrderServiceCreateRejectsInvalidInput(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOrderServiceCreateDirectNormalizesInput(t *testing.T) {
+	order := &model.Order{ID: 1}
+	orderService, repository := newTestService(t)
+
+	repository.EXPECT().
+		CreateDirect(gomock.Any(), 7, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ int, input model.CreateDirectOrderInput) (*model.Order, error) {
+			if input.CheckoutKey != testCheckoutKey {
+				t.Fatalf("checkout key = %q, want %q", input.CheckoutKey, testCheckoutKey)
+			}
+			if len(input.RequestHash) != 64 {
+				t.Fatalf("request hash length = %d, want 64", len(input.RequestHash))
+			}
+			if input.SKUID != 5 || input.Quantity != 2 {
+				t.Fatalf("item = %d/%d, want 5/2", input.SKUID, input.Quantity)
+			}
+			if input.ReceiverName != "Alice" ||
+				input.ReceiverPhone != "+8613800138000" ||
+				input.ShippingAddress != "Shanghai" {
+				t.Fatalf("receiver = %q/%q/%q, want trimmed values", input.ReceiverName, input.ReceiverPhone, input.ShippingAddress)
+			}
+			return order, nil
+		})
+
+	got, err := orderService.CreateDirect(context.Background(), 7, service.CreateDirectOrderInput{
+		CheckoutKey:     strings.ToUpper(testCheckoutKey),
+		SKUID:           5,
+		Quantity:        2,
+		ReceiverName:    "  Alice  ",
+		ReceiverPhone:   "  +8613800138000 ",
+		ShippingAddress: "  Shanghai ",
+	})
+	if err != nil {
+		t.Fatalf("create direct order: %v", err)
+	}
+	if got != order {
+		t.Fatalf("order = %p, want %p", got, order)
+	}
+}
+
+func TestOrderServiceCreateDirectRejectsInvalidInput(t *testing.T) {
+	valid := service.CreateDirectOrderInput{
+		CheckoutKey:     testCheckoutKey,
+		SKUID:           5,
+		Quantity:        2,
+		ReceiverName:    "Alice",
+		ReceiverPhone:   "13800138000",
+		ShippingAddress: "Shanghai",
+	}
+	tests := []struct {
+		name   string
+		mutate func(*service.CreateDirectOrderInput)
+	}{
+		{
+			name: "invalid checkout key",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.CheckoutKey = "not-a-uuid"
+			},
+		},
+		{
+			name: "invalid sku",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.SKUID = 0
+			},
+		},
+		{
+			name: "invalid quantity",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.Quantity = 0
+			},
+		},
+		{
+			name: "quantity too large",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.Quantity = math.MaxInt32 + 1
+			},
+		},
+		{
+			name: "blank receiver",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.ReceiverName = "  "
+			},
+		},
+		{
+			name: "address too long",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.ShippingAddress = strings.Repeat("a", 1001)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := valid
+			tt.mutate(&input)
+			orderService, _ := newTestService(t)
+
+			_, err := orderService.CreateDirect(context.Background(), 7, input)
+			if !errors.Is(err, apperr.ErrInvalidCheckout) {
+				t.Fatalf("error = %v, want %v", err, apperr.ErrInvalidCheckout)
+			}
+		})
+	}
+}
+
+func TestOrderServiceCreateDirectHashesNormalizedPayload(t *testing.T) {
+	input := service.CreateDirectOrderInput{
+		CheckoutKey:     testCheckoutKey,
+		SKUID:           5,
+		Quantity:        2,
+		ReceiverName:    "Test Buyer",
+		ReceiverPhone:   "1234567890",
+		ShippingAddress: "Shanghai",
+	}
+	baseline := directOrderHash(t, input)
+
+	normalized := input
+	normalized.CheckoutKey = strings.ToUpper(normalized.CheckoutKey)
+	normalized.ReceiverName = "  Test Buyer  "
+	normalized.ReceiverPhone = " 1234567890 "
+	normalized.ShippingAddress = " Shanghai "
+	if got := directOrderHash(t, normalized); got != baseline {
+		t.Fatalf("normalized request hash = %q, want %q", got, baseline)
+	}
+
+	tests := []struct {
+		name   string
+		mutate func(*service.CreateDirectOrderInput)
+	}{
+		{
+			name: "sku",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.SKUID = 6
+			},
+		},
+		{
+			name: "quantity",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.Quantity = 3
+			},
+		},
+		{
+			name: "receiver name",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.ReceiverName = "Other Buyer"
+			},
+		},
+		{
+			name: "receiver phone",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.ReceiverPhone = "1234567891"
+			},
+		},
+		{
+			name: "shipping address",
+			mutate: func(input *service.CreateDirectOrderInput) {
+				input.ShippingAddress = "Beijing"
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			changed := input
+			tt.mutate(&changed)
+			if got := directOrderHash(t, changed); got == baseline {
+				t.Fatalf("request hash did not change when %s changed", tt.name)
+			}
+		})
+	}
+}
+
+func directOrderHash(t *testing.T, input service.CreateDirectOrderInput) string {
+	t.Helper()
+
+	orderService, repository := newTestService(t)
+	var requestHash string
+	repository.EXPECT().
+		CreateDirect(gomock.Any(), 7, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ int, stored model.CreateDirectOrderInput) (*model.Order, error) {
+			requestHash = stored.RequestHash
+			return &model.Order{ID: 1}, nil
+		})
+
+	if _, err := orderService.CreateDirect(context.Background(), 7, input); err != nil {
+		t.Fatalf("create direct order: %v", err)
+	}
+	return requestHash
 }
 
 func TestOrderServiceGetRejectsInvalidID(t *testing.T) {

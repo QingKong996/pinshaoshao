@@ -10,6 +10,13 @@
     "title": "Confirm order",
     "description": "Enter delivery details and submit. Unpaid orders expire after 30 minutes.",
     "backToCart": "Back to cart",
+    "backToProduct": "Back to product",
+    "direct": {
+      "invalidTitle": "Invalid direct purchase link",
+      "invalidDescription": "Return to the product page and choose an available option.",
+      "unavailableTitle": "This option is unavailable",
+      "unavailableDescription": "The option is disabled or no longer has enough stock. Choose another option on the product page."
+    },
     "form": {
       "title": "Delivery details",
       "receiverName": "Recipient",
@@ -22,7 +29,8 @@
       "noSpecs": "No options",
       "quantity": "{{count}} item(s)",
       "total": "Items total",
-      "notice": "The displayed item prices are used for the order snapshot. Current stock availability is checked at submission."
+      "notice": "The displayed item prices are used for the order snapshot. Current stock availability is checked at submission.",
+      "directNotice": "The latest price and available stock are checked when you submit. The final amount is shown on the order page."
     },
     "empty": {
       "title": "No items to check out",
@@ -106,7 +114,7 @@
     "unauthorized": "Your session has expired. Sign in again.",
     "invalidCheckout": "Check the checkout details and try again.",
     "invalidOrder": "The order request is invalid.",
-    "checkoutConflict": "The cart or catalog changed. Return to the cart, refresh, and retry.",
+    "checkoutConflict": "The cart or product details changed. Refresh and try again.",
     "cannotCancel": "This order cannot be cancelled. Refresh for the latest status.",
     "server": "The server cannot process the request right now. Try again later.",
     "notFound": "The order does not exist or belongs to another account.",

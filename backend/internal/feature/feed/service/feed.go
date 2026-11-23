@@ -16,6 +16,7 @@ const (
 
 type FeedRepository interface {
 	List(ctx context.Context, userID int, page int, pageSize int) (*model.FeedResult, error)
+	Get(ctx context.Context, productID int) (*model.ProductDetail, error)
 }
 
 type FeedService struct {
@@ -37,6 +38,18 @@ func (s *FeedService) List(ctx context.Context, userID int, page int, pageSize i
 		return nil, fmt.Errorf("service.ListFeed: %w", err)
 	}
 	return result, nil
+}
+
+func (s *FeedService) Get(ctx context.Context, productID int) (*model.ProductDetail, error) {
+	if productID <= 0 {
+		return nil, fmt.Errorf("service.GetProductDetail: %w", apperr.ErrInvalidProductID)
+	}
+
+	product, err := s.feedRepository.Get(ctx, productID)
+	if err != nil {
+		return nil, fmt.Errorf("service.GetProductDetail: %w", err)
+	}
+	return product, nil
 }
 
 type feedQuery struct {

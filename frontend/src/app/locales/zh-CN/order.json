@@ -10,6 +10,13 @@
     "title": "确认订单",
     "description": "填写收货信息并提交。未支付订单将在 30 分钟后失效。",
     "backToCart": "返回购物车",
+    "backToProduct": "返回商品详情",
+    "direct": {
+      "invalidTitle": "直接购买链接无效",
+      "invalidDescription": "请返回商品详情页，重新选择可购买的规格。",
+      "unavailableTitle": "该规格暂不可购买",
+      "unavailableDescription": "该规格已停用或库存不足，请返回商品详情页选择其他规格。"
+    },
     "form": {
       "title": "收货信息",
       "receiverName": "收货人",
@@ -22,7 +29,8 @@
       "noSpecs": "无规格",
       "quantity": "{{count}} 件",
       "total": "商品合计",
-      "notice": "订单按当前展示的商品价格生成快照，提交时仍会校验当前可售库存。"
+      "notice": "订单按当前展示的商品价格生成快照，提交时仍会校验当前可售库存。",
+      "directNotice": "提交时会校验最新价格和库存，最终金额以订单页为准。"
     },
     "empty": {
       "title": "没有可结算的商品",
@@ -106,7 +114,7 @@
     "unauthorized": "登录状态已失效，请重新登录。",
     "invalidCheckout": "结算信息有误，请检查后重试。",
     "invalidOrder": "订单参数有误。",
-    "checkoutConflict": "购物车或商品状态已变化，请返回购物车刷新后重试。",
+    "checkoutConflict": "购物车或商品信息已变更，请刷新后重试。",
     "cannotCancel": "当前订单无法取消，请刷新后查看最新状态。",
     "server": "服务器暂时无法处理请求，请稍后重试。",
     "notFound": "订单不存在或不属于当前账户。",

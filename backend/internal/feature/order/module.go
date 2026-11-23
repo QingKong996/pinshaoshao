@@ -28,6 +28,7 @@ func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
 	protected := r.Group("/api/v1")
 	protected.Use(authMiddleware)
 	protected.POST("/orders", m.controller.Create)
+	protected.POST("/orders/direct", m.controller.CreateDirect)
 	protected.GET("/orders", m.controller.List)
 	protected.GET("/orders/:orderID", m.controller.Get)
 	protected.POST("/orders/:orderID/cancel", m.controller.Cancel)

@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"pinshaoshao/internal/feature/feed/apperr"
@@ -11,12 +12,14 @@ import (
 )
 
 type stubFeedRepository struct {
-	calls    int
-	userID   int
-	page     int
-	pageSize int
-	result   *model.FeedResult
-	err      error
+	calls     int
+	userID    int
+	page      int
+	pageSize  int
+	productID int
+	result    *model.FeedResult
+	detail    *model.ProductDetail
+	err       error
 }
 
 func (r *stubFeedRepository) List(
@@ -30,6 +33,15 @@ func (r *stubFeedRepository) List(
 	r.page = page
 	r.pageSize = pageSize
 	return r.result, r.err
+}
+
+func (r *stubFeedRepository) Get(
+	_ context.Context,
+	productID int,
+) (*model.ProductDetail, error) {
+	r.calls++
+	r.productID = productID
+	return r.detail, r.err
 }
 
 func TestFeedServiceListNormalizesPagination(t *testing.T) {
@@ -126,6 +138,48 @@ func TestFeedServiceListPreservesRepositoryErrors(t *testing.T) {
 		1,
 		20,
 	)
+	if !errors.Is(err, repositoryErr) {
+		t.Fatalf("error = %v, want %v", err, repositoryErr)
+	}
+}
+
+func TestFeedServiceGet(t *testing.T) {
+	detail := &model.ProductDetail{ID: 10}
+	repository := &stubFeedRepository{detail: detail}
+
+	got, err := service.NewFeedService(repository).Get(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("get product detail: %v", err)
+	}
+	if got != detail {
+		t.Fatalf("product detail = %p, want %p", got, detail)
+	}
+	if repository.productID != 10 {
+		t.Fatalf("product id = %d, want 10", repository.productID)
+	}
+}
+
+func TestFeedServiceGetRejectsInvalidID(t *testing.T) {
+	for _, productID := range []int{0, -1} {
+		t.Run(fmt.Sprintf("product %d", productID), func(t *testing.T) {
+			repository := &stubFeedRepository{}
+
+			_, err := service.NewFeedService(repository).Get(context.Background(), productID)
+			if !errors.Is(err, apperr.ErrInvalidProductID) {
+				t.Fatalf("error = %v, want %v", err, apperr.ErrInvalidProductID)
+			}
+			if repository.calls != 0 {
+				t.Fatalf("repository calls = %d, want 0", repository.calls)
+			}
+		})
+	}
+}
+
+func TestFeedServiceGetPreservesRepositoryErrors(t *testing.T) {
+	repositoryErr := errors.New("database is down")
+	repository := &stubFeedRepository{err: repositoryErr}
+
+	_, err := service.NewFeedService(repository).Get(context.Background(), 10)
 	if !errors.Is(err, repositoryErr) {
 		t.Fatalf("error = %v, want %v", err, repositoryErr)
 	}

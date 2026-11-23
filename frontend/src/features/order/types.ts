@@ -78,6 +78,15 @@ export type CreateOrderInput = {
   shipping_address: string
 }
 
+export type CreateDirectOrderInput = {
+  checkout_key: string
+  sku_id: number
+  quantity: number
+  receiver_name: string
+  receiver_phone: string
+  shipping_address: string
+}
+
 export type CheckoutLine = {
   id: number
   product_name: string

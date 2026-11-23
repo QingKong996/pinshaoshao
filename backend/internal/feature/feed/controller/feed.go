@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"pinshaoshao/internal/feature/feed/apperr"
 	"pinshaoshao/internal/feature/feed/dto"
@@ -17,6 +18,7 @@ import (
 
 type FeedService interface {
 	List(ctx context.Context, userID int, page int, pageSize int) (*model.FeedResult, error)
+	Get(ctx context.Context, productID int) (*model.ProductDetail, error)
 }
 
 type FeedController struct {
@@ -98,6 +100,53 @@ func (c *FeedController) List(ctx *gin.Context) {
 	})
 }
 
+// Get returns an on-shelf product with every SKU for the authenticated buyer.
+//
+// @Summary     Get a buyer product
+// @Description Return an on-shelf product with all of its SKUs, specifications, prices and available stock.
+// @Tags        Feed
+// @Produce     json
+// @Param       productID path int true "Product ID"
+// @Success     200 {object} dto.ProductDetailResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
+// @Security    BearerAuth
+// @Router      /products/{productID} [get]
+func (c *FeedController) Get(ctx *gin.Context) {
+	productID, err := strconv.Atoi(ctx.Param("productID"))
+	if err != nil || productID <= 0 {
+		ctx.JSON(http.StatusBadRequest, httpx.ErrorResponse{
+			Error: apperr.ErrInvalidProductID.Error(),
+		})
+		return
+	}
+
+	product, err := c.feedService.Get(ctx.Request.Context(), productID)
+	if err != nil {
+		switch {
+		case errors.Is(err, apperr.ErrInvalidProductID):
+			ctx.JSON(http.StatusBadRequest, httpx.ErrorResponse{
+				Error: apperr.ErrInvalidProductID.Error(),
+			})
+		case errors.Is(err, apperr.ErrProductNotFound):
+			ctx.JSON(http.StatusNotFound, httpx.ErrorResponse{
+				Error: apperr.ErrProductNotFound.Error(),
+			})
+		default:
+			slog.ErrorContext(ctx.Request.Context(), "get product detail", "product_id", productID, "error", err)
+			ctx.JSON(http.StatusInternalServerError, httpx.ErrorResponse{
+				Error: apperr.ErrInternalServer.Error(),
+			})
+		}
+		return
+	}
+
+	ctx.JSON(http.StatusOK, newProductDetailResponse(product))
+}
+
 func newFeedItemResponse(item *model.FeedItem) dto.FeedItemResponse {
 	return dto.FeedItemResponse{
 		ID:             item.ID,
@@ -109,5 +158,29 @@ func newFeedItemResponse(item *model.FeedItem) dto.FeedItemResponse {
 		MinPriceCents:  item.MinPriceCents,
 		MaxPriceCents:  item.MaxPriceCents,
 		AvailableStock: item.AvailableStock,
+	}
+}
+
+func newProductDetailResponse(product *model.ProductDetail) dto.ProductDetailResponse {
+	skus := make([]dto.ProductDetailSKUResponse, 0, len(product.SKUs))
+	for i := range product.SKUs {
+		sku := &product.SKUs[i]
+		skus = append(skus, dto.ProductDetailSKUResponse{
+			ID:             sku.ID,
+			Specs:          sku.Specs,
+			PriceCents:     sku.PriceCents,
+			IsEnabled:      sku.IsEnabled,
+			AvailableStock: sku.AvailableStock,
+		})
+	}
+
+	return dto.ProductDetailResponse{
+		ID:           product.ID,
+		ShopID:       product.ShopID,
+		ShopName:     product.ShopName,
+		Name:         product.Name,
+		Description:  product.Description,
+		CategoryName: product.CategoryName,
+		SKUs:         skus,
 	}
 }

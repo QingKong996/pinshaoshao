@@ -1,5 +1,6 @@
 export { CartPage, CartSignedOut } from "./ui/cart-page"
 export { describeCartError } from "./model/errors"
+export { useAddCartItem } from "./model/mutations"
 export { cartQueryKeys } from "./model/query-keys"
 export { useCart } from "./model/queries"
 export type { CartItem } from "./types"

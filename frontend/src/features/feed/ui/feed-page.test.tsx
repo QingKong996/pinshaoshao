@@ -66,6 +66,9 @@ describe("FeedPage", () => {
 
     expect(await screen.findByText("Product 1")).toBeInTheDocument()
     expect(await screen.findByText("Product 3")).toBeInTheDocument()
+    expect(
+      screen.getByRole("link", { name: /Product 1/ }),
+    ).toHaveAttribute("href", "/products/1")
     await waitFor(() => expect(requests).toEqual([1, 2]))
     expect(authorizations).toEqual(["Bearer token", "Bearer token"])
     expect(screen.getByText("Showing 3 of 3 products")).toBeInTheDocument()

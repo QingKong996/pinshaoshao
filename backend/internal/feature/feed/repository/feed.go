@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"pinshaoshao/internal/feature/feed/apperr"
 	"pinshaoshao/internal/feature/feed/model"
 
 	"github.com/jackc/pgx/v5"
@@ -98,4 +100,88 @@ func scanFeedItem(row pgx.Row) (*model.FeedItem, error) {
 		return nil, err
 	}
 	return &item, nil
+}
+
+func (r *FeedRepository) Get(ctx context.Context, productID int) (*model.ProductDetail, error) {
+	var result *model.ProductDetail
+
+	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{
+		IsoLevel:   pgx.RepeatableRead,
+		AccessMode: pgx.ReadOnly,
+	}, func(tx pgx.Tx) error {
+		detail, err := loadProductDetail(ctx, tx, productID)
+		if err != nil {
+			return err
+		}
+
+		skus, err := loadProductSKUs(ctx, tx, productID)
+		if err != nil {
+			return err
+		}
+		detail.SKUs = skus
+		result = detail
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("repository.GetProductDetail: %w", err)
+	}
+	return result, nil
+}
+
+func loadProductDetail(ctx context.Context, db pgx.Tx, productID int) (*model.ProductDetail, error) {
+	const query = `SELECT p.id, p.shop_id, s.name, p.name, p.description, pc.name
+FROM products p
+JOIN shops s ON s.id = p.shop_id
+LEFT JOIN product_categories pc ON pc.id = p.category_id
+WHERE p.id = $1 AND p.status = 'on_shelf'`
+
+	var detail model.ProductDetail
+	if err := db.QueryRow(ctx, query, productID).Scan(
+		&detail.ID,
+		&detail.ShopID,
+		&detail.ShopName,
+		&detail.Name,
+		&detail.Description,
+		&detail.CategoryName,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperr.ErrProductNotFound
+		}
+		return nil, err
+	}
+	return &detail, nil
+}
+
+func loadProductSKUs(ctx context.Context, db pgx.Tx, productID int) ([]model.ProductSKU, error) {
+	const query = `SELECT ps.id, ps.specs, ps.price_cents, ps.is_enabled,
+       COALESCE(ii.total_stock - ii.frozen_stock, 0)::BIGINT
+FROM product_skus ps
+LEFT JOIN inventory_items ii ON ii.sku_id = ps.id
+WHERE ps.product_id = $1
+ORDER BY ps.price_cents, ps.id`
+
+	rows, err := db.Query(ctx, query, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	skus := make([]model.ProductSKU, 0)
+	for rows.Next() {
+		var sku model.ProductSKU
+		if err := rows.Scan(
+			&sku.ID,
+			&sku.Specs,
+			&sku.PriceCents,
+			&sku.IsEnabled,
+			&sku.AvailableStock,
+		); err != nil {
+			return nil, err
+		}
+		skus = append(skus, sku)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return skus, nil
 }
