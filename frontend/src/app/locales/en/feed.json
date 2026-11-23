@@ -1,0 +1,28 @@
+{
+  "title": "Picked for you",
+  "description": "Browse in-stock products in your own stable order, with sold-out items filtered out.",
+  "imagePlaceholder": "Product image placeholder",
+  "uncategorized": "Uncategorized",
+  "availableStock": "{{count}} left",
+  "loadingMore": "Loading…",
+  "progress": "Showing {{loaded}} of {{total}} products",
+  "end": "You've reached the end",
+  "empty": {
+    "title": "Nothing to browse yet",
+    "description": "Come back when merchants list new products with stock available."
+  },
+  "signedOut": {
+    "title": "Sign in for your personal feed",
+    "description": "Sign in to get a stable, personalized order of products that are ready to buy.",
+    "action": "Sign in"
+  },
+  "errors": {
+    "loadTitle": "Could not load your feed",
+    "unknown": "Something went wrong. Please try again.",
+    "network": "Could not reach the server. Check your connection and try again.",
+    "unauthorized": "Your session expired. Please sign in again.",
+    "invalidQuery": "The page request was invalid. Refresh and try again.",
+    "server": "The feed is temporarily unavailable. Please try again.",
+    "retry": "Retry"
+  }
+}

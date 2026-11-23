@@ -1,0 +1,28 @@
+{
+  "title": "为你挑好物",
+  "description": "用你的专属顺序浏览在售商品，只展示仍有库存的好物。",
+  "imagePlaceholder": "商品图片占位",
+  "uncategorized": "未分类",
+  "availableStock": "库存 {{count}}",
+  "loadingMore": "加载中…",
+  "progress": "已展示 {{loaded}} / {{total}} 件商品",
+  "end": "已经到底了",
+  "empty": {
+    "title": "暂时没有可逛的商品",
+    "description": "等商家上架有库存的新商品后，再来看看吧。"
+  },
+  "signedOut": {
+    "title": "登录后开启专属商品流",
+    "description": "登录后，我们会为你生成稳定的个性化排序，把有货的好物一一铺开。",
+    "action": "去登录"
+  },
+  "errors": {
+    "loadTitle": "商品流加载失败",
+    "unknown": "操作失败，请稍后重试。",
+    "network": "无法连接服务器，请检查网络后重试。",
+    "unauthorized": "登录状态已失效，请重新登录。",
+    "invalidQuery": "分页参数有误，请刷新后重试。",
+    "server": "服务器暂时无法加载商品流，请稍后重试。",
+    "retry": "重试"
+  }
+}

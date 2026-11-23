@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	cartmodule "pinshaoshao/internal/feature/cart"
+	feedmodule "pinshaoshao/internal/feature/feed"
 	inventorymodule "pinshaoshao/internal/feature/inventory"
 	ordermodule "pinshaoshao/internal/feature/order"
 	productmodule "pinshaoshao/internal/feature/product"
@@ -77,6 +78,7 @@ func main() {
 	inventoryModule := inventorymodule.NewModule(pool)
 	productModule := productmodule.NewModule(pool, inventoryModule.Lifecycle())
 	cartModule := cartmodule.NewModule(pool)
+	feedModule := feedmodule.NewModule(pool)
 	orderModule := ordermodule.NewModule(pool, inventoryModule.Reservation())
 
 	router.Register(r, router.Modules{
@@ -85,6 +87,7 @@ func main() {
 		Product:   productModule,
 		Inventory: inventoryModule,
 		Cart:      cartModule,
+		Feed:      feedModule,
 		Order:     orderModule,
 		UserAuth:  userModule.AuthMiddleware(),
 		ShopAuth:  shopModule.AuthMiddleware(),
