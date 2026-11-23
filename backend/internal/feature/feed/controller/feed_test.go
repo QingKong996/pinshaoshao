@@ -105,7 +105,7 @@ func TestFeedList(t *testing.T) {
 		)
 	}
 
-	var body feeddto.FeedListResponse
+	var body dto.FeedListResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode feed response: %v", err)
 	}
