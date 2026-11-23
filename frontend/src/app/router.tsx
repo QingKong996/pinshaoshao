@@ -13,11 +13,14 @@ import HomePage from "./pages/home"
 import MerchantHomePage from "./pages/merchant-home/merchant-home-page"
 import NotFoundPage from "./pages/not-found"
 import { CartRoute } from "./routes/cart-route"
+import { CheckoutRoute } from "./routes/checkout-route"
 import { MerchantCategoriesRoute } from "./routes/merchant-categories-route"
 import { MerchantDashboardRoute } from "./routes/merchant-dashboard-route"
 import { MerchantInventoryRoute } from "./routes/merchant-inventory-route"
 import { MerchantProductDetailRoute } from "./routes/merchant-product-detail-route"
 import { MerchantProductsRoute } from "./routes/merchant-products-route"
+import { OrderDetailRoute } from "./routes/order-detail-route"
+import { OrdersRoute } from "./routes/orders-route"
 import {
   SignInPage,
   SignUpPage,
@@ -33,6 +36,9 @@ export const router = createBrowserRouter([
       { path: "/signin", element: <SignInPage /> },
       { path: "/signup", element: <SignUpPage /> },
       { path: "/cart", element: <CartRoute /> },
+      { path: "/checkout", element: <CheckoutRoute /> },
+      { path: "/orders", element: <OrdersRoute /> },
+      { path: "/orders/:orderID", element: <OrderDetailRoute /> },
       {
         path: "/merchant/signin",
         element: <MerchantSignInPage redirectTo={MERCHANT_CONSOLE_HOME_PATH} />,

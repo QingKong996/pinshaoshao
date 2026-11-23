@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+
 	"pinshaoshao/internal/database"
 	"pinshaoshao/internal/feature/inventory/apperr"
 	"pinshaoshao/internal/feature/inventory/model"
@@ -150,6 +152,136 @@ WHERE sku_id IN (SELECT id FROM product_skus WHERE product_id = $1)`
 		return fmt.Errorf("repository.DeleteEmptyForProduct: %w", err)
 	}
 	return nil
+}
+
+// Freeze reserves available stock for the supplied SKU quantities.
+func (r *InventoryRepository) Freeze(ctx context.Context, db database.DBTX, items []model.ReservationItem) error {
+	normalized, err := normalizeReservationItems(items)
+	if err != nil {
+		return fmt.Errorf("repository.Freeze: %w", err)
+	}
+
+	rows, err := lockReservationRows(ctx, db, normalized)
+	if err != nil {
+		return fmt.Errorf("repository.Freeze: %w", err)
+	}
+
+	for _, item := range normalized {
+		row, ok := rows[item.SKUID]
+		if !ok {
+			return fmt.Errorf("repository.Freeze: %w", apperr.ErrInventoryItemNotFound)
+		}
+		if row.totalStock-row.frozenStock < item.Quantity {
+			return fmt.Errorf("repository.Freeze: %w", apperr.ErrInsufficientStock)
+		}
+	}
+
+	for _, item := range normalized {
+		const query = `UPDATE inventory_items
+SET frozen_stock = frozen_stock + $1, version = version + 1, updated_at = now()
+WHERE sku_id = $2`
+		if _, err := db.Exec(ctx, query, item.Quantity, item.SKUID); err != nil {
+			return fmt.Errorf("repository.Freeze: %w", err)
+		}
+	}
+	return nil
+}
+
+// Release removes a previous stock reservation.
+func (r *InventoryRepository) Release(ctx context.Context, db database.DBTX, items []model.ReservationItem) error {
+	normalized, err := normalizeReservationItems(items)
+	if err != nil {
+		return fmt.Errorf("repository.Release: %w", err)
+	}
+
+	rows, err := lockReservationRows(ctx, db, normalized)
+	if err != nil {
+		return fmt.Errorf("repository.Release: %w", err)
+	}
+
+	for _, item := range normalized {
+		row, ok := rows[item.SKUID]
+		if !ok {
+			return fmt.Errorf("repository.Release: %w", apperr.ErrReservationInvalid)
+		}
+		if row.frozenStock < item.Quantity {
+			return fmt.Errorf("repository.Release: %w", apperr.ErrReservationInvalid)
+		}
+	}
+
+	for _, item := range normalized {
+		const query = `UPDATE inventory_items
+SET frozen_stock = frozen_stock - $1, version = version + 1, updated_at = now()
+WHERE sku_id = $2`
+		if _, err := db.Exec(ctx, query, item.Quantity, item.SKUID); err != nil {
+			return fmt.Errorf("repository.Release: %w", err)
+		}
+	}
+	return nil
+}
+
+type reservationRow struct {
+	totalStock  int
+	frozenStock int
+}
+
+func lockReservationRows(ctx context.Context, db database.DBTX, items []model.ReservationItem) (map[int]reservationRow, error) {
+	skuIDs := make([]int64, 0, len(items))
+	for _, item := range items {
+		skuIDs = append(skuIDs, int64(item.SKUID))
+	}
+
+	const query = `SELECT sku_id, total_stock, frozen_stock
+FROM inventory_items
+WHERE sku_id = ANY($1::bigint[])
+ORDER BY sku_id
+FOR UPDATE`
+
+	rows, err := db.Query(ctx, query, skuIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int]reservationRow, len(items))
+	for rows.Next() {
+		var skuID int
+		var row reservationRow
+		if err := rows.Scan(&skuID, &row.totalStock, &row.frozenStock); err != nil {
+			return nil, err
+		}
+		result[skuID] = row
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func normalizeReservationItems(items []model.ReservationItem) ([]model.ReservationItem, error) {
+	if len(items) == 0 {
+		return nil, apperr.ErrInvalidInventoryUpdate
+	}
+
+	quantities := make(map[int]int, len(items))
+	for _, item := range items {
+		if item.SKUID <= 0 || item.Quantity <= 0 {
+			return nil, apperr.ErrInvalidInventoryUpdate
+		}
+		quantities[item.SKUID] += item.Quantity
+	}
+
+	normalized := make([]model.ReservationItem, 0, len(quantities))
+	for skuID, quantity := range quantities {
+		normalized = append(normalized, model.ReservationItem{
+			SKUID:    skuID,
+			Quantity: quantity,
+		})
+	}
+	sort.Slice(normalized, func(i, j int) bool {
+		return normalized[i].SKUID < normalized[j].SKUID
+	})
+	return normalized, nil
 }
 
 func queryInventory(ctx context.Context, db database.DBTX, query string, args ...any) ([]model.InventoryItem, error) {

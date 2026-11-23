@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import { ShoppingCart } from "lucide-react"
+import { Package, ShoppingCart } from "lucide-react"
 import { Link } from "react-router"
 import { BrandMark } from "@/shared/ui/brand-mark"
 import { LanguageSwitcher } from "@/shared/ui/language-switcher"
@@ -17,6 +17,17 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           {session ? (
             <>
+              <Link
+                to="/orders"
+                aria-label={t("common:nav.orders")}
+                title={t("common:nav.orders")}
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "icon-sm",
+                })}
+              >
+                <Package aria-hidden />
+              </Link>
               <Link
                 to="/cart"
                 aria-label={t("common:nav.cart")}

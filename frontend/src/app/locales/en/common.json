@@ -2,6 +2,7 @@
   "nav": {
     "features": "Features",
     "howItWorks": "How it works",
+    "orders": "My orders",
     "cart": "Shopping cart"
   },
   "auth": {
