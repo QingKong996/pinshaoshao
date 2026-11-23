@@ -156,8 +156,15 @@ export function CartPage({ token }: { token: string }) {
             </ul>
           </Card>
 
-          <Card className="gap-5 p-5 lg:sticky lg:top-24">
-            <h2 className="font-heading text-base font-medium">
+          <Card
+            role="region"
+            aria-labelledby="cart-summary-title"
+            className="gap-5 p-5 lg:sticky lg:top-24"
+          >
+            <h2
+              id="cart-summary-title"
+              className="font-heading text-base font-medium"
+            >
               {t("summary.title")}
             </h2>
             <dl className="space-y-3 border-y py-4">
