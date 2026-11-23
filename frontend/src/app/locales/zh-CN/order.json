@@ -1,0 +1,121 @@
+{
+  "signedOut": {
+    "documentTitle": "订单 · {{brand}}",
+    "title": "登录后查看订单",
+    "description": "订单与买家账户关联，登录后即可继续查看。",
+    "action": "去登录"
+  },
+  "checkout": {
+    "documentTitle": "确认订单 · {{brand}}",
+    "title": "确认订单",
+    "description": "填写收货信息并提交。未支付订单将在 30 分钟后失效。",
+    "backToCart": "返回购物车",
+    "form": {
+      "title": "收货信息",
+      "receiverName": "收货人",
+      "receiverPhone": "联系电话",
+      "shippingAddress": "收货地址",
+      "submit": "提交订单"
+    },
+    "summary": {
+      "title": "订单商品",
+      "noSpecs": "无规格",
+      "quantity": "{{count}} 件",
+      "total": "商品合计",
+      "notice": "订单按当前展示的商品价格生成快照，提交时仍会校验当前可售库存。"
+    },
+    "empty": {
+      "title": "没有可结算的商品",
+      "description": "请返回购物车选择可购买的商品。",
+      "action": "返回购物车"
+    },
+    "errors": {
+      "receiverNameRequired": "请填写收货人",
+      "receiverNameLength": "收货人不能超过 50 个字符",
+      "receiverPhoneRequired": "请填写联系电话",
+      "receiverPhoneLength": "联系电话不能超过 32 个字符",
+      "shippingAddressRequired": "请填写收货地址",
+      "shippingAddressLength": "收货地址不能超过 1000 个字符"
+    }
+  },
+  "list": {
+    "documentTitle": "我的订单 · {{brand}}",
+    "title": "我的订单",
+    "description": "查看已提交订单的状态和明细。",
+    "orderNumber": "订单 #{{id}}",
+    "placedAt": "提交于 {{date}}",
+    "itemAndShopCount": "{{items}} 件商品 · {{shops}} 个店铺",
+    "pagination": {
+      "summary": "{{start}}–{{end}} / 共 {{total}} 笔订单",
+      "pageOf": "第 {{page}} / {{totalPages}} 页",
+      "previous": "上一页",
+      "next": "下一页"
+    },
+    "empty": {
+      "title": "还没有订单",
+      "description": "从购物车提交订单后会显示在这里。",
+      "action": "去逛逛"
+    }
+  },
+  "detail": {
+    "documentTitle": "订单 #{{id}} · {{brand}}",
+    "title": "订单 #{{id}}",
+    "placedAt": "提交于 {{date}}",
+    "backToOrders": "返回订单列表",
+    "summary": {
+      "title": "订单概览",
+      "total": "订单总额",
+      "expiresAt": "支付截止",
+      "status": "订单状态"
+    },
+    "subOrder": "子订单 #{{id}}",
+    "noSpecs": "无规格",
+    "itemQuantity": "{{price}} × {{quantity}}",
+    "receiver": {
+      "title": "收货信息",
+      "name": "收货人",
+      "phone": "联系电话",
+      "address": "收货地址"
+    },
+    "cancel": {
+      "action": "取消订单",
+      "title": "取消该订单？",
+      "description": "订单 #{{id}} 的冻结库存会被释放，已提交的订单内容不会恢复。",
+      "keep": "保留订单",
+      "confirm": "确认取消"
+    }
+  },
+  "status": {
+    "pending_payment": "待支付",
+    "paid": "已支付",
+    "partially_shipped": "部分发货",
+    "shipped": "已发货",
+    "completed": "已完成",
+    "cancelled": "已取消"
+  },
+  "subStatus": {
+    "pending_payment": "待支付",
+    "awaiting_shipment": "待发货",
+    "shipped": "已发货",
+    "completed": "已完成",
+    "cancelled": "已取消"
+  },
+  "errors": {
+    "unknown": "操作失败，请稍后重试。",
+    "network": "无法连接服务器，请检查网络后重试。",
+    "unauthorized": "登录状态已失效，请重新登录。",
+    "invalidCheckout": "结算信息有误，请检查后重试。",
+    "invalidOrder": "订单参数有误。",
+    "checkoutConflict": "购物车或商品状态已变化，请返回购物车刷新后重试。",
+    "cannotCancel": "当前订单无法取消，请刷新后查看最新状态。",
+    "server": "服务器暂时无法处理请求，请稍后重试。",
+    "notFound": "订单不存在或不属于当前账户。",
+    "loadTitle": "订单加载失败",
+    "notFoundTitle": "订单未找到",
+    "checkoutTitle": "提交订单失败",
+    "cancelTitle": "取消订单失败",
+    "retry": "重试",
+    "dismiss": "关闭",
+    "backToOrders": "返回订单列表"
+  }
+}

@@ -3,6 +3,7 @@ import { ShoppingBag, Trash2 } from "lucide-react"
 import type { TFunction } from "i18next"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router"
+import { useNavigate } from "react-router"
 import { Badge } from "@/shared/ui/badge"
 import { Button, buttonVariants } from "@/shared/ui/button"
 import { Card } from "@/shared/ui/card"
@@ -27,6 +28,7 @@ const EMPTY_CART: CartItem[] = []
 export function CartPage({ token }: { token: string }) {
   const { t } = useTranslation("cart")
   useDocumentTitle(t("documentTitle"))
+  const navigate = useNavigate()
 
   const cartQuery = useCart(token)
   const updateQuantity = useUpdateCartItemQuantity(token)
@@ -175,6 +177,17 @@ export function CartPage({ token }: { token: string }) {
             <p className="text-xs leading-relaxed text-muted-foreground">
               {t("summary.notice")}
             </p>
+            <Button
+              className="w-full"
+              disabled={summary.count === 0}
+              onClick={() =>
+                navigate(
+                  `/checkout?items=${Array.from(selectedIDs).join(",")}`,
+                )
+              }
+            >
+              {t("summary.checkout")}
+            </Button>
           </Card>
         </div>
       )}

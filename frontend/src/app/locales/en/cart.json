@@ -37,7 +37,8 @@
     "selected": "Selection",
     "itemCount": "{{count}}",
     "subtotal": "Subtotal",
-    "notice": "Prices shown are from when items were added. The current catalog price and available stock are applied at checkout."
+    "notice": "Prices shown are locked when the order is submitted. Current stock availability is checked at checkout.",
+    "checkout": "Checkout"
   },
   "removeDialog": {
     "title": "Remove this item?",

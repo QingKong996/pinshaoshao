@@ -1,0 +1,121 @@
+{
+  "signedOut": {
+    "documentTitle": "Orders · {{brand}}",
+    "title": "Sign in to view orders",
+    "description": "Orders belong to your buyer account. Sign in to continue.",
+    "action": "Sign in"
+  },
+  "checkout": {
+    "documentTitle": "Confirm order · {{brand}}",
+    "title": "Confirm order",
+    "description": "Enter delivery details and submit. Unpaid orders expire after 30 minutes.",
+    "backToCart": "Back to cart",
+    "form": {
+      "title": "Delivery details",
+      "receiverName": "Recipient",
+      "receiverPhone": "Phone",
+      "shippingAddress": "Shipping address",
+      "submit": "Place order"
+    },
+    "summary": {
+      "title": "Order items",
+      "noSpecs": "No options",
+      "quantity": "{{count}} item(s)",
+      "total": "Items total",
+      "notice": "The displayed item prices are used for the order snapshot. Current stock availability is checked at submission."
+    },
+    "empty": {
+      "title": "No items to check out",
+      "description": "Return to the cart and select available items.",
+      "action": "Back to cart"
+    },
+    "errors": {
+      "receiverNameRequired": "Enter the recipient name",
+      "receiverNameLength": "Recipient name must be 50 characters or fewer",
+      "receiverPhoneRequired": "Enter a phone number",
+      "receiverPhoneLength": "Phone number must be 32 characters or fewer",
+      "shippingAddressRequired": "Enter a shipping address",
+      "shippingAddressLength": "Shipping address must be 1000 characters or fewer"
+    }
+  },
+  "list": {
+    "documentTitle": "My orders · {{brand}}",
+    "title": "My orders",
+    "description": "Review submitted orders and their current status.",
+    "orderNumber": "Order #{{id}}",
+    "placedAt": "Placed {{date}}",
+    "itemAndShopCount": "{{items}} item(s) · {{shops}} shop(s)",
+    "pagination": {
+      "summary": "{{start}}–{{end}} of {{total}} orders",
+      "pageOf": "Page {{page}} of {{totalPages}}",
+      "previous": "Previous page",
+      "next": "Next page"
+    },
+    "empty": {
+      "title": "No orders yet",
+      "description": "Orders submitted from the cart will appear here.",
+      "action": "Start shopping"
+    }
+  },
+  "detail": {
+    "documentTitle": "Order #{{id}} · {{brand}}",
+    "title": "Order #{{id}}",
+    "placedAt": "Placed {{date}}",
+    "backToOrders": "Back to orders",
+    "summary": {
+      "title": "Order summary",
+      "total": "Order total",
+      "expiresAt": "Pay before",
+      "status": "Status"
+    },
+    "subOrder": "Sub-order #{{id}}",
+    "noSpecs": "No options",
+    "itemQuantity": "{{price}} × {{quantity}}",
+    "receiver": {
+      "title": "Delivery details",
+      "name": "Recipient",
+      "phone": "Phone",
+      "address": "Address"
+    },
+    "cancel": {
+      "action": "Cancel order",
+      "title": "Cancel this order?",
+      "description": "The frozen stock for order #{{id}} will be released. The submitted order cannot be restored.",
+      "keep": "Keep order",
+      "confirm": "Cancel order"
+    }
+  },
+  "status": {
+    "pending_payment": "Awaiting payment",
+    "paid": "Paid",
+    "partially_shipped": "Partially shipped",
+    "shipped": "Shipped",
+    "completed": "Completed",
+    "cancelled": "Cancelled"
+  },
+  "subStatus": {
+    "pending_payment": "Awaiting payment",
+    "awaiting_shipment": "Awaiting shipment",
+    "shipped": "Shipped",
+    "completed": "Completed",
+    "cancelled": "Cancelled"
+  },
+  "errors": {
+    "unknown": "Something went wrong. Try again.",
+    "network": "Cannot reach the server. Check your connection and retry.",
+    "unauthorized": "Your session has expired. Sign in again.",
+    "invalidCheckout": "Check the checkout details and try again.",
+    "invalidOrder": "The order request is invalid.",
+    "checkoutConflict": "The cart or catalog changed. Return to the cart, refresh, and retry.",
+    "cannotCancel": "This order cannot be cancelled. Refresh for the latest status.",
+    "server": "The server cannot process the request right now. Try again later.",
+    "notFound": "The order does not exist or belongs to another account.",
+    "loadTitle": "Could not load the order",
+    "notFoundTitle": "Order not found",
+    "checkoutTitle": "Could not place the order",
+    "cancelTitle": "Could not cancel the order",
+    "retry": "Retry",
+    "dismiss": "Dismiss",
+    "backToOrders": "Back to orders"
+  }
+}

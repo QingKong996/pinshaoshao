@@ -21,3 +21,9 @@ type InventoryItem struct {
 func (i InventoryItem) AvailableStock() int {
 	return i.TotalStock - i.FrozenStock
 }
+
+// ReservationItem is a SKU quantity reserved or released by an order.
+type ReservationItem struct {
+	SKUID    int
+	Quantity int
+}

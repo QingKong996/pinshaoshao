@@ -10,4 +10,6 @@ var (
 	ErrInventoryNotEmpty      = errors.New("inventory is not empty")
 	ErrInvalidInventoryUpdate = errors.New("invalid inventory update")
 	ErrInvalidSKUID           = errors.New("invalid sku id")
+	ErrInsufficientStock      = errors.New("insufficient stock")
+	ErrReservationInvalid     = errors.New("stock reservation is inconsistent")
 )

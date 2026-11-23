@@ -37,7 +37,8 @@
     "selected": "已选",
     "itemCount": "{{count}} 件",
     "subtotal": "商品小计",
-    "notice": "此处价格是加入购物车时的展示快照。结算时将按商品目录当前价格和可售库存计算。"
+    "notice": "此处价格会在提交订单时锁定，结算时仍会校验当前可售库存。",
+    "checkout": "去结算"
   },
   "removeDialog": {
     "title": "移除该商品？",
