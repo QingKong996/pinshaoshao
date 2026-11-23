@@ -12,12 +12,14 @@ import enAuth from "./locales/en/auth.json"
 import enCart from "./locales/en/cart.json"
 import enCommon from "./locales/en/common.json"
 import enConsole from "./locales/en/console.json"
+import enFeed from "./locales/en/feed.json"
 import enHome from "./locales/en/home.json"
 import enOrder from "./locales/en/order.json"
 import zhCNAuth from "./locales/zh-CN/auth.json"
 import zhCNCart from "./locales/zh-CN/cart.json"
 import zhCNCommon from "./locales/zh-CN/common.json"
 import zhCNConsole from "./locales/zh-CN/console.json"
+import zhCNFeed from "./locales/zh-CN/feed.json"
 import zhCNHome from "./locales/zh-CN/home.json"
 import zhCNOrder from "./locales/zh-CN/order.json"
 import { BRAND } from "@/shared/config/brand"
@@ -29,6 +31,7 @@ export const NAMESPACES = [
   "console",
   "cart",
   "order",
+  "feed",
 ] as const
 
 export const resources = {
@@ -39,6 +42,7 @@ export const resources = {
     console: zhCNConsole,
     cart: zhCNCart,
     order: zhCNOrder,
+    feed: zhCNFeed,
   },
   en: {
     common: enCommon,
@@ -47,6 +51,7 @@ export const resources = {
     console: enConsole,
     cart: enCart,
     order: enOrder,
+    feed: enFeed,
   },
 }
 

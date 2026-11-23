@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	cartmodule "pinshaoshao/internal/feature/cart"
+	feedmodule "pinshaoshao/internal/feature/feed"
 	inventorymodule "pinshaoshao/internal/feature/inventory"
 	ordermodule "pinshaoshao/internal/feature/order"
 	productmodule "pinshaoshao/internal/feature/product"
@@ -57,6 +58,7 @@ var routeCases = []routeCase{
 	{method: http.MethodGet, pattern: "/api/v1/orders", requestPath: "/api/v1/orders", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/orders/:orderID", requestPath: "/api/v1/orders/1", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/orders/:orderID/cancel", requestPath: "/api/v1/orders/1/cancel", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodGet, pattern: "/api/v1/feed", requestPath: "/api/v1/feed", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/merchant/login", requestPath: "/api/v1/merchant/login", public: true},
 	{method: http.MethodPost, pattern: "/api/v1/merchant/register", requestPath: "/api/v1/merchant/register", public: true},
 	{method: http.MethodPost, pattern: "/api/v1/merchant/logout", requestPath: "/api/v1/merchant/logout", authError: shopapperr.ErrInvalidShopSession.Error()},
@@ -91,6 +93,7 @@ func newTestRouter() *gin.Engine {
 		Product:   productmodule.NewModule(nil, inventoryModule.Lifecycle()),
 		Inventory: inventoryModule,
 		Cart:      cartmodule.NewModule(nil),
+		Feed:      feedmodule.NewModule(nil),
 		Order:     ordermodule.NewModule(nil, inventoryModule.Reservation()),
 		UserAuth:  usermodule.AuthMiddleware(invalidUserSession{}),
 		ShopAuth:  shopmodule.AuthMiddleware(invalidShopSession{}),
