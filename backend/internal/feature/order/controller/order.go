@@ -18,6 +18,7 @@ import (
 
 type OrderService interface {
 	Create(ctx context.Context, userID int, input service.CreateOrderInput) (*model.Order, error)
+	CreateDirect(ctx context.Context, userID int, input service.CreateDirectOrderInput) (*model.Order, error)
 	List(ctx context.Context, userID int, filter model.OrderListFilter) (*model.OrderListResult, error)
 	Get(ctx context.Context, userID int, orderID int) (*model.Order, error)
 	Cancel(ctx context.Context, userID int, orderID int) (*model.Order, error)
@@ -72,6 +73,48 @@ func (c *OrderController) Create(ctx *gin.Context) {
 	})
 	if err != nil {
 		c.writeError(ctx, "create order", err)
+		return
+	}
+	ctx.JSON(http.StatusCreated, newOrderResponse(order))
+}
+
+// CreateDirect places an order for one SKU without changing the cart.
+//
+// @Summary     Create a direct-purchase order
+// @Description Place an order directly from a product detail page. The checkout key makes retries idempotent.
+// @Tags        Orders
+// @Accept      json
+// @Produce     json
+// @Param       request body dto.CreateDirectOrderRequest true "Direct purchase request"
+// @Success     201 {object} dto.OrderResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     409 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
+// @Security    BearerAuth
+// @Router      /orders/direct [post]
+func (c *OrderController) CreateDirect(ctx *gin.Context) {
+	var req dto.CreateDirectOrderRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, httpx.ErrorResponse{Error: apperr.ErrInvalidCheckout.Error()})
+		return
+	}
+
+	order, err := c.orderService.CreateDirect(
+		ctx.Request.Context(),
+		authctx.MustUserID(ctx),
+		service.CreateDirectOrderInput{
+			CheckoutKey:     req.CheckoutKey,
+			SKUID:           req.SKUID,
+			Quantity:        req.Quantity,
+			ReceiverName:    req.ReceiverName,
+			ReceiverPhone:   req.ReceiverPhone,
+			ShippingAddress: req.ShippingAddress,
+		},
+	)
+	if err != nil {
+		c.writeError(ctx, "create direct order", err)
 		return
 	}
 	ctx.JSON(http.StatusCreated, newOrderResponse(order))

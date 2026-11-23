@@ -106,3 +106,13 @@ type CreateOrderInput struct {
 	ReceiverPhone   string
 	ShippingAddress string
 }
+
+type CreateDirectOrderInput struct {
+	CheckoutKey     string
+	RequestHash     string
+	SKUID           int
+	Quantity        int
+	ReceiverName    string
+	ReceiverPhone   string
+	ShippingAddress string
+}

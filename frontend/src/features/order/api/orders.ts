@@ -1,10 +1,27 @@
 import { apiClient } from "@/shared/api/client"
 import { authorized } from "@/shared/api/authorized"
-import type { CreateOrderInput, Order, OrderListResponse } from "../types"
+import type {
+  CreateDirectOrderInput,
+  CreateOrderInput,
+  Order,
+  OrderListResponse,
+} from "../types"
 
 export async function createOrder(token: string, input: CreateOrderInput) {
   const { data } = await apiClient.post<Order>(
     "/orders",
+    input,
+    authorized(token),
+  )
+  return data
+}
+
+export async function createDirectOrder(
+  token: string,
+  input: CreateDirectOrderInput,
+) {
+  const { data } = await apiClient.post<Order>(
+    "/orders/direct",
     input,
     authorized(token),
   )

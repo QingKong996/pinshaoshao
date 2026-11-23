@@ -24,3 +24,21 @@ type FeedListResponse struct {
 	Total      int64              `json:"total" example:"42"`
 	TotalPages int                `json:"total_pages" example:"3"`
 }
+
+type ProductDetailSKUResponse struct {
+	ID             int               `json:"id" example:"5"`
+	Specs          map[string]string `json:"specs"`
+	PriceCents     int64             `json:"price_cents" example:"1999"`
+	IsEnabled      bool              `json:"is_enabled" example:"true"`
+	AvailableStock int64             `json:"available_stock" example:"8"`
+}
+
+type ProductDetailResponse struct {
+	ID           int                        `json:"id" example:"10"`
+	ShopID       int                        `json:"shop_id" example:"2"`
+	ShopName     string                     `json:"shop_name" example:"山野杂货铺"`
+	Name         string                     `json:"name" example:"手冲咖啡豆"`
+	Description  string                     `json:"description" example:"中度烘焙，坚果与焦糖风味"`
+	CategoryName *string                    `json:"category_name" example:"食品"`
+	SKUs         []ProductDetailSKUResponse `json:"skus"`
+}

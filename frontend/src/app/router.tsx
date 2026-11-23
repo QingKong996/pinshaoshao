@@ -21,6 +21,7 @@ import { MerchantProductDetailRoute } from "./routes/merchant-product-detail-rou
 import { MerchantProductsRoute } from "./routes/merchant-products-route"
 import { OrderDetailRoute } from "./routes/order-detail-route"
 import { OrdersRoute } from "./routes/orders-route"
+import { ProductDetailRoute } from "./routes/product-detail-route"
 import {
   SignInPage,
   SignUpPage,
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
       { path: "/signup", element: <SignUpPage /> },
       { path: "/cart", element: <CartRoute /> },
       { path: "/checkout", element: <CheckoutRoute /> },
+      { path: "/products/:productID", element: <ProductDetailRoute /> },
       { path: "/orders", element: <OrdersRoute /> },
       { path: "/orders/:orderID", element: <OrderDetailRoute /> },
       {

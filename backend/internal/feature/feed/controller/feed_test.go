@@ -20,12 +20,14 @@ import (
 )
 
 type stubFeedService struct {
-	calls    int
-	userID   int
-	page     int
-	pageSize int
-	result   *model.FeedResult
-	err      error
+	calls     int
+	userID    int
+	page      int
+	pageSize  int
+	productID int
+	result    *model.FeedResult
+	detail    *model.ProductDetail
+	err       error
 }
 
 func (s *stubFeedService) List(
@@ -39,6 +41,15 @@ func (s *stubFeedService) List(
 	s.page = page
 	s.pageSize = pageSize
 	return s.result, s.err
+}
+
+func (s *stubFeedService) Get(
+	_ context.Context,
+	productID int,
+) (*model.ProductDetail, error) {
+	s.calls++
+	s.productID = productID
+	return s.detail, s.err
 }
 
 type stubFeedUserAuthenticator struct {
@@ -65,6 +76,7 @@ func newFeedRouter(feedController *controller.FeedController) *gin.Engine {
 		},
 	}))
 	protected.GET("/feed", feedController.List)
+	protected.GET("/products/:productID", feedController.Get)
 	return r
 }
 
@@ -205,5 +217,121 @@ func requireFeedError(t *testing.T, rec *httptest.ResponseRecorder, want error) 
 	}
 	if body.Error != want.Error() {
 		t.Fatalf("error = %q, want %q", body.Error, want.Error())
+	}
+}
+
+func TestFeedGet(t *testing.T) {
+	categoryName := "Food"
+	feedService := &stubFeedService{
+		detail: &model.ProductDetail{
+			ID:           10,
+			ShopID:       2,
+			ShopName:     "Example shop",
+			Name:         "Coffee",
+			Description:  "Roasted beans",
+			CategoryName: &categoryName,
+			SKUs: []model.ProductSKU{
+				{
+					ID:             5,
+					Specs:          map[string]string{"weight": "250g"},
+					PriceCents:     1999,
+					IsEnabled:      true,
+					AvailableStock: 8,
+				},
+				{
+					ID:             6,
+					Specs:          map[string]string{"weight": "500g"},
+					PriceCents:     3499,
+					IsEnabled:      false,
+					AvailableStock: 0,
+				},
+			},
+		},
+	}
+	feedController := controller.NewFeedController(feedService)
+
+	rec := doFeedRequest(
+		newFeedRouter(feedController),
+		http.MethodGet,
+		"/products/10",
+	)
+	requireFeedStatus(t, rec, http.StatusOK)
+	if feedService.productID != 10 {
+		t.Fatalf("product id = %d, want 10", feedService.productID)
+	}
+
+	var body dto.ProductDetailResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode product detail: %v", err)
+	}
+	if body.ID != 10 || body.Name != "Coffee" || body.CategoryName == nil {
+		t.Fatalf("product detail = %+v", body)
+	}
+	if len(body.SKUs) != 2 {
+		t.Fatalf("sku count = %d, want 2", len(body.SKUs))
+	}
+	if body.SKUs[0].Specs["weight"] != "250g" ||
+		body.SKUs[0].PriceCents != 1999 ||
+		body.SKUs[0].AvailableStock != 8 {
+		t.Fatalf("first sku = %+v", body.SKUs[0])
+	}
+}
+
+func TestFeedGetRejectsInvalidID(t *testing.T) {
+	for _, productID := range []string{"abc", "0", "-1"} {
+		t.Run(productID, func(t *testing.T) {
+			feedService := &stubFeedService{}
+			feedController := controller.NewFeedController(feedService)
+
+			rec := doFeedRequest(
+				newFeedRouter(feedController),
+				http.MethodGet,
+				"/products/"+productID,
+			)
+
+			requireFeedStatus(t, rec, http.StatusBadRequest)
+			requireFeedError(t, rec, apperr.ErrInvalidProductID)
+			if feedService.calls != 0 {
+				t.Fatalf("service calls = %d, want 0", feedService.calls)
+			}
+		})
+	}
+}
+
+func TestFeedGetMapsServiceErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		err        error
+		wantStatus int
+		wantError  error
+	}{
+		{
+			name:       "not found",
+			err:        apperr.ErrProductNotFound,
+			wantStatus: http.StatusNotFound,
+			wantError:  apperr.ErrProductNotFound,
+		},
+		{
+			name:       "service failure",
+			err:        errors.New("database is down"),
+			wantStatus: http.StatusInternalServerError,
+			wantError:  apperr.ErrInternalServer,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			feedService := &stubFeedService{err: tt.err}
+			feedController := controller.NewFeedController(feedService)
+
+			rec := doFeedRequest(
+				newFeedRouter(feedController),
+				http.MethodGet,
+				"/products/10",
+			)
+
+			requireFeedStatus(t, rec, tt.wantStatus)
+			requireFeedError(t, rec, tt.wantError)
+		})
 	}
 }

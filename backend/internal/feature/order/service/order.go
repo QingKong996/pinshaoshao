@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/model"
 	"sort"
@@ -28,6 +29,7 @@ const (
 
 type OrderRepository interface {
 	Create(ctx context.Context, userID int, input model.CreateOrderInput) (*model.Order, error)
+	CreateDirect(ctx context.Context, userID int, input model.CreateDirectOrderInput) (*model.Order, error)
 	List(ctx context.Context, userID int, filter model.OrderListFilter) (*model.OrderListResult, error)
 	Get(ctx context.Context, userID int, orderID int) (*model.Order, error)
 	Cancel(ctx context.Context, userID int, orderID int) (*model.Order, error)
@@ -36,6 +38,15 @@ type OrderRepository interface {
 type CreateOrderInput struct {
 	CheckoutKey     string
 	Items           []model.CreateOrderItem
+	ReceiverName    string
+	ReceiverPhone   string
+	ShippingAddress string
+}
+
+type CreateDirectOrderInput struct {
+	CheckoutKey     string
+	SKUID           int
+	Quantity        int
 	ReceiverName    string
 	ReceiverPhone   string
 	ShippingAddress string
@@ -66,6 +77,27 @@ func (s *OrderService) Create(ctx context.Context, userID int, input CreateOrder
 	})
 	if err != nil {
 		return nil, fmt.Errorf("service.CreateOrder: %w", err)
+	}
+	return order, nil
+}
+
+func (s *OrderService) CreateDirect(ctx context.Context, userID int, input CreateDirectOrderInput) (*model.Order, error) {
+	normalized, requestHash, err := normalizeCreateDirectOrderInput(input)
+	if err != nil {
+		return nil, fmt.Errorf("service.CreateDirectOrder: %w", err)
+	}
+
+	order, err := s.orderRepository.CreateDirect(ctx, userID, model.CreateDirectOrderInput{
+		CheckoutKey:     normalized.CheckoutKey,
+		RequestHash:     requestHash,
+		SKUID:           normalized.SKUID,
+		Quantity:        normalized.Quantity,
+		ReceiverName:    normalized.ReceiverName,
+		ReceiverPhone:   normalized.ReceiverPhone,
+		ShippingAddress: normalized.ShippingAddress,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("service.CreateDirectOrder: %w", err)
 	}
 	return order, nil
 }
@@ -148,27 +180,78 @@ func normalizeCreateOrderInput(input CreateOrderInput) (CreateOrderInput, string
 		return items[i].CartItemID < items[j].CartItemID
 	})
 
-	receiverName := strings.TrimSpace(input.ReceiverName)
-	receiverPhone := strings.TrimSpace(input.ReceiverPhone)
-	shippingAddress := strings.TrimSpace(input.ShippingAddress)
-	if receiverName == "" || utf8.RuneCountInString(receiverName) > maxReceiverNameLen {
-		return CreateOrderInput{}, "", apperr.ErrInvalidCheckout
-	}
-	if receiverPhone == "" || utf8.RuneCountInString(receiverPhone) > maxReceiverPhoneLen {
-		return CreateOrderInput{}, "", apperr.ErrInvalidCheckout
-	}
-	if shippingAddress == "" || utf8.RuneCountInString(shippingAddress) > maxAddressLen {
-		return CreateOrderInput{}, "", apperr.ErrInvalidCheckout
+	delivery, err := normalizeDelivery(
+		input.ReceiverName,
+		input.ReceiverPhone,
+		input.ShippingAddress,
+	)
+	if err != nil {
+		return CreateOrderInput{}, "", err
 	}
 
 	normalized := CreateOrderInput{
 		CheckoutKey:     checkoutKey.String(),
 		Items:           items,
-		ReceiverName:    receiverName,
-		ReceiverPhone:   receiverPhone,
-		ShippingAddress: shippingAddress,
+		ReceiverName:    delivery.receiverName,
+		ReceiverPhone:   delivery.receiverPhone,
+		ShippingAddress: delivery.shippingAddress,
 	}
 	return normalized, requestHash(normalized), nil
+}
+
+func normalizeCreateDirectOrderInput(input CreateDirectOrderInput) (CreateDirectOrderInput, string, error) {
+	checkoutKey, err := uuid.Parse(input.CheckoutKey)
+	if err != nil || checkoutKey == uuid.Nil {
+		return CreateDirectOrderInput{}, "", apperr.ErrInvalidCheckout
+	}
+	if input.SKUID <= 0 || input.Quantity <= 0 || input.Quantity > math.MaxInt32 {
+		return CreateDirectOrderInput{}, "", apperr.ErrInvalidCheckout
+	}
+
+	delivery, err := normalizeDelivery(
+		input.ReceiverName,
+		input.ReceiverPhone,
+		input.ShippingAddress,
+	)
+	if err != nil {
+		return CreateDirectOrderInput{}, "", err
+	}
+
+	normalized := CreateDirectOrderInput{
+		CheckoutKey:     checkoutKey.String(),
+		SKUID:           input.SKUID,
+		Quantity:        input.Quantity,
+		ReceiverName:    delivery.receiverName,
+		ReceiverPhone:   delivery.receiverPhone,
+		ShippingAddress: delivery.shippingAddress,
+	}
+	return normalized, directRequestHash(normalized), nil
+}
+
+type orderDelivery struct {
+	receiverName    string
+	receiverPhone   string
+	shippingAddress string
+}
+
+func normalizeDelivery(receiverName, receiverPhone, shippingAddress string) (orderDelivery, error) {
+	receiverName = strings.TrimSpace(receiverName)
+	receiverPhone = strings.TrimSpace(receiverPhone)
+	shippingAddress = strings.TrimSpace(shippingAddress)
+	if receiverName == "" || utf8.RuneCountInString(receiverName) > maxReceiverNameLen {
+		return orderDelivery{}, apperr.ErrInvalidCheckout
+	}
+	if receiverPhone == "" || utf8.RuneCountInString(receiverPhone) > maxReceiverPhoneLen {
+		return orderDelivery{}, apperr.ErrInvalidCheckout
+	}
+	if shippingAddress == "" || utf8.RuneCountInString(shippingAddress) > maxAddressLen {
+		return orderDelivery{}, apperr.ErrInvalidCheckout
+	}
+	return orderDelivery{
+		receiverName:    receiverName,
+		receiverPhone:   receiverPhone,
+		shippingAddress: shippingAddress,
+	}, nil
 }
 
 func requestHash(input CreateOrderInput) string {
@@ -179,6 +262,25 @@ func requestHash(input CreateOrderInput) string {
 		ShippingAddress string
 	}{
 		Items:           input.Items,
+		ReceiverName:    input.ReceiverName,
+		ReceiverPhone:   input.ReceiverPhone,
+		ShippingAddress: input.ShippingAddress,
+	}
+	encoded, _ := json.Marshal(payload)
+	sum := sha256.Sum256(encoded)
+	return hex.EncodeToString(sum[:])
+}
+
+func directRequestHash(input CreateDirectOrderInput) string {
+	payload := struct {
+		SKUID           int
+		Quantity        int
+		ReceiverName    string
+		ReceiverPhone   string
+		ShippingAddress string
+	}{
+		SKUID:           input.SKUID,
+		Quantity:        input.Quantity,
 		ReceiverName:    input.ReceiverName,
 		ReceiverPhone:   input.ReceiverPhone,
 		ShippingAddress: input.ShippingAddress,

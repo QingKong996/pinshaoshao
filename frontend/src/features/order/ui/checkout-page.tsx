@@ -30,7 +30,7 @@ import {
   translateCheckoutValidationMessage,
   type CheckoutFormValues,
 } from "../model/checkout-form"
-import { useCreateOrder } from "../model/mutations"
+import { useCreateDirectOrder, useCreateOrder } from "../model/mutations"
 import type { CheckoutLine } from "../types"
 import { formatOrderSpecs } from "./format-specs"
 
@@ -39,13 +39,23 @@ type CheckoutAttempt = {
   key: string
 }
 
+export type CheckoutMode =
+  | { type: "cart" }
+  | { type: "direct"; skuID: number }
+
+const CART_MODE: CheckoutMode = { type: "cart" }
+
 export function CheckoutPage({
   token,
   items,
+  mode = CART_MODE,
+  backHref,
   onOrderCreated,
 }: {
   token: string
   items: CheckoutLine[]
+  mode?: CheckoutMode
+  backHref?: string
   onOrderCreated?: () => void
 }) {
   const { t } = useTranslation("order")
@@ -53,6 +63,10 @@ export function CheckoutPage({
 
   const navigate = useNavigate()
   const createOrder = useCreateOrder(token, onOrderCreated)
+  const createDirectOrder = useCreateDirectOrder(token, onOrderCreated)
+  const directMode = mode.type === "direct" ? mode : null
+  const activeOrder = directMode ? createDirectOrder : createOrder
+  const resolvedBackHref = backHref ?? (directMode ? "/" : "/cart")
   const [attempt, setAttempt] = useState<CheckoutAttempt>({
     signature: "",
     key: "",
@@ -72,13 +86,19 @@ export function CheckoutPage({
   )
 
   async function onSubmit(values: CheckoutFormValues) {
-    const payload = {
-      items: items.map((item) => ({
-        cart_item_id: item.id,
-        quantity: item.quantity,
-      })),
-      ...values,
-    }
+    const payload = directMode
+      ? {
+          sku_id: directMode.skuID,
+          quantity: items[0]?.quantity ?? 0,
+          ...values,
+        }
+      : {
+          items: items.map((item) => ({
+            cart_item_id: item.id,
+            quantity: item.quantity,
+          })),
+          ...values,
+        }
     const signature = JSON.stringify(payload)
     const checkoutKey =
       attempt.signature === signature ? attempt.key : crypto.randomUUID()
@@ -87,10 +107,21 @@ export function CheckoutPage({
     }
 
     try {
-      const order = await createOrder.mutateAsync({
-        checkout_key: checkoutKey,
-        ...payload,
-      })
+      const order = directMode
+        ? await createDirectOrder.mutateAsync({
+            checkout_key: checkoutKey,
+            sku_id: directMode.skuID,
+            quantity: items[0]?.quantity ?? 0,
+            ...values,
+          })
+        : await createOrder.mutateAsync({
+            checkout_key: checkoutKey,
+            items: items.map((item) => ({
+              cart_item_id: item.id,
+              quantity: item.quantity,
+            })),
+            ...values,
+          })
       navigate(`/orders/${order.id}`, { replace: true })
     } catch {
       // the mutation state renders the error
@@ -104,20 +135,22 @@ export function CheckoutPage({
         description={t("checkout.description")}
         actions={
           <Link
-            to="/cart"
+            to={resolvedBackHref}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
-            {t("checkout.backToCart")}
+            {directMode
+              ? t("checkout.backToProduct")
+              : t("checkout.backToCart")}
           </Link>
         }
       />
 
-      {createOrder.error ? (
+      {activeOrder.error ? (
         <QueryError
           title={t("errors.checkoutTitle")}
-          description={describeCheckoutError(createOrder.error, t)}
+          description={describeCheckoutError(activeOrder.error, t)}
           retryLabel={t("errors.dismiss")}
-          onRetry={() => createOrder.reset()}
+          onRetry={() => activeOrder.reset()}
         />
       ) : null}
 
@@ -132,11 +165,15 @@ export function CheckoutPage({
               {t("checkout.empty.title")}
             </h2>
             <p className="text-muted-foreground">
-              {t("checkout.empty.description")}
+              {directMode
+                ? t("checkout.direct.invalidDescription")
+                : t("checkout.empty.description")}
             </p>
           </div>
-          <Link to="/cart" className={buttonVariants()}>
-            {t("checkout.empty.action")}
+          <Link to={resolvedBackHref} className={buttonVariants()}>
+            {directMode
+              ? t("checkout.backToProduct")
+              : t("checkout.empty.action")}
           </Link>
         </Card>
       ) : (
@@ -227,9 +264,9 @@ export function CheckoutPage({
                 <div className="flex justify-end border-t pt-4">
                   <Button
                     type="submit"
-                    disabled={isSubmitting || createOrder.isPending}
+                    disabled={isSubmitting || activeOrder.isPending}
                   >
-                    {isSubmitting || createOrder.isPending ? (
+                    {isSubmitting || activeOrder.isPending ? (
                       <LoaderCircle className="animate-spin" aria-hidden />
                     ) : null}
                     {t("checkout.form.submit")}
@@ -279,7 +316,9 @@ export function CheckoutPage({
                 </span>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                {t("checkout.summary.notice")}
+                {directMode
+                  ? t("checkout.summary.directNotice")
+                  : t("checkout.summary.notice")}
               </p>
             </CardContent>
           </Card>

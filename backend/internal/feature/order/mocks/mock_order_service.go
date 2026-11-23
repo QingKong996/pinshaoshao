@@ -72,6 +72,21 @@ func (mr *MockOrderServiceMockRecorder) Create(ctx, userID, input any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockOrderService)(nil).Create), ctx, userID, input)
 }
 
+// CreateDirect mocks base method.
+func (m *MockOrderService) CreateDirect(ctx context.Context, userID int, input service.CreateDirectOrderInput) (*model.Order, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateDirect", ctx, userID, input)
+	ret0, _ := ret[0].(*model.Order)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateDirect indicates an expected call of CreateDirect.
+func (mr *MockOrderServiceMockRecorder) CreateDirect(ctx, userID, input any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateDirect", reflect.TypeOf((*MockOrderService)(nil).CreateDirect), ctx, userID, input)
+}
+
 // Get mocks base method.
 func (m *MockOrderService) Get(ctx context.Context, userID, orderID int) (*model.Order, error) {
 	m.ctrl.T.Helper()

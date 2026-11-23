@@ -161,41 +161,46 @@ function FeedCard({ item }: { item: FeedItem }) {
     formatPriceCents(item.min_price_cents)
 
   return (
-    <Card className="mb-3 inline-flex w-full break-inside-avoid gap-0 p-0 sm:mb-4">
-      <div
-        role="img"
-        aria-label={t("imagePlaceholder")}
-        className={`w-full overflow-hidden ${aspectClass}`}
-      >
-        <Skeleton className="size-full rounded-none" />
-      </div>
-      <div className="flex flex-col gap-2 p-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <Badge variant="secondary" className="shrink-0">
-            {item.category_name ?? t("uncategorized")}
-          </Badge>
-          <span className="truncate text-xs text-muted-foreground">
-            {item.shop_name}
-          </span>
+    <Link
+      to={`/products/${item.id}`}
+      className="group mb-3 block break-inside-avoid rounded-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:mb-4"
+    >
+      <Card className="flex w-full gap-0 p-0 transition-shadow group-hover:ring-foreground/25">
+        <div
+          role="img"
+          aria-label={t("imagePlaceholder")}
+          className={`w-full overflow-hidden ${aspectClass}`}
+        >
+          <Skeleton className="size-full rounded-none" />
         </div>
-        <h2 className="line-clamp-2 font-heading text-sm leading-snug font-medium">
-          {item.name}
-        </h2>
-        {item.description ? (
-          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-            {item.description}
-          </p>
-        ) : null}
-        <div className="mt-auto flex items-end justify-between gap-2 pt-1">
-          <p className="font-heading text-base font-semibold tabular-nums">
-            {price}
-          </p>
-          <p className="shrink-0 text-xs text-muted-foreground">
-            {t("availableStock", { count: item.available_stock })}
-          </p>
+        <div className="flex flex-col gap-2 p-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Badge variant="secondary" className="shrink-0">
+              {item.category_name ?? t("uncategorized")}
+            </Badge>
+            <span className="truncate text-xs text-muted-foreground">
+              {item.shop_name}
+            </span>
+          </div>
+          <h2 className="line-clamp-2 font-heading text-sm leading-snug font-medium">
+            {item.name}
+          </h2>
+          {item.description ? (
+            <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+              {item.description}
+            </p>
+          ) : null}
+          <div className="mt-auto flex items-end justify-between gap-2 pt-1">
+            <p className="font-heading text-base font-semibold tabular-nums">
+              {price}
+            </p>
+            <p className="shrink-0 text-xs text-muted-foreground">
+              {t("availableStock", { count: item.available_stock })}
+            </p>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </Link>
   )
 }
 

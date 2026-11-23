@@ -7,6 +7,32 @@
   "loadingMore": "Loading…",
   "progress": "Showing {{loaded}} of {{total}} products",
   "end": "You've reached the end",
+  "detail": {
+    "documentTitle": "{{name}} · {{brand}}",
+    "back": "Back to feed",
+    "shop": "Shop",
+    "category": "Category",
+    "price": "From",
+    "skus": {
+      "title": "Choose an option",
+      "description": "Every option for this product is listed here. Unavailable options cannot be purchased.",
+      "specs": "Specifications",
+      "price": "Price",
+      "stock": "Stock",
+      "noSpecs": "No specifications",
+      "available": "{{count}} available",
+      "unavailable": "Unavailable",
+      "empty": "No options are available for this product.",
+      "selected": "Selected"
+    },
+    "quantity": "Quantity",
+    "decrease": "Decrease quantity",
+    "increase": "Increase quantity",
+    "addToCart": "Add to cart",
+    "buyNow": "Buy now",
+    "added": "Added to your cart.",
+    "unavailable": "This option is currently unavailable."
+  },
   "empty": {
     "title": "Nothing to browse yet",
     "description": "Come back when merchants list new products with stock available."
@@ -16,12 +42,22 @@
     "description": "Sign in to get a stable, personalized order of products that are ready to buy.",
     "action": "Sign in"
   },
+  "productSignedOut": {
+    "title": "Sign in to view product details",
+    "description": "Product details, prices and stock are available to signed-in buyers.",
+    "action": "Sign in"
+  },
   "errors": {
     "loadTitle": "Could not load your feed",
+    "productLoadTitle": "Could not load this product",
     "unknown": "Something went wrong. Please try again.",
     "network": "Could not reach the server. Check your connection and try again.",
     "unauthorized": "Your session expired. Please sign in again.",
     "invalidQuery": "The page request was invalid. Refresh and try again.",
+    "invalidProduct": "The product link is invalid.",
+    "productNotFound": "This product is not available.",
+    "invalidCartItem": "Check the selected quantity and try again.",
+    "unavailable": "This option is no longer available to purchase.",
     "server": "The feed is temporarily unavailable. Please try again.",
     "retry": "Retry"
   }

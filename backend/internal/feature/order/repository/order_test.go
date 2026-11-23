@@ -5,9 +5,11 @@ package repository_test
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/model"
@@ -36,6 +38,18 @@ func testOrderInputWithKey(itemIDs []int, quantities []int, hash string, checkou
 		CheckoutKey:     checkoutKey,
 		RequestHash:     hash,
 		Items:           items,
+		ReceiverName:    "Alice",
+		ReceiverPhone:   "13800138000",
+		ShippingAddress: "Shanghai",
+	}
+}
+
+func testDirectOrderInput(skuID int, quantity int, hash string) model.CreateDirectOrderInput {
+	return model.CreateDirectOrderInput{
+		CheckoutKey:     testCheckoutKey,
+		RequestHash:     hash,
+		SKUID:           skuID,
+		Quantity:        quantity,
 		ReceiverName:    "Alice",
 		ReceiverPhone:   "13800138000",
 		ShippingAddress: "Shanghai",
@@ -243,6 +257,187 @@ func TestOrderRepositoryCreateUsesCartSnapshot(t *testing.T) {
 	if itemSnapshot.ProductName != "T-shirt" || itemSnapshot.Specs["color"] != "black" {
 		t.Fatalf("item snapshot = %+v, want cart snapshot", itemSnapshot)
 	}
+}
+
+func TestOrderRepositoryCreateDirectUsesCatalogAndKeepsCart(t *testing.T) {
+	ctx := context.Background()
+	resetDatabase(t)
+	user := insertBuyer(t, "buyer01")
+	_, _, sku := insertCatalogSKU(t, "shop01", "Shop", productmodel.ProductStatusOnShelf, true, 1999, 10)
+	addCartItem(t, user.ID, sku.ID, 2)
+	if _, err := testPool.Exec(
+		ctx,
+		`UPDATE product_skus SET price_cents = 2999, specs = '{"color":"red","size":"M"}' WHERE id = $1`,
+		sku.ID,
+	); err != nil {
+		t.Fatalf("change sku: %v", err)
+	}
+	if _, err := testPool.Exec(ctx, `UPDATE products SET name = 'Direct T-shirt' WHERE id = $1`, sku.ProductID); err != nil {
+		t.Fatalf("change product: %v", err)
+	}
+	cartBefore := readCartSnapshots(t, user.ID)
+
+	order, err := newTestOrderRepository().CreateDirect(ctx, user.ID, testDirectOrderInput(sku.ID, 3, testRequestHash("a")))
+	if err != nil {
+		t.Fatalf("create direct order: %v", err)
+	}
+	if order.TotalAmountCents != 8997 {
+		t.Fatalf("total = %d, want 8997", order.TotalAmountCents)
+	}
+	if len(order.SubOrders) != 1 || len(order.SubOrders[0].Items) != 1 {
+		t.Fatalf("sub-orders = %+v, want one item", order.SubOrders)
+	}
+	item := order.SubOrders[0].Items[0]
+	if item.ProductName != "Direct T-shirt" ||
+		item.Specs["color"] != "red" ||
+		item.Specs["size"] != "M" ||
+		item.UnitPriceCents != 2999 ||
+		item.Quantity != 3 {
+		t.Fatalf("item snapshot = %+v", item)
+	}
+	requireFrozenStock(t, sku.ID, 3)
+	requireCartSnapshots(t, user.ID, cartBefore)
+	requireOrderCount(t, user.ID, 1)
+}
+
+func TestOrderRepositoryCreateDirectIsIdempotent(t *testing.T) {
+	ctx := context.Background()
+	resetDatabase(t)
+	user := insertBuyer(t, "buyer01")
+	_, _, sku := insertCatalogSKU(t, "shop01", "Shop", productmodel.ProductStatusOnShelf, true, 1999, 10)
+	input := testDirectOrderInput(sku.ID, 2, testRequestHash("b"))
+	repository := newTestOrderRepository()
+
+	first, err := repository.CreateDirect(ctx, user.ID, input)
+	if err != nil {
+		t.Fatalf("create direct order: %v", err)
+	}
+	second, err := repository.CreateDirect(ctx, user.ID, input)
+	if err != nil {
+		t.Fatalf("replay direct order: %v", err)
+	}
+	if first.ID != second.ID {
+		t.Fatalf("order IDs = %d/%d, want the same order", first.ID, second.ID)
+	}
+	requireFrozenStock(t, sku.ID, 2)
+	requireOrderCount(t, user.ID, 1)
+
+	input.RequestHash = testRequestHash("c")
+	_, err = repository.CreateDirect(ctx, user.ID, input)
+	requireErrorIs(t, err, apperr.ErrCheckoutConflict)
+}
+
+func TestOrderRepositoryCreateDirectIsConcurrentlyIdempotent(t *testing.T) {
+	ctx := context.Background()
+	resetDatabase(t)
+	user := insertBuyer(t, "buyer01")
+	_, _, sku := insertCatalogSKU(t, "shop01", "Shop", productmodel.ProductStatusOnShelf, true, 1999, 10)
+	input := testDirectOrderInput(sku.ID, 2, testRequestHash("b"))
+	repository := newTestOrderRepository()
+
+	const attempts = 8
+	start := make(chan struct{})
+	ids := make(chan int, attempts)
+	errs := make(chan error, attempts)
+
+	var wg sync.WaitGroup
+	for range attempts {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			order, err := repository.CreateDirect(ctx, user.ID, input)
+			if err != nil {
+				errs <- err
+				return
+			}
+			ids <- order.ID
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(ids)
+	close(errs)
+
+	for err := range errs {
+		t.Fatalf("concurrent direct create: %v", err)
+	}
+
+	count := 0
+	var orderID int
+	for id := range ids {
+		count++
+		if orderID == 0 {
+			orderID = id
+			continue
+		}
+		if id != orderID {
+			t.Fatalf("order IDs = %d/%d, want the same order", orderID, id)
+		}
+	}
+	if count != attempts {
+		t.Fatalf("successful attempts = %d, want %d", count, attempts)
+	}
+	requireFrozenStock(t, sku.ID, 2)
+	requireOrderCount(t, user.ID, 1)
+}
+
+func TestOrderRepositoryCreateDirectRollsBackOnInsufficientStock(t *testing.T) {
+	ctx := context.Background()
+	resetDatabase(t)
+	user := insertBuyer(t, "buyer01")
+	_, _, sku := insertCatalogSKU(t, "shop01", "Shop", productmodel.ProductStatusOnShelf, true, 1999, 2)
+	addCartItem(t, user.ID, sku.ID, 1)
+	cartBefore := readCartSnapshots(t, user.ID)
+
+	_, err := newTestOrderRepository().CreateDirect(ctx, user.ID, testDirectOrderInput(sku.ID, 3, testRequestHash("d")))
+	requireErrorIs(t, err, apperr.ErrInsufficientStock)
+	requireFrozenStock(t, sku.ID, 0)
+	requireOrderCount(t, user.ID, 0)
+	requireCartSnapshots(t, user.ID, cartBefore)
+}
+
+func TestOrderRepositoryCreateDirectRejectsUnavailableSKU(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  productmodel.ProductStatus
+		enabled bool
+	}{
+		{name: "off shelf", status: productmodel.ProductStatusOffShelf, enabled: true},
+		{name: "disabled sku", status: productmodel.ProductStatusOnShelf, enabled: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			resetDatabase(t)
+			user := insertBuyer(t, "buyer01")
+			_, _, sku := insertCatalogSKU(t, "shop01", "Shop", tt.status, tt.enabled, 1999, 10)
+
+			_, err := newTestOrderRepository().CreateDirect(
+				ctx,
+				user.ID,
+				testDirectOrderInput(sku.ID, 1, testRequestHash("e")),
+			)
+			requireErrorIs(t, err, apperr.ErrProductUnavailable)
+			requireFrozenStock(t, sku.ID, 0)
+			requireOrderCount(t, user.ID, 0)
+		})
+	}
+
+	t.Run("missing sku", func(t *testing.T) {
+		ctx := context.Background()
+		resetDatabase(t)
+		user := insertBuyer(t, "buyer01")
+
+		_, err := newTestOrderRepository().CreateDirect(
+			ctx,
+			user.ID,
+			testDirectOrderInput(999999, 1, testRequestHash("e")),
+		)
+		requireErrorIs(t, err, apperr.ErrProductUnavailable)
+		requireOrderCount(t, user.ID, 0)
+	})
 }
 
 func TestOrderRepositoryCancelReleasesStockOnce(t *testing.T) {
@@ -534,6 +729,67 @@ func requireCartItemCount(t *testing.T, userID int, want int) {
 	}
 	if got != want {
 		t.Fatalf("cart item count = %d, want %d", got, want)
+	}
+}
+
+type cartDatabaseSnapshot struct {
+	ID             int
+	UserID         int
+	ProductID      int
+	SKUID          int
+	ProductName    string
+	SpecsJSON      string
+	UnitPriceCents int64
+	Quantity       int
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+func readCartSnapshots(t *testing.T, userID int) []cartDatabaseSnapshot {
+	t.Helper()
+
+	rows, err := testPool.Query(context.Background(), `
+SELECT id, user_id, product_id, sku_id, product_name, sku_specs::text,
+       unit_price_cents, quantity, created_at, updated_at
+FROM cart_items
+WHERE user_id = $1
+ORDER BY id`, userID)
+	if err != nil {
+		t.Fatalf("read cart snapshots: %v", err)
+	}
+	defer rows.Close()
+
+	snapshots := make([]cartDatabaseSnapshot, 0)
+	for rows.Next() {
+		var snapshot cartDatabaseSnapshot
+		if err := rows.Scan(
+			&snapshot.ID,
+			&snapshot.UserID,
+			&snapshot.ProductID,
+			&snapshot.SKUID,
+			&snapshot.ProductName,
+			&snapshot.SpecsJSON,
+			&snapshot.UnitPriceCents,
+			&snapshot.Quantity,
+			&snapshot.CreatedAt,
+			&snapshot.UpdatedAt,
+		); err != nil {
+			t.Fatalf("scan cart snapshot: %v", err)
+		}
+		snapshots = append(snapshots, snapshot)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read cart snapshots: %v", err)
+	}
+	return snapshots
+}
+
+func requireCartSnapshots(t *testing.T, userID int, want []cartDatabaseSnapshot) {
+	t.Helper()
+
+	got := readCartSnapshots(t, userID)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("cart snapshots = %+v, want %+v", got, want)
 	}
 }
 

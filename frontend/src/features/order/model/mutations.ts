@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { cancelOrder, createOrder } from "../api/orders"
-import type { CreateOrderInput } from "../types"
+import { cancelOrder, createDirectOrder, createOrder } from "../api/orders"
+import type { CreateDirectOrderInput, CreateOrderInput } from "../types"
 import { orderQueryKeys } from "./query-keys"
 
 export function useCreateOrder(token: string, onOrderCreated?: () => void) {
@@ -8,6 +8,25 @@ export function useCreateOrder(token: string, onOrderCreated?: () => void) {
 
   return useMutation({
     mutationFn: (input: CreateOrderInput) => createOrder(token, input),
+    onSuccess: (order) => {
+      queryClient.setQueryData(orderQueryKeys.order(token, order.id), order)
+      void queryClient.invalidateQueries({
+        queryKey: orderQueryKeys.orders(token),
+      })
+      onOrderCreated?.()
+    },
+  })
+}
+
+export function useCreateDirectOrder(
+  token: string,
+  onOrderCreated?: () => void,
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: CreateDirectOrderInput) =>
+      createDirectOrder(token, input),
     onSuccess: (order) => {
       queryClient.setQueryData(orderQueryKeys.order(token, order.id), order)
       void queryClient.invalidateQueries({

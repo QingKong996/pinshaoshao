@@ -25,4 +25,5 @@ func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
 	protected := r.Group("/api/v1")
 	protected.Use(authMiddleware)
 	protected.GET("/feed", m.controller.List)
+	protected.GET("/products/:productID", m.controller.Get)
 }

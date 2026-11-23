@@ -1,14 +1,24 @@
 import { useMemo } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { useSearchParams } from "react-router"
+import { Link, useSearchParams } from "react-router"
 import { useAuth } from "@/features/auth"
 import {
   cartQueryKeys,
   describeCartError,
   useCart,
 } from "@/features/cart"
-import { CheckoutPage, OrderSignedOut } from "@/features/order"
+import {
+  describeProductError,
+  feedQueryKeys,
+  useProductDetail,
+} from "@/features/feed"
+import {
+  CheckoutPage,
+  OrderSignedOut,
+  type CheckoutLine,
+} from "@/features/order"
+import { buttonVariants } from "@/shared/ui/button"
 import { QueryError } from "@/shared/ui/query-error"
 import { Skeleton } from "@/shared/ui/skeleton"
 import { SiteFooter } from "../layouts/site-footer"
@@ -16,10 +26,29 @@ import { SiteHeader } from "../layouts/site-header"
 
 export function CheckoutRoute() {
   const { session } = useAuth()
+  const { t } = useTranslation("order")
   const { t: cartT } = useTranslation("cart")
+  const { t: feedT } = useTranslation("feed")
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
-  const cartQuery = useCart(session?.token ?? "")
+
+  const isDirect = ["product_id", "sku_id", "quantity"].some((key) =>
+    searchParams.has(key),
+  )
+  const directProductID = positiveInteger(searchParams.get("product_id"))
+  const directSKUID = positiveInteger(searchParams.get("sku_id"))
+  const directQuantity = positiveInteger(searchParams.get("quantity") ?? "1")
+  const validDirectLink =
+    directProductID !== null &&
+    directSKUID !== null &&
+    directQuantity !== null
+
+  const cartQuery = useCart(session?.token ?? "", !isDirect)
+  const productQuery = useProductDetail(
+    session?.token ?? "",
+    directProductID ?? 0,
+    isDirect && validDirectLink,
+  )
   const selectedParam = searchParams.get("items")
   const selectedIDs = useMemo(() => {
     if (selectedParam === null) {
@@ -33,7 +62,7 @@ export function CheckoutRoute() {
     )
   }, [selectedParam])
 
-  const items = (cartQuery.data ?? [])
+  const cartItems = (cartQuery.data ?? [])
     .filter(
       (item) =>
         item.availability === "available" &&
@@ -48,34 +77,138 @@ export function CheckoutRoute() {
       line_total_cents: item.line_total_cents,
     }))
 
+  let content
+  if (!session) {
+    content = <OrderSignedOut />
+  } else if (isDirect) {
+    if (
+      !validDirectLink ||
+      !directProductID ||
+      !directSKUID ||
+      !directQuantity
+    ) {
+      const backHref = directProductID ? `/products/${directProductID}` : "/"
+      content = (
+        <QueryError
+          title={t("checkout.direct.invalidTitle")}
+          description={t("checkout.direct.invalidDescription")}
+          action={
+            <Link
+              to={backHref}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              {directProductID
+                ? t("checkout.backToProduct")
+                : feedT("detail.back")}
+            </Link>
+          }
+        />
+      )
+    } else if (productQuery.error) {
+      content = (
+        <QueryError
+          title={feedT("errors.productLoadTitle")}
+          description={describeProductError(productQuery.error, feedT)}
+          retryLabel={feedT("errors.retry")}
+          onRetry={productQuery.refetch}
+        />
+      )
+    } else if (productQuery.isPending || !productQuery.data) {
+      content = <Skeleton className="h-96 rounded-xl" />
+    } else {
+      const sku = productQuery.data.skus.find(
+        (candidate) => candidate.id === directSKUID,
+      )
+      const available =
+        sku &&
+        sku.is_enabled &&
+        sku.available_stock >= directQuantity &&
+        directQuantity > 0
+
+      if (!sku || !available) {
+        content = (
+          <QueryError
+            title={t("checkout.direct.unavailableTitle")}
+            description={t("checkout.direct.unavailableDescription")}
+            action={
+              <Link
+                to={`/products/${directProductID}`}
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "sm",
+                })}
+              >
+                {t("checkout.backToProduct")}
+              </Link>
+            }
+          />
+        )
+      } else {
+        const items: CheckoutLine[] = [
+          {
+            id: sku.id,
+            product_name: productQuery.data.name,
+            sku_specs: sku.specs,
+            unit_price_cents: sku.price_cents,
+            quantity: directQuantity,
+            line_total_cents: sku.price_cents * directQuantity,
+          },
+        ]
+        content = (
+          <CheckoutPage
+            token={session.token}
+            items={items}
+            mode={{ type: "direct", skuID: directSKUID }}
+            backHref={`/products/${directProductID}`}
+            onOrderCreated={() => {
+              void queryClient.invalidateQueries({
+                queryKey: feedQueryKeys.feed(session.token),
+              })
+            }}
+          />
+        )
+      }
+    }
+  } else if (cartQuery.error && !cartQuery.data) {
+    content = (
+      <QueryError
+        title={cartT("errors.loadTitle")}
+        description={describeCartError(cartQuery.error, cartT)}
+        retryLabel={cartT("errors.retry")}
+        onRetry={cartQuery.refetch}
+      />
+    )
+  } else if (cartQuery.isPending) {
+    content = <Skeleton className="h-96 rounded-xl" />
+  } else {
+    content = (
+      <CheckoutPage
+        token={session.token}
+        items={cartItems}
+        onOrderCreated={() => {
+          void queryClient.invalidateQueries({
+            queryKey: cartQueryKeys.cart(session.token),
+          })
+        }}
+      />
+    )
+  }
+
   return (
     <div className="flex min-h-svh flex-col">
       <SiteHeader />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
-        {!session ? (
-          <OrderSignedOut />
-        ) : cartQuery.error && !cartQuery.data ? (
-          <QueryError
-            title={cartT("errors.loadTitle")}
-            description={describeCartError(cartQuery.error, cartT)}
-            retryLabel={cartT("errors.retry")}
-            onRetry={cartQuery.refetch}
-          />
-        ) : cartQuery.isPending ? (
-          <Skeleton className="h-96 rounded-xl" />
-        ) : (
-          <CheckoutPage
-            token={session.token}
-            items={items}
-            onOrderCreated={() => {
-              void queryClient.invalidateQueries({
-                queryKey: cartQueryKeys.cart(session.token),
-              })
-            }}
-          />
-        )}
+        {content}
       </main>
       <SiteFooter />
     </div>
   )
+}
+
+function positiveInteger(value: string | null) {
+  if (value === null) {
+    return null
+  }
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
 }

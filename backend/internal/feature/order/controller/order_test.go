@@ -47,6 +47,7 @@ func newOrderRouter(t *testing.T, orderController *controller.OrderController, u
 	protected := r.Group("")
 	protected.Use(usermodule.AuthMiddleware(stubUserAuthenticator{user: user}))
 	protected.POST("/orders", orderController.Create)
+	protected.POST("/orders/direct", orderController.CreateDirect)
 	protected.GET("/orders", orderController.List)
 	protected.GET("/orders/:orderID", orderController.Get)
 	protected.POST("/orders/:orderID/cancel", orderController.Cancel)
@@ -128,6 +129,77 @@ func TestOrderCreate(t *testing.T) {
 		rec := doRequest(newOrderRouter(t, orderController, user), http.MethodPost, "/orders", "Bearer session-token", `{bad`)
 		requireOrderStatus(t, rec, http.StatusBadRequest)
 	})
+}
+
+func TestOrderCreateDirect(t *testing.T) {
+	user := &usermodel.User{ID: 7, Username: "alice01", Status: usermodel.UserStatusActive}
+
+	t.Run("creates a direct order", func(t *testing.T) {
+		orderController, orderService := newTestOrderController(t)
+		orderService.EXPECT().
+			CreateDirect(gomock.Any(), user.ID, gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ int, input service.CreateDirectOrderInput) (*model.Order, error) {
+				if input.CheckoutKey != "4f2614df-f674-4b5e-a9e4-3fc5e7f62013" {
+					t.Fatalf("checkout key = %q", input.CheckoutKey)
+				}
+				if input.SKUID != 5 || input.Quantity != 2 {
+					t.Fatalf("item = %d/%d, want 5/2", input.SKUID, input.Quantity)
+				}
+				return newTestOrder(), nil
+			})
+
+		rec := doRequest(
+			newOrderRouter(t, orderController, user),
+			http.MethodPost,
+			"/orders/direct",
+			"Bearer session-token",
+			`{"checkout_key":"4f2614df-f674-4b5e-a9e4-3fc5e7f62013","sku_id":5,"quantity":2,"receiver_name":"Alice","receiver_phone":"13800138000","shipping_address":"Shanghai"}`,
+		)
+
+		requireOrderStatus(t, rec, http.StatusCreated)
+	})
+
+	t.Run("rejects invalid json", func(t *testing.T) {
+		orderController, _ := newTestOrderController(t)
+		rec := doRequest(newOrderRouter(t, orderController, user), http.MethodPost, "/orders/direct", "Bearer session-token", `{bad`)
+		requireOrderStatus(t, rec, http.StatusBadRequest)
+	})
+}
+
+func TestOrderCreateDirectMapsErrors(t *testing.T) {
+	user := &usermodel.User{ID: 7, Username: "alice01", Status: usermodel.UserStatusActive}
+	tests := []struct {
+		name       string
+		err        error
+		wantStatus int
+		wantError  error
+	}{
+		{"invalid checkout", apperr.ErrInvalidCheckout, http.StatusBadRequest, apperr.ErrInvalidCheckout},
+		{"checkout conflict", apperr.ErrCheckoutConflict, http.StatusConflict, apperr.ErrCheckoutConflict},
+		{"product unavailable", apperr.ErrProductUnavailable, http.StatusConflict, apperr.ErrProductUnavailable},
+		{"insufficient stock", apperr.ErrInsufficientStock, http.StatusConflict, apperr.ErrInsufficientStock},
+		{"service failure", errors.New("database is down"), http.StatusInternalServerError, apperr.ErrInternalServer},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			orderController, orderService := newTestOrderController(t)
+			orderService.EXPECT().
+				CreateDirect(gomock.Any(), user.ID, gomock.Any()).
+				Return(nil, tt.err)
+
+			rec := doRequest(
+				newOrderRouter(t, orderController, user),
+				http.MethodPost,
+				"/orders/direct",
+				"Bearer session-token",
+				`{"checkout_key":"4f2614df-f674-4b5e-a9e4-3fc5e7f62013","sku_id":5,"quantity":2,"receiver_name":"Alice","receiver_phone":"13800138000","shipping_address":"Shanghai"}`,
+			)
+
+			requireOrderStatus(t, rec, tt.wantStatus)
+			requireOrderError(t, rec, tt.wantError)
+		})
+	}
 }
 
 func TestOrderListAndGet(t *testing.T) {

@@ -3,12 +3,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { render } from "@testing-library/react"
 import { MemoryRouter } from "react-router"
 
-export function createTestQueryClient() {
+export function createTestQueryClient({
+  gcTime = 0,
+}: {
+  gcTime?: number
+} = {}) {
   return new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
-        gcTime: 0,
+        gcTime,
       },
       mutations: {
         retry: false,

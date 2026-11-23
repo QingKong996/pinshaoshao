@@ -30,11 +30,56 @@ func NewOrderRepository(pool *pgxpool.Pool, reservation inventory.Reservation) *
 }
 
 func (r *OrderRepository) Create(ctx context.Context, userID int, input model.CreateOrderInput) (*model.Order, error) {
+	order, err := r.create(ctx, userID, checkoutDetails{
+		CheckoutKey:     input.CheckoutKey,
+		RequestHash:     input.RequestHash,
+		ReceiverName:    input.ReceiverName,
+		ReceiverPhone:   input.ReceiverPhone,
+		ShippingAddress: input.ShippingAddress,
+	}, func(ctx context.Context, tx pgx.Tx, orderID int) error {
+		return r.fillCartOrder(ctx, tx, userID, orderID, input.Items)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("repository.CreateOrder: %w", err)
+	}
+	return order, nil
+}
+
+func (r *OrderRepository) CreateDirect(ctx context.Context, userID int, input model.CreateDirectOrderInput) (*model.Order, error) {
+	order, err := r.create(ctx, userID, checkoutDetails{
+		CheckoutKey:     input.CheckoutKey,
+		RequestHash:     input.RequestHash,
+		ReceiverName:    input.ReceiverName,
+		ReceiverPhone:   input.ReceiverPhone,
+		ShippingAddress: input.ShippingAddress,
+	}, func(ctx context.Context, tx pgx.Tx, orderID int) error {
+		return r.fillDirectOrder(ctx, tx, orderID, input.SKUID, input.Quantity)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("repository.CreateDirectOrder: %w", err)
+	}
+	return order, nil
+}
+
+type checkoutDetails struct {
+	CheckoutKey     string
+	RequestHash     string
+	ReceiverName    string
+	ReceiverPhone   string
+	ShippingAddress string
+}
+
+func (r *OrderRepository) create(
+	ctx context.Context,
+	userID int,
+	checkout checkoutDetails,
+	fill func(context.Context, pgx.Tx, int) error,
+) (*model.Order, error) {
 	var result *model.Order
 	var replayOrderID int
 
 	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
-		orderID, created, err := claimCheckoutKey(ctx, tx, userID, input)
+		orderID, created, err := claimCheckoutKey(ctx, tx, userID, checkout)
 		if err != nil {
 			return err
 		}
@@ -43,19 +88,19 @@ func (r *OrderRepository) Create(ctx context.Context, userID int, input model.Cr
 			return nil
 		}
 
-		if err := r.fillOrder(ctx, tx, userID, orderID, input); err != nil {
+		if err := fill(ctx, tx, orderID); err != nil {
 			return err
 		}
 		result, err = loadOrder(ctx, tx, userID, orderID)
 		return err
 	})
 	if err != nil {
-		return nil, fmt.Errorf("repository.CreateOrder: %w", err)
+		return nil, err
 	}
 	if replayOrderID > 0 {
 		replay, err := r.Get(ctx, userID, replayOrderID)
 		if err != nil {
-			return nil, fmt.Errorf("repository.CreateOrder: %w", err)
+			return nil, err
 		}
 		return replay, nil
 	}
@@ -264,8 +309,14 @@ func (r *OrderRepository) cancelPendingOrder(ctx context.Context, tx pgx.Tx, ord
 	return nil
 }
 
-func (r *OrderRepository) fillOrder(ctx context.Context, tx pgx.Tx, userID int, orderID int, input model.CreateOrderInput) error {
-	cartItems, err := lockCartItems(ctx, tx, userID, input.Items)
+func (r *OrderRepository) fillCartOrder(
+	ctx context.Context,
+	tx pgx.Tx,
+	userID int,
+	orderID int,
+	items []model.CreateOrderItem,
+) error {
+	cartItems, err := lockCartItems(ctx, tx, userID, items)
 	if err != nil {
 		return err
 	}
@@ -327,6 +378,68 @@ func (r *OrderRepository) fillOrder(ctx context.Context, tx pgx.Tx, userID int, 
 		})
 	}
 
+	if err := persistOrder(ctx, tx, orderID, groups); err != nil {
+		return err
+	}
+
+	itemIDs := make([]int64, 0, len(items))
+	for _, item := range items {
+		itemIDs = append(itemIDs, int64(item.CartItemID))
+	}
+	tag, err := tx.Exec(ctx, `DELETE FROM cart_items WHERE user_id = $1 AND id = ANY($2::bigint[])`, userID, itemIDs)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != int64(len(itemIDs)) {
+		return apperr.ErrCartItemsChanged
+	}
+	return nil
+}
+
+func (r *OrderRepository) fillDirectOrder(
+	ctx context.Context,
+	tx pgx.Tx,
+	orderID int,
+	skuID int,
+	quantity int,
+) error {
+	catalog, err := lockCatalogSKUs(ctx, tx, []int64{int64(skuID)})
+	if err != nil {
+		return err
+	}
+	sku, ok := catalog[skuID]
+	if !ok || sku.Status != "on_shelf" || !sku.Enabled {
+		return apperr.ErrProductUnavailable
+	}
+
+	if err := r.reservation.Freeze(ctx, tx, []inventorymodel.ReservationItem{{
+		SKUID:    skuID,
+		Quantity: quantity,
+	}}); err != nil {
+		return mapFreezeError(err)
+	}
+
+	lineAmount := sku.PriceCents * int64(quantity)
+	groups := map[int]*shopGroup{
+		sku.ShopID: {
+			shopID:           sku.ShopID,
+			shopName:         sku.ShopName,
+			totalAmountCents: lineAmount,
+			items: []snapshotItem{{
+				productID:       sku.ProductID,
+				skuID:           sku.SKUID,
+				productName:     sku.ProductName,
+				specs:           sku.Specs,
+				unitPriceCents:  sku.PriceCents,
+				quantity:        quantity,
+				lineAmountCents: lineAmount,
+			}},
+		},
+	}
+	return persistOrder(ctx, tx, orderID, groups)
+}
+
+func persistOrder(ctx context.Context, tx pgx.Tx, orderID int, groups map[int]*shopGroup) error {
 	shopIDs := make([]int, 0, len(groups))
 	for shopID := range groups {
 		shopIDs = append(shopIDs, shopID)
@@ -367,18 +480,6 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	if _, err := tx.Exec(ctx, `UPDATE orders SET total_amount_cents = $1, updated_at = now() WHERE id = $2`, totalAmount, orderID); err != nil {
 		return err
-	}
-
-	itemIDs := make([]int64, 0, len(input.Items))
-	for _, item := range input.Items {
-		itemIDs = append(itemIDs, int64(item.CartItemID))
-	}
-	tag, err := tx.Exec(ctx, `DELETE FROM cart_items WHERE user_id = $1 AND id = ANY($2::bigint[])`, userID, itemIDs)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() != int64(len(itemIDs)) {
-		return apperr.ErrCartItemsChanged
 	}
 	return nil
 }
@@ -442,15 +543,20 @@ FOR UPDATE`
 }
 
 type catalogSKU struct {
-	SKUID    int
-	ShopID   int
-	ShopName string
-	Status   string
-	Enabled  bool
+	SKUID       int
+	ProductID   int
+	ProductName string
+	Specs       map[string]string
+	PriceCents  int64
+	ShopID      int
+	ShopName    string
+	Status      string
+	Enabled     bool
 }
 
 func lockCatalogSKUs(ctx context.Context, db database.DBTX, skuIDs []int64) (map[int]catalogSKU, error) {
-	const query = `SELECT ps.id, p.shop_id, s.name, p.status::text, ps.is_enabled
+	const query = `SELECT ps.id, p.id, p.name, ps.specs, ps.price_cents,
+       p.shop_id, s.name, p.status::text, ps.is_enabled
 FROM product_skus ps
 JOIN products p ON p.id = ps.product_id
 JOIN shops s ON s.id = p.shop_id
@@ -469,6 +575,10 @@ FOR SHARE OF p, ps`
 		var sku catalogSKU
 		if err := rows.Scan(
 			&sku.SKUID,
+			&sku.ProductID,
+			&sku.ProductName,
+			&sku.Specs,
+			&sku.PriceCents,
 			&sku.ShopID,
 			&sku.ShopName,
 			&sku.Status,
@@ -501,7 +611,7 @@ type snapshotItem struct {
 	lineAmountCents int64
 }
 
-func claimCheckoutKey(ctx context.Context, db database.DBTX, userID int, input model.CreateOrderInput) (int, bool, error) {
+func claimCheckoutKey(ctx context.Context, db database.DBTX, userID int, checkout checkoutDetails) (int, bool, error) {
 	const insertQuery = `INSERT INTO orders
     (user_id, checkout_key, request_hash, receiver_name, receiver_phone, shipping_address)
 VALUES ($1, $2::uuid, $3, $4, $5, $6)
@@ -513,11 +623,11 @@ RETURNING id`
 		ctx,
 		insertQuery,
 		userID,
-		input.CheckoutKey,
-		input.RequestHash,
-		input.ReceiverName,
-		input.ReceiverPhone,
-		input.ShippingAddress,
+		checkout.CheckoutKey,
+		checkout.RequestHash,
+		checkout.ReceiverName,
+		checkout.ReceiverPhone,
+		checkout.ShippingAddress,
 	).Scan(&orderID)
 	if err == nil {
 		return orderID, true, nil
@@ -529,10 +639,10 @@ RETURNING id`
 	const existingQuery = `SELECT id, request_hash FROM orders WHERE user_id = $1 AND checkout_key = $2::uuid`
 	var existingID int
 	var existingHash string
-	if err := db.QueryRow(ctx, existingQuery, userID, input.CheckoutKey).Scan(&existingID, &existingHash); err != nil {
+	if err := db.QueryRow(ctx, existingQuery, userID, checkout.CheckoutKey).Scan(&existingID, &existingHash); err != nil {
 		return 0, false, err
 	}
-	if existingHash != input.RequestHash {
+	if existingHash != checkout.RequestHash {
 		return 0, false, apperr.ErrCheckoutConflict
 	}
 	return existingID, false, nil

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { AlertCircle, RotateCw } from "lucide-react"
 import {
   Alert,
@@ -10,8 +11,9 @@ import { Button } from "@/shared/ui/button"
 type QueryErrorProps = {
   title: string
   description: string
-  retryLabel: string
+  retryLabel?: string
   onRetry?: () => void
+  action?: ReactNode
 }
 
 export function QueryError({
@@ -19,6 +21,7 @@ export function QueryError({
   description,
   retryLabel,
   onRetry,
+  action,
 }: QueryErrorProps) {
   return (
     <Alert variant="destructive">
@@ -27,12 +30,14 @@ export function QueryError({
       <AlertDescription>
         {description}
       </AlertDescription>
-      {onRetry ? (
+      {action || onRetry ? (
         <AlertAction>
-          <Button variant="outline" size="sm" onClick={onRetry}>
-            <RotateCw aria-hidden />
-            {retryLabel}
-          </Button>
+          {action ?? (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              <RotateCw aria-hidden />
+              {retryLabel}
+            </Button>
+          )}
         </AlertAction>
       ) : null}
     </Alert>
