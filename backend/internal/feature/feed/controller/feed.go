@@ -35,7 +35,7 @@ func NewFeedController(feedService FeedService) *FeedController {
 // @Produce     json
 // @Param       page query int false "Page number" default(1)
 // @Param       page_size query int false "Page size" default(20)
-// @Success     200 {object} feeddto.FeedListResponse
+// @Success     200 {object} dto.FeedListResponse
 // @Failure     400 {object} httpx.ErrorResponse
 // @Failure     401 {object} httpx.ErrorResponse
 // @Failure     403 {object} httpx.ErrorResponse
@@ -43,7 +43,7 @@ func NewFeedController(feedService FeedService) *FeedController {
 // @Security    BearerAuth
 // @Router      /feed [get]
 func (c *FeedController) List(ctx *gin.Context) {
-	var req feeddto.ListFeedQuery
+	var req dto.ListFeedQuery
 	if err := ctx.ShouldBindQuery(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, httpx.ErrorResponse{
 			Error: apperr.ErrInvalidFeedQuery.Error(),
@@ -80,7 +80,7 @@ func (c *FeedController) List(ctx *gin.Context) {
 		return
 	}
 
-	items := make([]feeddto.FeedItemResponse, 0, len(result.Items))
+	items := make([]dto.FeedItemResponse, 0, len(result.Items))
 	for i := range result.Items {
 		items = append(items, newFeedItemResponse(&result.Items[i]))
 	}
@@ -89,7 +89,7 @@ func (c *FeedController) List(ctx *gin.Context) {
 		totalPages = int((result.Total + int64(result.PageSize) - 1) / int64(result.PageSize))
 	}
 
-	ctx.JSON(http.StatusOK, feeddto.FeedListResponse{
+	ctx.JSON(http.StatusOK, dto.FeedListResponse{
 		Items:      items,
 		Page:       result.Page,
 		PageSize:   result.PageSize,
@@ -98,8 +98,8 @@ func (c *FeedController) List(ctx *gin.Context) {
 	})
 }
 
-func newFeedItemResponse(item *model.FeedItem) feeddto.FeedItemResponse {
-	return feeddto.FeedItemResponse{
+func newFeedItemResponse(item *model.FeedItem) dto.FeedItemResponse {
+	return dto.FeedItemResponse{
 		ID:             item.ID,
 		ShopID:         item.ShopID,
 		ShopName:       item.ShopName,
