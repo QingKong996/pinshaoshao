@@ -14,6 +14,7 @@ import (
 	"pinshaoshao/internal/feature/feed/model"
 	usermodule "pinshaoshao/internal/feature/user"
 	usermodel "pinshaoshao/internal/feature/user/model"
+	"pinshaoshao/internal/http/httpx"
 
 	"github.com/gin-gonic/gin"
 )
@@ -198,7 +199,7 @@ func requireFeedStatus(t *testing.T, rec *httptest.ResponseRecorder, want int) {
 func requireFeedError(t *testing.T, rec *httptest.ResponseRecorder, want error) {
 	t.Helper()
 
-	var body dto.ErrorResponse
+	var body httpx.ErrorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode feed error: %v", err)
 	}

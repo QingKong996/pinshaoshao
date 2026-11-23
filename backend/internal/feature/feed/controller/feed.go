@@ -10,6 +10,7 @@ import (
 	"pinshaoshao/internal/feature/feed/dto"
 	"pinshaoshao/internal/feature/feed/model"
 	"pinshaoshao/internal/http/authctx"
+	"pinshaoshao/internal/http/httpx"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,16 +36,16 @@ func NewFeedController(feedService FeedService) *FeedController {
 // @Param       page query int false "Page number" default(1)
 // @Param       page_size query int false "Page size" default(20)
 // @Success     200 {object} dto.FeedListResponse
-// @Failure     400 {object} dto.ErrorResponse
-// @Failure     401 {object} dto.ErrorResponse
-// @Failure     403 {object} dto.ErrorResponse
-// @Failure     500 {object} dto.ErrorResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
 // @Security    BearerAuth
 // @Router      /feed [get]
 func (c *FeedController) List(ctx *gin.Context) {
 	var req dto.ListFeedQuery
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
+		ctx.JSON(http.StatusBadRequest, httpx.ErrorResponse{
 			Error: apperr.ErrInvalidFeedQuery.Error(),
 		})
 		return
@@ -67,13 +68,13 @@ func (c *FeedController) List(ctx *gin.Context) {
 	)
 	if err != nil {
 		if errors.Is(err, apperr.ErrInvalidFeedQuery) {
-			ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			ctx.JSON(http.StatusBadRequest, httpx.ErrorResponse{
 				Error: apperr.ErrInvalidFeedQuery.Error(),
 			})
 			return
 		}
 		slog.ErrorContext(ctx.Request.Context(), "list feed", "error", err)
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+		ctx.JSON(http.StatusInternalServerError, httpx.ErrorResponse{
 			Error: apperr.ErrInternalServer.Error(),
 		})
 		return
