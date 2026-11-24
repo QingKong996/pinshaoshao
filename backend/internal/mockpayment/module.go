@@ -13,8 +13,8 @@ import (
 	mockpayhandler "pinshaoshao/internal/mockpayment/handler"
 	"pinshaoshao/internal/mockpayment/model"
 	mockpayrepository "pinshaoshao/internal/mockpayment/repository"
-	"pinshaoshao/internal/mockpayment/security"
 	mockpayservice "pinshaoshao/internal/mockpayment/service"
+	"pinshaoshao/internal/webhooksig"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -96,7 +96,7 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 		notificationRepository,
 		mockpayservice.NotificationConfig{
 			Client:      config.HTTPClient,
-			Signer:      security.NewSigner(config.WebhookSecret),
+			Signer:      webhooksig.NewSigner(config.WebhookSecret),
 			RetryDelays: config.NotificationRetryDelays,
 			Lease:       config.NotificationDeliveryLease,
 			BatchSize:   config.NotificationBatchSize,
@@ -114,14 +114,14 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 }
 
 func (m *Module) Register(r *gin.Engine, _ gin.HandlerFunc) {
-	api := r.Group("/api/v1/mock-payments")
+	api := r.Group("/mockpay/api/v1/payments")
 	api.POST("", m.paymentHandler.Create)
 	api.GET("/:paymentNo", m.paymentHandler.Get)
 	api.POST("/:paymentNo/close", m.paymentHandler.Close)
 	api.GET("/:paymentNo/notifications", m.webhookHandler.List)
 	api.POST("/:paymentNo/notifications/retry", m.webhookHandler.Retry)
 
-	checkout := r.Group("/mock-payment/checkout")
+	checkout := r.Group("/mockpay/checkout")
 	checkout.GET("/:paymentNo", m.checkoutHandler.Show)
 	checkout.POST("/:paymentNo/pay", m.checkoutHandler.Pay)
 	checkout.POST("/:paymentNo/close", m.checkoutHandler.Close)

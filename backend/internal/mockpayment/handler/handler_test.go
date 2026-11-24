@@ -65,12 +65,12 @@ func TestPaymentHandlerCreate(t *testing.T) {
 	}
 	paymentHandler := handler.NewPaymentHandler(paymentService, "http://localhost:8080")
 	router := gin.New()
-	router.POST("/api/v1/mock-payments", paymentHandler.Create)
+	router.POST("/mockpay/api/v1/payments", paymentHandler.Create)
 
 	createRequest := func() *http.Request {
 		request := httptest.NewRequest(
 			http.MethodPost,
-			"/api/v1/mock-payments",
+			"/mockpay/api/v1/payments",
 			strings.NewReader(`{
 			"merchant_order_no":"order-1",
 			"amount_cents":3998,
@@ -93,7 +93,7 @@ func TestPaymentHandlerCreate(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	wantURL := "http://localhost:8080/mock-payment/checkout/" + paymentNo
+	wantURL := "http://localhost:8080/mockpay/checkout/" + paymentNo
 	if body.CheckoutURL != wantURL {
 		t.Fatalf("checkout URL = %q, want %q", body.CheckoutURL, wantURL)
 	}
@@ -113,11 +113,11 @@ func TestPaymentHandlerCreateRejectsInvalidJSON(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	paymentHandler := handler.NewPaymentHandler(&stubPaymentService{}, "")
 	router := gin.New()
-	router.POST("/api/v1/mock-payments", paymentHandler.Create)
+	router.POST("/mockpay/api/v1/payments", paymentHandler.Create)
 
 	request := httptest.NewRequest(
 		http.MethodPost,
-		"/api/v1/mock-payments",
+		"/mockpay/api/v1/payments",
 		strings.NewReader(`{"merchant_order_no":`),
 	)
 	request.Header.Set("Content-Type", "application/json")
@@ -145,23 +145,23 @@ func TestCheckoutHandlerPayAndShow(t *testing.T) {
 	}
 	checkoutHandler := handler.NewCheckoutHandler(paymentService)
 	router := gin.New()
-	router.GET("/mock-payment/checkout/:paymentNo", checkoutHandler.Show)
-	router.POST("/mock-payment/checkout/:paymentNo/pay", checkoutHandler.Pay)
+	router.GET("/mockpay/checkout/:paymentNo", checkoutHandler.Show)
+	router.POST("/mockpay/checkout/:paymentNo/pay", checkoutHandler.Pay)
 
-	showRequest := httptest.NewRequest(http.MethodGet, "/mock-payment/checkout/"+paymentNo, nil)
+	showRequest := httptest.NewRequest(http.MethodGet, "/mockpay/checkout/"+paymentNo, nil)
 	showResponse := httptest.NewRecorder()
 	router.ServeHTTP(showResponse, showRequest)
 	if showResponse.Code != http.StatusOK || !strings.Contains(showResponse.Body.String(), "T-shirt") {
 		t.Fatalf("checkout response = %d/%s", showResponse.Code, showResponse.Body.String())
 	}
 
-	payRequest := httptest.NewRequest(http.MethodPost, "/mock-payment/checkout/"+paymentNo+"/pay", nil)
+	payRequest := httptest.NewRequest(http.MethodPost, "/mockpay/checkout/"+paymentNo+"/pay", nil)
 	payResponse := httptest.NewRecorder()
 	router.ServeHTTP(payResponse, payRequest)
 	if payResponse.Code != http.StatusSeeOther {
 		t.Fatalf("pay status = %d, want 303", payResponse.Code)
 	}
-	if got := payResponse.Header().Get("Location"); got != "/mock-payment/checkout/"+paymentNo {
+	if got := payResponse.Header().Get("Location"); got != "/mockpay/checkout/"+paymentNo {
 		t.Fatalf("pay location = %q", got)
 	}
 }

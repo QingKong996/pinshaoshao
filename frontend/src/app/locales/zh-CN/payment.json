@@ -1,0 +1,33 @@
+{
+  "panel": {
+    "title": "支付",
+    "amountDue": "应付金额",
+    "payBefore": "请在 {{date}} 前完成支付",
+    "payNow": "立即支付",
+    "preparing": "正在准备收银台…",
+    "redirectHint": "即将跳转到 MockPay 安全收银台，支付完成后会返回当前订单。",
+    "paidTitle": "支付成功",
+    "paidDescription": "该订单已完成支付。",
+    "paidAt": "支付于 {{date}}"
+  },
+  "status": {
+    "pending": "待支付",
+    "paid": "已支付"
+  },
+  "actions": {
+    "dismiss": "关闭"
+  },
+  "errors": {
+    "title": "无法发起支付",
+    "unknown": "操作失败，请稍后重试。",
+    "network": "无法连接服务器，请检查网络后重试。",
+    "invalidRequest": "支付请求参数有误。",
+    "unauthorized": "登录状态已失效，请重新登录。",
+    "notFound": "订单或支付单不存在。",
+    "notPayable": "该订单当前无法支付，请刷新后查看最新状态。",
+    "closed": "该支付单已关闭。",
+    "gateway": "支付服务暂时不可用，请稍后重试。",
+    "checkoutUnavailable": "收银台会话不可用，请重试。",
+    "server": "服务器暂时无法发起支付，请稍后重试。"
+  }
+}

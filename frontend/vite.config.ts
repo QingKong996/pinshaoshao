@@ -18,7 +18,11 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
-      '/mock-payment/checkout': {
+      '/mockpay/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/mockpay/checkout': {
         target: 'http://localhost:8080',
         changeOrigin: true,
       },

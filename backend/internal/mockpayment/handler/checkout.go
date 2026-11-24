@@ -54,8 +54,8 @@ var checkoutTemplate = template.Must(template.New("checkout").Parse(`<!doctype h
   </dl>
   {{if .CanPay}}
   <div class="actions">
-    <form method="post" action="/mock-payment/checkout/{{.PaymentNo}}/pay"><button class="primary" type="submit">Pay now</button></form>
-    <form method="post" action="/mock-payment/checkout/{{.PaymentNo}}/close"><button class="secondary" type="submit">Close order</button></form>
+    <form method="post" action="/mockpay/checkout/{{.PaymentNo}}/pay"><button class="primary" type="submit">Pay now</button></form>
+    <form method="post" action="/mockpay/checkout/{{.PaymentNo}}/close"><button class="secondary" type="submit">Close order</button></form>
   </div>
   {{else if eq .Status "paid"}}
   <div class="actions">

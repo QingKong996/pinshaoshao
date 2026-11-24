@@ -3,6 +3,7 @@ package order
 import (
 	inventoryfeature "pinshaoshao/internal/feature/inventory"
 	ordercontroller "pinshaoshao/internal/feature/order/controller"
+	"pinshaoshao/internal/feature/order/paymentport"
 	orderrepository "pinshaoshao/internal/feature/order/repository"
 	orderservice "pinshaoshao/internal/feature/order/service"
 
@@ -11,7 +12,8 @@ import (
 )
 
 type Module struct {
-	controller *ordercontroller.OrderController
+	controller       *ordercontroller.OrderController
+	paymentLifecycle paymentport.Lifecycle
 }
 
 // NewModule wires the order feature and its stock reservation dependency.
@@ -19,8 +21,14 @@ func NewModule(pool *pgxpool.Pool, reservation inventoryfeature.Reservation) *Mo
 	orderRepository := orderrepository.NewOrderRepository(pool, reservation)
 	orderService := orderservice.NewOrderService(orderRepository)
 	return &Module{
-		controller: ordercontroller.NewOrderController(orderService),
+		controller:       ordercontroller.NewOrderController(orderService),
+		paymentLifecycle: orderRepository,
 	}
+}
+
+// PaymentLifecycle returns the order state operations used by the payment feature.
+func (m *Module) PaymentLifecycle() paymentport.Lifecycle {
+	return m.paymentLifecycle
 }
 
 // Register mounts the buyer order routes on the engine.

@@ -1,0 +1,33 @@
+{
+  "panel": {
+    "title": "Payment",
+    "amountDue": "Amount due",
+    "payBefore": "Pay before {{date}}",
+    "payNow": "Pay now",
+    "preparing": "Preparing checkout…",
+    "redirectHint": "You will be redirected to MockPay secure checkout. After payment, you will return to this order.",
+    "paidTitle": "Payment completed",
+    "paidDescription": "This order has been paid successfully.",
+    "paidAt": "Paid {{date}}"
+  },
+  "status": {
+    "pending": "Awaiting payment",
+    "paid": "Paid"
+  },
+  "actions": {
+    "dismiss": "Dismiss"
+  },
+  "errors": {
+    "title": "Could not start payment",
+    "unknown": "Something went wrong. Try again.",
+    "network": "Cannot reach the server. Check your connection and retry.",
+    "invalidRequest": "The payment request is invalid.",
+    "unauthorized": "Your session has expired. Sign in again.",
+    "notFound": "The order or payment could not be found.",
+    "notPayable": "This order is no longer payable. Refresh for the latest status.",
+    "closed": "This payment session is closed.",
+    "gateway": "The payment service is temporarily unavailable. Try again later.",
+    "checkoutUnavailable": "The checkout session is unavailable. Try again.",
+    "server": "The server cannot start payment right now. Try again later."
+  }
+}

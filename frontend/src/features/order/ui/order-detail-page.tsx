@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { LoaderCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Link, useNavigate } from "react-router"
@@ -36,9 +36,11 @@ import {
 export function OrderDetailPage({
   token,
   orderID,
+  renderSidebar,
 }: {
   token: string
   orderID: number
+  renderSidebar?: (order: Order) => ReactNode
 }) {
   const { t } = useTranslation("order")
   useDocumentTitle(t("detail.documentTitle", { id: orderID }))
@@ -89,6 +91,7 @@ export function OrderDetailPage({
 
   const order = orderQuery.data
   const canCancel = order.status === "pending_payment"
+  const sidebar = renderSidebar?.(order)
 
   return (
     <div className="flex flex-col gap-6">
@@ -194,33 +197,42 @@ export function OrderDetailPage({
           ))}
         </div>
 
-        <Card className="lg:sticky lg:top-24">
-          <CardHeader>
-            <CardTitle>{t("detail.receiver.title")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div>
-              <p className="text-muted-foreground">
-                {t("detail.receiver.name")}
-              </p>
-              <p className="font-medium">{order.receiver_name}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">
-                {t("detail.receiver.phone")}
-              </p>
-              <p className="font-medium">{order.receiver_phone}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">
-                {t("detail.receiver.address")}
-              </p>
-              <p className="font-medium break-words">
-                {order.shipping_address}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <aside
+          className={
+            sidebar
+              ? "order-first grid gap-4 lg:order-none lg:sticky lg:top-24"
+              : "grid gap-4 lg:sticky lg:top-24"
+          }
+        >
+          {sidebar}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("detail.receiver.title")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">
+                  {t("detail.receiver.name")}
+                </p>
+                <p className="font-medium">{order.receiver_name}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">
+                  {t("detail.receiver.phone")}
+                </p>
+                <p className="font-medium">{order.receiver_phone}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">
+                  {t("detail.receiver.address")}
+                </p>
+                <p className="font-medium break-words">
+                  {order.shipping_address}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </aside>
       </div>
 
       <CancelOrderDialog

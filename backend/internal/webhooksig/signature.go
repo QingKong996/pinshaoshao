@@ -1,4 +1,4 @@
-package security
+package webhooksig
 
 import (
 	"crypto/hmac"

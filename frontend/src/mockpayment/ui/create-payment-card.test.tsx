@@ -13,7 +13,7 @@ describe("CreatePaymentCard", () => {
     const user = userEvent.setup()
     let posted: CreateMockPaymentInput | undefined
     server.use(
-      http.post("*/api/v1/mock-payments", async ({ request }) => {
+      http.post("*/mockpay/api/v1/payments", async ({ request }) => {
         posted = (await request.json()) as CreateMockPaymentInput
         return HttpResponse.json(
           {
@@ -24,7 +24,7 @@ describe("CreatePaymentCard", () => {
             currency: posted.currency,
             subject: posted.subject,
             checkout_url:
-              "http://localhost:8080/mock-payment/checkout/4f2614df-f674-4b5e-a9e4-3fc5e7f62013",
+              "http://localhost:8080/mockpay/checkout/4f2614df-f674-4b5e-a9e4-3fc5e7f62013",
             expires_at: "2026-11-24T12:30:00Z",
             paid_at: null,
             closed_at: null,
@@ -37,13 +37,13 @@ describe("CreatePaymentCard", () => {
 
     renderWithProviders(
       <Routes>
-        <Route path="/mock-payments" element={<CreatePaymentCard />} />
+        <Route path="/mockpay" element={<CreatePaymentCard />} />
         <Route
-          path="/mock-payments/:paymentNo"
+          path="/mockpay/payments/:paymentNo"
           element={<div data-testid="payment-detail-route" />}
         />
       </Routes>,
-      { initialEntries: ["/mock-payments"] },
+      { initialEntries: ["/mockpay"] },
     )
 
     await user.clear(screen.getByLabelText("Merchant order number"))
