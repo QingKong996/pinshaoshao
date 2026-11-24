@@ -5,6 +5,8 @@
   "nav": {
     "dashboard": "Overview",
     "orders": "Orders",
+    "logistics": "Shipments",
+    "shipmentDetail": "Shipment detail",
     "products": "Products",
     "productInfo": "Product info",
     "categories": "Categories",
@@ -95,7 +97,8 @@
       "status": "Status",
       "items": "Items",
       "total": "Total",
-      "createdAt": "Placed"
+      "createdAt": "Placed",
+      "actions": "Actions"
     },
     "status": {
       "pending_payment": "Awaiting payment",

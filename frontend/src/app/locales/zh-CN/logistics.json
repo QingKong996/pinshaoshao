@@ -1,0 +1,122 @@
+{
+  "signedOut": {
+    "documentTitle": "物流跟踪 · {{brand}}",
+    "title": "登录后查看物流",
+    "description": "物流信息与买家账户关联，登录后即可继续查看。",
+    "action": "去登录"
+  },
+  "documentTitle": {
+    "list": "物流管理 · 商户中心 · {{brand}}",
+    "detail": "物流跟踪 · {{brand}}"
+  },
+  "status": {
+    "pending_pickup": "待揽收",
+    "picked_up": "已揽收",
+    "in_transit": "运输中",
+    "at_transit_hub": "到达转运中心",
+    "out_for_delivery": "派送中",
+    "delivered": "已签收"
+  },
+  "merchant": {
+    "title": "物流管理",
+    "description": "为已支付子订单发货，并在同一页面跟踪全部配送进度。",
+    "newShipment": "新建发货单",
+    "filters": {
+      "description": "按当前物流状态筛选。",
+      "allStatuses": "全部状态"
+    },
+    "table": {
+      "shipment": "物流单",
+      "subOrder": "子订单 #{{id}}",
+      "recipient": "收货人",
+      "carrier": "承运商",
+      "status": "状态",
+      "currentLocation": "当前位置",
+      "shippedAt": "发货时间",
+      "actions": "操作"
+    },
+    "empty": {
+      "title": "还没有物流单",
+      "description": "为已支付子订单发货后，物流单会显示在这里。",
+      "filtered": "没有符合筛选条件的物流单。"
+    }
+  },
+  "dispatchForm": {
+    "title": "创建发货单",
+    "description": "为已支付子订单创建承运物流单，创建后子订单会立即标记为已发货。",
+    "fixedDescription": "子订单 #{{id}}，收货人 {{receiver}}。",
+    "unknownReceiver": "当前收货人",
+    "subOrderHint": "可在商户订单列表中查看子订单号。",
+    "carrierPlaceholder": "如：顺丰速运",
+    "carrierHint": "选填。留空时由物流平台自动选择承运商。",
+    "fields": {
+      "subOrderID": "子订单号",
+      "carrier": "承运商"
+    },
+    "submit": "创建发货单",
+    "submitting": "创建中…",
+    "errors": {
+      "subOrderRequired": "请输入子订单号。",
+      "subOrderInvalid": "请输入有效的正整数子订单号。",
+      "carrierLength": "承运商名称不能超过 64 个字符。"
+    }
+  },
+  "panel": {
+    "awaitingShipment": "该子订单等待商家发货。",
+    "trackingPending": "发货后将显示物流跟踪信息。",
+    "latestUpdates": "最新动态"
+  },
+  "timeline": {
+    "heading": "物流轨迹",
+    "empty": "承运商扫描包裹后，物流动态会显示在这里。"
+  },
+  "detail": {
+    "title": "物流跟踪",
+    "description": "物流单 {{shipmentNo}} · 订单 #{{orderID}}",
+    "progress": {
+      "title": "配送进度"
+    },
+    "summary": {
+      "shippedAt": "发货时间",
+      "deliveredAt": "签收时间",
+      "estimatedRoute": "配送线路",
+      "originUnknown": "始发地",
+      "destinationUnknown": "目的地",
+      "unknownLocation": "位置更新中"
+    },
+    "receiver": {
+      "title": "收货信息",
+      "name": "收货人",
+      "phone": "联系电话",
+      "address": "收货地址"
+    },
+    "items": {
+      "title": "物流信息",
+      "summary": "商品",
+      "subOrder": "子订单"
+    }
+  },
+  "actions": {
+    "ship": "发货",
+    "view": "查看",
+    "viewTracking": "查看物流",
+    "retry": "重试",
+    "cancel": "取消",
+    "close": "关闭",
+    "backToOrders": "返回订单列表",
+    "backToShipments": "返回物流列表"
+  },
+  "errors": {
+    "unknown": "操作失败，请稍后重试。",
+    "network": "无法连接服务器，请检查网络后重试。",
+    "unauthorized": "登录状态已失效，请重新登录。",
+    "invalidRequest": "物流信息有误，请检查后重试。",
+    "notFound": "物流单不存在或不属于当前账户。",
+    "notShippable": "当前子订单无法发货，请刷新后查看最新状态。",
+    "provider": "物流平台暂时不可用，请稍后重试。",
+    "server": "服务器暂时无法处理请求，请稍后重试。",
+    "loadTitle": "物流信息加载失败",
+    "notFoundTitle": "物流单未找到",
+    "dispatchTitle": "发货失败"
+  }
+}

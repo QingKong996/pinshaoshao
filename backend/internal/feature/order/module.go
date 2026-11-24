@@ -6,14 +6,16 @@ import (
 	"pinshaoshao/internal/feature/order/paymentport"
 	orderrepository "pinshaoshao/internal/feature/order/repository"
 	orderservice "pinshaoshao/internal/feature/order/service"
+	"pinshaoshao/internal/feature/order/shippingport"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Module struct {
-	controller       *ordercontroller.OrderController
-	paymentLifecycle paymentport.Lifecycle
+	controller        *ordercontroller.OrderController
+	paymentLifecycle  paymentport.Lifecycle
+	shippingLifecycle shippingport.Lifecycle
 }
 
 // NewModule wires the order feature and its stock reservation dependency.
@@ -21,14 +23,20 @@ func NewModule(pool *pgxpool.Pool, reservation inventoryfeature.Reservation) *Mo
 	orderRepository := orderrepository.NewOrderRepository(pool, reservation)
 	orderService := orderservice.NewOrderService(orderRepository)
 	return &Module{
-		controller:       ordercontroller.NewOrderController(orderService),
-		paymentLifecycle: orderRepository,
+		controller:        ordercontroller.NewOrderController(orderService),
+		paymentLifecycle:  orderRepository,
+		shippingLifecycle: orderRepository,
 	}
 }
 
 // PaymentLifecycle returns the order state operations used by the payment feature.
 func (m *Module) PaymentLifecycle() paymentport.Lifecycle {
 	return m.paymentLifecycle
+}
+
+// ShippingLifecycle returns the order state operations used by the logistics feature.
+func (m *Module) ShippingLifecycle() shippingport.Lifecycle {
+	return m.shippingLifecycle
 }
 
 // Register mounts the buyer order routes on the engine.

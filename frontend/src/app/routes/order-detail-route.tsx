@@ -5,6 +5,7 @@ import {
   OrderSignedOut,
   orderQueryKeys,
 } from "@/features/order"
+import { OrderShipmentPanel } from "@/features/logistics"
 import { OrderPaymentPanel } from "@/features/payment"
 import { SiteFooter } from "../layouts/site-footer"
 import { SiteHeader } from "../layouts/site-header"
@@ -46,6 +47,23 @@ export function OrderDetailRoute() {
                       ),
                     })
                   }}
+                />
+              )
+            }}
+            renderSubOrderFooter={(order, subOrder) => {
+              if (
+                subOrder.status !== "awaiting_shipment" &&
+                subOrder.status !== "shipped" &&
+                subOrder.status !== "completed"
+              ) {
+                return null
+              }
+              return (
+                <OrderShipmentPanel
+                  token={session.token}
+                  orderID={order.id}
+                  subOrderID={subOrder.id}
+                  subOrderStatus={subOrder.status}
                 />
               )
             }}

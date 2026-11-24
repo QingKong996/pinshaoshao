@@ -1,0 +1,122 @@
+{
+  "signedOut": {
+    "documentTitle": "Shipment tracking · {{brand}}",
+    "title": "Sign in to view shipment tracking",
+    "description": "Shipment details belong to your buyer account. Sign in to continue.",
+    "action": "Sign in"
+  },
+  "documentTitle": {
+    "list": "Shipments · Merchant center · {{brand}}",
+    "detail": "Shipment tracking · {{brand}}"
+  },
+  "status": {
+    "pending_pickup": "Awaiting pickup",
+    "picked_up": "Picked up",
+    "in_transit": "In transit",
+    "at_transit_hub": "At transit hub",
+    "out_for_delivery": "Out for delivery",
+    "delivered": "Delivered"
+  },
+  "merchant": {
+    "title": "Shipments",
+    "description": "Dispatch paid sub-orders and follow every delivery from one place.",
+    "newShipment": "New shipment",
+    "filters": {
+      "description": "Filter shipments by their current status.",
+      "allStatuses": "All statuses"
+    },
+    "table": {
+      "shipment": "Shipment",
+      "subOrder": "Sub-order #{{id}}",
+      "recipient": "Recipient",
+      "carrier": "Carrier",
+      "status": "Status",
+      "currentLocation": "Current location",
+      "shippedAt": "Shipped",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No shipments yet",
+      "description": "Dispatch a paid sub-order to create its first shipment.",
+      "filtered": "No shipments match the current filters."
+    }
+  },
+  "dispatchForm": {
+    "title": "Create shipment",
+    "description": "Create a carrier shipment for a paid sub-order. The sub-order is marked shipped immediately.",
+    "fixedDescription": "Sub-order #{{id}} for {{receiver}}.",
+    "unknownReceiver": "the selected recipient",
+    "subOrderHint": "Use the sub-order ID shown in the merchant order list.",
+    "carrierPlaceholder": "e.g. SF Express",
+    "carrierHint": "Optional. The provider chooses a carrier when left blank.",
+    "fields": {
+      "subOrderID": "Sub-order ID",
+      "carrier": "Carrier"
+    },
+    "submit": "Create shipment",
+    "submitting": "Creating…",
+    "errors": {
+      "subOrderRequired": "Enter a sub-order ID.",
+      "subOrderInvalid": "Enter a valid positive sub-order ID.",
+      "carrierLength": "The carrier name must be 64 characters or fewer."
+    }
+  },
+  "panel": {
+    "awaitingShipment": "This sub-order is waiting for merchant dispatch.",
+    "trackingPending": "Tracking details will appear after the shipment is dispatched.",
+    "latestUpdates": "Latest updates"
+  },
+  "timeline": {
+    "heading": "Tracking history",
+    "empty": "Tracking updates will appear here as the carrier scans the parcel."
+  },
+  "detail": {
+    "title": "Shipment tracking",
+    "description": "Shipment {{shipmentNo}} · Order #{{orderID}}",
+    "progress": {
+      "title": "Delivery progress"
+    },
+    "summary": {
+      "shippedAt": "Dispatched",
+      "deliveredAt": "Delivered",
+      "estimatedRoute": "Route",
+      "originUnknown": "Origin",
+      "destinationUnknown": "Destination",
+      "unknownLocation": "Location pending"
+    },
+    "receiver": {
+      "title": "Recipient",
+      "name": "Name",
+      "phone": "Phone",
+      "address": "Address"
+    },
+    "items": {
+      "title": "Shipment details",
+      "summary": "Items",
+      "subOrder": "Sub-order"
+    }
+  },
+  "actions": {
+    "ship": "Ship",
+    "view": "View",
+    "viewTracking": "View tracking",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "close": "Close",
+    "backToOrders": "Back to orders",
+    "backToShipments": "Back to shipments"
+  },
+  "errors": {
+    "unknown": "Something went wrong. Try again.",
+    "network": "Cannot reach the server. Check your connection and retry.",
+    "unauthorized": "Your session has expired. Sign in again.",
+    "invalidRequest": "Check the shipment details and try again.",
+    "notFound": "The shipment does not exist or belongs to another account.",
+    "notShippable": "This sub-order cannot be shipped. Refresh for the latest status.",
+    "provider": "The logistics provider is unavailable. Try again shortly.",
+    "server": "The server cannot process the request right now. Try again later.",
+    "loadTitle": "Could not load shipments",
+    "notFoundTitle": "Shipment not found",
+    "dispatchTitle": "Could not create the shipment"
+  }
+}

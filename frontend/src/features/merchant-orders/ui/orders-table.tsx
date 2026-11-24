@@ -1,5 +1,6 @@
 import { useTable } from "@tanstack/react-table"
 import { cn } from "cn"
+import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { Skeleton } from "@/shared/ui/skeleton"
 import { TableEmptyState } from "@/shared/ui/table-empty-state"
@@ -21,13 +22,15 @@ export function OrdersTable({
   orders,
   isPending,
   isEmpty,
+  renderRowActions,
 }: {
   orders: MerchantOrder[]
   isPending: boolean
   isEmpty: boolean
+  renderRowActions?: (order: MerchantOrder) => ReactNode
 }) {
   const { t } = useTranslation("console")
-  const columns = useMerchantOrderColumns()
+  const columns = useMerchantOrderColumns(renderRowActions)
   const table = useTable({
     features: merchantOrderTableFeatures,
     columns,

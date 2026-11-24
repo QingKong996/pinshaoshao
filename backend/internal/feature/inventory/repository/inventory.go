@@ -220,6 +220,39 @@ WHERE sku_id = $2`
 	return nil
 }
 
+// Commit consumes reserved stock when an order is shipped.
+func (r *InventoryRepository) Commit(ctx context.Context, db database.DBTX, items []model.ReservationItem) error {
+	normalized, err := normalizeReservationItems(items)
+	if err != nil {
+		return fmt.Errorf("repository.Commit: %w", err)
+	}
+
+	rows, err := lockReservationRows(ctx, db, normalized)
+	if err != nil {
+		return fmt.Errorf("repository.Commit: %w", err)
+	}
+
+	for _, item := range normalized {
+		row, ok := rows[item.SKUID]
+		if !ok || row.totalStock < item.Quantity || row.frozenStock < item.Quantity {
+			return fmt.Errorf("repository.Commit: %w", apperr.ErrReservationInvalid)
+		}
+	}
+
+	for _, item := range normalized {
+		const query = `UPDATE inventory_items
+SET total_stock = total_stock - $1,
+    frozen_stock = frozen_stock - $1,
+    version = version + 1,
+    updated_at = now()
+WHERE sku_id = $2`
+		if _, err := db.Exec(ctx, query, item.Quantity, item.SKUID); err != nil {
+			return fmt.Errorf("repository.Commit: %w", err)
+		}
+	}
+	return nil
+}
+
 type reservationRow struct {
 	totalStock  int
 	frozenStock int
