@@ -1,8 +1,8 @@
 # 业务支付
 
-`internal/feature/payment` 是商城侧的支付 feature。它不实现收银台，也不保存渠道内部通知队列；渠道能力由同一 API 进程中的 `internal/mockpayment` 提供，双方仍只通过网络通信。
+`internal/feature/payment` 是商城侧的支付 feature。它不实现收银台，也不保存渠道内部通知队列；渠道能力由同一 API 进程中的 `internal/mock/payment` 提供，双方仍只通过网络通信。
 
-支付 feature 与 mockpayment 不互相 import，只能通过 HTTP API 和签名回调通信。双方共享的仅有中立验签算法 `internal/webhooksig`，其中不包含业务逻辑。
+支付 feature 与模拟支付平台不互相 import，只能通过 HTTP API 和签名回调通信。双方共享的仅有中立验签算法 `internal/webhooksig`，其中不包含业务逻辑。
 
 ## 职责边界
 

@@ -1,10 +1,10 @@
 # 模拟支付平台
 
-`internal/mockpayment` 是独立于 `internal/feature` 的开发用支付平台。它不引用任何业务 feature，业务侧通过 HTTP 接入；数据库只新增 `mock_payment_orders` 和 `mock_payment_notifications` 两张表。它与主 API 运行在同一进程、同一端口，通过 `/mockpay` 路由命名空间与业务接口隔离。
+`internal/mock/payment` 是独立于 `internal/feature` 的开发用支付平台。它不引用任何业务 feature，业务侧通过 HTTP 接入；数据库只新增 `mock_payment_orders` 和 `mock_payment_notifications` 两张表。它与主 API 运行在同一进程、同一端口，通过 `/mockpay` 路由命名空间与业务接口隔离。
 
 商城业务支付接入见 [payment.md](payment.md)。
 
-前端位于 `frontend/src/mockpayment`，是 `frontend/src/features` 的同级独立模块，只复用 `frontend/src/shared`。
+前端位于 `frontend/src/mock/payment`，与 `frontend/src/mock/logistics` 一起放在 `frontend/src/mock` 下，只复用 `frontend/src/shared`。
 
 该模块用于本地开发和联调，不提供商户鉴权，也不处理真实资金。
 
@@ -85,7 +85,7 @@ npm run dev
 
 支付详情页在 `pending` 状态每 3 秒刷新，回调处于 `pending` 或 `delivering` 时每 2 秒刷新。前端不提供绕过收银台的支付接口，必须打开后端生成的 `checkout_url` 完成支付。
 
-架构检查禁止 `src/features` 导入 `src/mockpayment`、禁止 `src/shared` 导入 `src/mockpayment`，并要求应用层只从 `src/mockpayment/index.ts` 公共入口导入。
+架构检查禁止 `src/features` 导入 `src/mock`、禁止 `src/shared` 导入 `src/mock`，并要求应用层只从各 `src/mock/<module>/index.ts` 公共入口导入。
 
 ## 回调协议
 
@@ -144,13 +144,13 @@ v1=hex(HMAC-SHA256(MOCKPAY_WEBHOOK_SECRET, timestamp + "." + raw_request_body))
 ## 测试
 
 ```bash
-go test ./internal/mockpayment/... ./internal/router
-go test -tags integration ./internal/mockpayment -run TestMockPayment
+go test ./internal/mock/... ./internal/router
+go test -tags integration ./internal/mock/payment -run TestMockPayment
 go test -tags integration ./internal/e2e
 
 cd frontend
 npm run lint
 npm run build
-npm run test -- src/mockpayment
+npm run test -- src/mock/payment
 npm run test:e2e -- e2e/buyer-payment.spec.ts
 ```

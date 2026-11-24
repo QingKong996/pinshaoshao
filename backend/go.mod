@@ -3,6 +3,7 @@ module pinshaoshao
 go 1.26.0
 
 require (
+	github.com/brianvoe/gofakeit/v7 v7.18.11
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0

@@ -25,8 +25,8 @@ import (
 	paymentmodule "pinshaoshao/internal/feature/payment"
 	paymentdto "pinshaoshao/internal/feature/payment/dto"
 	"pinshaoshao/internal/http/authctx"
-	mockpaymentmodule "pinshaoshao/internal/mockpayment"
-	mockpaymentdto "pinshaoshao/internal/mockpayment/dto"
+	mockpaymentmodule "pinshaoshao/internal/mock/payment"
+	mockpaymentdto "pinshaoshao/internal/mock/payment/dto"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
