@@ -15,6 +15,7 @@ import enConsole from "./locales/en/console.json"
 import enFeed from "./locales/en/feed.json"
 import enHome from "./locales/en/home.json"
 import enOrder from "./locales/en/order.json"
+import enPayment from "./locales/en/payment.json"
 import zhCNAuth from "./locales/zh-CN/auth.json"
 import zhCNCart from "./locales/zh-CN/cart.json"
 import zhCNCommon from "./locales/zh-CN/common.json"
@@ -22,6 +23,7 @@ import zhCNConsole from "./locales/zh-CN/console.json"
 import zhCNFeed from "./locales/zh-CN/feed.json"
 import zhCNHome from "./locales/zh-CN/home.json"
 import zhCNOrder from "./locales/zh-CN/order.json"
+import zhCNPayment from "./locales/zh-CN/payment.json"
 import { BRAND } from "@/shared/config/brand"
 import { mockPaymentResources } from "@/mockpayment"
 
@@ -32,6 +34,7 @@ export const NAMESPACES = [
   "console",
   "cart",
   "order",
+  "payment",
   "feed",
   "mockpayment",
 ] as const
@@ -44,6 +47,7 @@ export const resources = {
     console: zhCNConsole,
     cart: zhCNCart,
     order: zhCNOrder,
+    payment: zhCNPayment,
     feed: zhCNFeed,
     ...mockPaymentResources["zh-CN"],
   },
@@ -54,6 +58,7 @@ export const resources = {
     console: enConsole,
     cart: enCart,
     order: enOrder,
+    payment: enPayment,
     feed: enFeed,
     ...mockPaymentResources.en,
   },

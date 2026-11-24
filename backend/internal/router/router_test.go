@@ -13,6 +13,7 @@ import (
 	feedmodule "pinshaoshao/internal/feature/feed"
 	inventorymodule "pinshaoshao/internal/feature/inventory"
 	ordermodule "pinshaoshao/internal/feature/order"
+	paymentmodule "pinshaoshao/internal/feature/payment"
 	productmodule "pinshaoshao/internal/feature/product"
 	shopmodule "pinshaoshao/internal/feature/shop"
 	shopapperr "pinshaoshao/internal/feature/shop/apperr"
@@ -44,6 +45,7 @@ type routeCase struct {
 	pattern     string
 	requestPath string
 	public      bool
+	publicCode  int
 	authError   string
 }
 
@@ -60,6 +62,10 @@ var routeCases = []routeCase{
 	{method: http.MethodGet, pattern: "/api/v1/orders", requestPath: "/api/v1/orders", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/orders/:orderID", requestPath: "/api/v1/orders/1", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/orders/:orderID/cancel", requestPath: "/api/v1/orders/1/cancel", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/api/v1/payments", requestPath: "/api/v1/payments", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodGet, pattern: "/api/v1/payments/:paymentNo", requestPath: "/api/v1/payments/1", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/api/v1/payments/:paymentNo/pay", requestPath: "/api/v1/payments/1/pay", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/api/v1/payment/webhook", requestPath: "/api/v1/payment/webhook", public: true, publicCode: http.StatusUnauthorized},
 	{method: http.MethodGet, pattern: "/api/v1/feed", requestPath: "/api/v1/feed", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/products/:productID", requestPath: "/api/v1/products/1", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/merchant/login", requestPath: "/api/v1/merchant/login", public: true},
@@ -83,14 +89,14 @@ var routeCases = []routeCase{
 	{method: http.MethodGet, pattern: "/api/v1/merchant/inventory", requestPath: "/api/v1/merchant/inventory", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodPatch, pattern: "/api/v1/merchant/inventory/:skuID", requestPath: "/api/v1/merchant/inventory/2", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/merchant/dashboard", requestPath: "/api/v1/merchant/dashboard", authError: shopapperr.ErrInvalidShopSession.Error()},
-	{method: http.MethodPost, pattern: "/api/v1/mock-payments", requestPath: "/api/v1/mock-payments"},
-	{method: http.MethodGet, pattern: "/api/v1/mock-payments/:paymentNo", requestPath: "/api/v1/mock-payments/1"},
-	{method: http.MethodPost, pattern: "/api/v1/mock-payments/:paymentNo/close", requestPath: "/api/v1/mock-payments/1/close"},
-	{method: http.MethodGet, pattern: "/api/v1/mock-payments/:paymentNo/notifications", requestPath: "/api/v1/mock-payments/1/notifications"},
-	{method: http.MethodPost, pattern: "/api/v1/mock-payments/:paymentNo/notifications/retry", requestPath: "/api/v1/mock-payments/1/notifications/retry"},
-	{method: http.MethodGet, pattern: "/mock-payment/checkout/:paymentNo", requestPath: "/mock-payment/checkout/1"},
-	{method: http.MethodPost, pattern: "/mock-payment/checkout/:paymentNo/pay", requestPath: "/mock-payment/checkout/1/pay"},
-	{method: http.MethodPost, pattern: "/mock-payment/checkout/:paymentNo/close", requestPath: "/mock-payment/checkout/1/close"},
+	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments", requestPath: "/mockpay/api/v1/payments"},
+	{method: http.MethodGet, pattern: "/mockpay/api/v1/payments/:paymentNo", requestPath: "/mockpay/api/v1/payments/1"},
+	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments/:paymentNo/close", requestPath: "/mockpay/api/v1/payments/1/close"},
+	{method: http.MethodGet, pattern: "/mockpay/api/v1/payments/:paymentNo/notifications", requestPath: "/mockpay/api/v1/payments/1/notifications"},
+	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments/:paymentNo/notifications/retry", requestPath: "/mockpay/api/v1/payments/1/notifications/retry"},
+	{method: http.MethodGet, pattern: "/mockpay/checkout/:paymentNo", requestPath: "/mockpay/checkout/1"},
+	{method: http.MethodPost, pattern: "/mockpay/checkout/:paymentNo/pay", requestPath: "/mockpay/checkout/1/pay"},
+	{method: http.MethodPost, pattern: "/mockpay/checkout/:paymentNo/close", requestPath: "/mockpay/checkout/1/close"},
 }
 
 func newTestRouter(t *testing.T) *gin.Engine {
@@ -98,6 +104,19 @@ func newTestRouter(t *testing.T) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	inventoryModule := inventorymodule.NewModule(nil)
+	orderModule := ordermodule.NewModule(nil, inventoryModule.Reservation())
+	paymentModule, err := paymentmodule.NewModule(
+		nil,
+		orderModule.PaymentLifecycle(),
+		paymentmodule.Config{
+			GatewayBaseURL: "http://localhost:8080",
+			WebhookSecret:  "test-signing-key",
+			NotifyURL:      "http://localhost:8080/api/v1/payment/webhook",
+		},
+	)
+	if err != nil {
+		t.Fatalf("create payment module: %v", err)
+	}
 	mockPaymentModule, err := mockpaymentmodule.NewModule(nil, mockpaymentmodule.Config{
 		WebhookSecret: "test-signing-key",
 	})
@@ -112,7 +131,8 @@ func newTestRouter(t *testing.T) *gin.Engine {
 		Inventory:   inventoryModule,
 		Cart:        cartmodule.NewModule(nil),
 		Feed:        feedmodule.NewModule(nil),
-		Order:       ordermodule.NewModule(nil, inventoryModule.Reservation()),
+		Order:       orderModule,
+		Payment:     paymentModule,
 		MockPayment: mockPaymentModule,
 		UserAuth:    usermodule.AuthMiddleware(invalidUserSession{}),
 		ShopAuth:    shopmodule.AuthMiddleware(invalidShopSession{}),
@@ -149,8 +169,15 @@ func TestAuthenticationRoutesArePublic(t *testing.T) {
 		t.Run(route.pattern, func(t *testing.T) {
 			rec := doRouterRequest(r, route.method, route.requestPath, "", `{bad`)
 
-			if rec.Code != http.StatusBadRequest {
-				t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			want := route.publicCode
+			if want == 0 {
+				want = http.StatusBadRequest
+			}
+			if rec.Code != want {
+				t.Fatalf("status = %d, want %d, body = %s", rec.Code, want, rec.Body.String())
+			}
+			if route.publicCode != 0 {
+				return
 			}
 			requireRouterError(t, rec, httpx.InvalidJSONMessage)
 		})

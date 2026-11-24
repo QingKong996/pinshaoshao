@@ -18,6 +18,7 @@ type Modules struct {
 	Cart        Module
 	Feed        Module
 	Order       Module
+	Payment     Module
 	MockPayment Module
 	UserAuth    gin.HandlerFunc
 	ShopAuth    gin.HandlerFunc
@@ -32,5 +33,6 @@ func Register(r *gin.Engine, modules Modules) {
 	modules.Cart.Register(r, modules.UserAuth)
 	modules.Feed.Register(r, modules.UserAuth)
 	modules.Order.Register(r, modules.UserAuth)
+	modules.Payment.Register(r, modules.UserAuth)
 	modules.MockPayment.Register(r, nil)
 }

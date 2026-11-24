@@ -10,6 +10,7 @@ import (
 	feedmodule "pinshaoshao/internal/feature/feed"
 	inventorymodule "pinshaoshao/internal/feature/inventory"
 	ordermodule "pinshaoshao/internal/feature/order"
+	paymentmodule "pinshaoshao/internal/feature/payment"
 	productmodule "pinshaoshao/internal/feature/product"
 	shopmodule "pinshaoshao/internal/feature/shop"
 	usermodule "pinshaoshao/internal/feature/user"
@@ -81,6 +82,14 @@ func main() {
 	cartModule := cartmodule.NewModule(pool)
 	feedModule := feedmodule.NewModule(pool)
 	orderModule := ordermodule.NewModule(pool, inventoryModule.Reservation())
+	paymentModule, err := paymentmodule.NewModule(
+		pool,
+		orderModule.PaymentLifecycle(),
+		paymentmodule.ConfigFromEnv(),
+	)
+	if err != nil {
+		fatal("create payment module", "error", err)
+	}
 	mockPaymentModule, err := mockpaymentmodule.NewModule(pool, mockpaymentmodule.ConfigFromEnv())
 	if err != nil {
 		fatal("create mock payment module", "error", err)
@@ -96,6 +105,7 @@ func main() {
 		Cart:        cartModule,
 		Feed:        feedModule,
 		Order:       orderModule,
+		Payment:     paymentModule,
 		MockPayment: mockPaymentModule,
 		UserAuth:    userModule.AuthMiddleware(),
 		ShopAuth:    shopModule.AuthMiddleware(),

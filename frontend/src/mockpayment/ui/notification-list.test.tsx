@@ -40,14 +40,14 @@ describe("NotificationList", () => {
 
     server.use(
       http.get(
-        `*/api/v1/mock-payments/${paymentNo}/notifications`,
+        `*/mockpay/api/v1/payments/${paymentNo}/notifications`,
         () =>
           HttpResponse.json({
             items: [retried ? pendingNotification : exhaustedNotification],
           }),
       ),
       http.post(
-        `*/api/v1/mock-payments/${paymentNo}/notifications/retry`,
+        `*/mockpay/api/v1/payments/${paymentNo}/notifications/retry`,
         () => {
           retried = true
           retryCalls += 1

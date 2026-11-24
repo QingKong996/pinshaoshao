@@ -17,7 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const checkoutPathPrefix = "/mock-payment/checkout/"
+const checkoutPathPrefix = "/mockpay/checkout/"
 
 type PaymentService interface {
 	Create(ctx context.Context, input service.CreatePaymentInput) (*model.Payment, bool, error)

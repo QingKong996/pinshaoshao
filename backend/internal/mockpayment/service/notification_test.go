@@ -12,7 +12,7 @@ import (
 	"unicode/utf8"
 
 	"pinshaoshao/internal/mockpayment/model"
-	"pinshaoshao/internal/mockpayment/security"
+	"pinshaoshao/internal/webhooksig"
 )
 
 type notificationTestRepository struct {
@@ -75,7 +75,7 @@ func TestNotificationDeliveryIsSigned(t *testing.T) {
 		if _, err := strconv.ParseInt(timestamp, 10, 64); err != nil {
 			t.Fatalf("timestamp header = %q", timestamp)
 		}
-		if err := security.Verify(
+		if err := webhooksig.Verify(
 			signingKey,
 			timestamp,
 			request.Header.Get("X-MockPay-Signature"),
@@ -101,7 +101,7 @@ func TestNotificationDeliveryIsSigned(t *testing.T) {
 		}},
 	}
 	notifier := NewNotificationService(repository, NotificationConfig{
-		Signer: security.NewSigner(signingKey),
+		Signer: webhooksig.NewSigner(signingKey),
 	})
 	notifier.now = func() time.Time { return now }
 
@@ -135,7 +135,7 @@ func TestNotificationFailureSchedulesRetry(t *testing.T) {
 		}},
 	}
 	notifier := NewNotificationService(repository, NotificationConfig{
-		Signer:      security.NewSigner("test-signing-key"),
+		Signer:      webhooksig.NewSigner("test-signing-key"),
 		RetryDelays: []time.Duration{time.Second, 5 * time.Second},
 	})
 	notifier.now = func() time.Time { return now }

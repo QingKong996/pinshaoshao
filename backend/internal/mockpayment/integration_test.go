@@ -18,8 +18,8 @@ import (
 
 	"pinshaoshao/internal/mockpayment/model"
 	mockpayrepository "pinshaoshao/internal/mockpayment/repository"
-	"pinshaoshao/internal/mockpayment/security"
 	mockpayservice "pinshaoshao/internal/mockpayment/service"
+	"pinshaoshao/internal/webhooksig"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -100,7 +100,7 @@ func newTestServices() (*mockpayservice.PaymentService, *mockpayservice.Notifica
 	notificationService := mockpayservice.NewNotificationService(
 		notificationRepository,
 		mockpayservice.NotificationConfig{
-			Signer:      security.NewSigner(testSigningKey),
+			Signer:      webhooksig.NewSigner(testSigningKey),
 			RetryDelays: []time.Duration{time.Second},
 			BatchSize:   10,
 		},
@@ -180,7 +180,7 @@ func TestMockPaymentFlow(t *testing.T) {
 		t.Fatalf("deliver callback: %v", err)
 	}
 	callback := receiveCallback(t, callbacks)
-	if err := security.Verify(
+	if err := webhooksig.Verify(
 		testSigningKey,
 		callback.timestamp,
 		callback.signature,

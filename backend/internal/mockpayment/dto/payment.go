@@ -19,7 +19,7 @@ type PaymentResponse struct {
 	AmountCents     int64      `json:"amount_cents" example:"3998"`
 	Currency        string     `json:"currency" example:"CNY"`
 	Subject         string     `json:"subject" example:"T-shirt order"`
-	CheckoutURL     string     `json:"checkout_url" example:"http://localhost:8080/mock-payment/checkout/4f2614df-f674-4b5e-a9e4-3fc5e7f62013"`
+	CheckoutURL     string     `json:"checkout_url" example:"http://localhost:8080/mockpay/checkout/4f2614df-f674-4b5e-a9e4-3fc5e7f62013"`
 	ReturnURL       string     `json:"return_url,omitempty" example:"http://localhost:5173/orders/1"`
 	ExpiresAt       time.Time  `json:"expires_at"`
 	PaidAt          *time.Time `json:"paid_at"`
