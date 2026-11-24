@@ -17,17 +17,18 @@ type OrderModule interface {
 
 // Modules contains the registered modules and their authentication middleware.
 type Modules struct {
-	User        Module
-	Shop        Module
-	Product     Module
-	Inventory   Module
-	Cart        Module
-	Feed        Module
-	Order       OrderModule
-	Payment     Module
-	MockPayment Module
-	UserAuth    gin.HandlerFunc
-	ShopAuth    gin.HandlerFunc
+	User          Module
+	Shop          Module
+	Product       Module
+	Inventory     Module
+	Cart          Module
+	Feed          Module
+	Order         OrderModule
+	Payment       Module
+	MockPayment   Module
+	MockLogistics Module
+	UserAuth      gin.HandlerFunc
+	ShopAuth      gin.HandlerFunc
 }
 
 // Register mounts every module.
@@ -42,4 +43,5 @@ func Register(r *gin.Engine, modules Modules) {
 	modules.Order.RegisterMerchant(r, modules.ShopAuth)
 	modules.Payment.Register(r, modules.UserAuth)
 	modules.MockPayment.Register(r, nil)
+	modules.MockLogistics.Register(r, nil)
 }

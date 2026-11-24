@@ -33,7 +33,12 @@ import {
   MOCK_PAYMENT_ROUTE_PATHS,
   MockPaymentDetailPage,
   MockPaymentPage,
-} from "@/mockpayment"
+} from "@/mock/payment"
+import {
+  MOCK_LOGISTICS_ROUTE_PATHS,
+  MockLogisticsDetailPage,
+  MockLogisticsPage,
+} from "@/mock/logistics"
 
 export const router = createBrowserRouter([
   {
@@ -54,6 +59,14 @@ export const router = createBrowserRouter([
       {
         path: MOCK_PAYMENT_ROUTE_PATHS.detail,
         element: <MockPaymentDetailPage />,
+      },
+      {
+        path: MOCK_LOGISTICS_ROUTE_PATHS.list,
+        element: <MockLogisticsPage />,
+      },
+      {
+        path: MOCK_LOGISTICS_ROUTE_PATHS.detail,
+        element: <MockLogisticsDetailPage />,
       },
       {
         path: "/merchant/signin",

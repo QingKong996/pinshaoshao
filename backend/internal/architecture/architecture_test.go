@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestFeatureAndMockPaymentDependencyBoundary(t *testing.T) {
+func TestFeatureAndMockDependencyBoundary(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatalf("resolve backend root: %v", err)
@@ -19,12 +19,22 @@ func TestFeatureAndMockPaymentDependencyBoundary(t *testing.T) {
 	requireNoImports(
 		t,
 		filepath.Join(root, "internal", "feature"),
-		"pinshaoshao/internal/mockpayment",
+		"pinshaoshao/internal/mock",
 	)
 	requireNoImports(
 		t,
-		filepath.Join(root, "internal", "mockpayment"),
+		filepath.Join(root, "internal", "mock"),
 		"pinshaoshao/internal/feature",
+	)
+	requireNoImports(
+		t,
+		filepath.Join(root, "internal", "mock", "payment"),
+		"pinshaoshao/internal/mock/logistics",
+	)
+	requireNoImports(
+		t,
+		filepath.Join(root, "internal", "mock", "logistics"),
+		"pinshaoshao/internal/mock/payment",
 	)
 }
 

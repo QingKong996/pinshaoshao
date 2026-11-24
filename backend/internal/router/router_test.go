@@ -22,7 +22,8 @@ import (
 	userapperr "pinshaoshao/internal/feature/user/apperr"
 	usermodel "pinshaoshao/internal/feature/user/model"
 	"pinshaoshao/internal/http/httpx"
-	mockpaymentmodule "pinshaoshao/internal/mockpayment"
+	mocklogisticsmodule "pinshaoshao/internal/mock/logistics"
+	mockpaymentmodule "pinshaoshao/internal/mock/payment"
 	"pinshaoshao/internal/router"
 
 	"github.com/gin-gonic/gin"
@@ -98,6 +99,14 @@ var routeCases = []routeCase{
 	{method: http.MethodGet, pattern: "/mockpay/checkout/:paymentNo", requestPath: "/mockpay/checkout/1"},
 	{method: http.MethodPost, pattern: "/mockpay/checkout/:paymentNo/pay", requestPath: "/mockpay/checkout/1/pay"},
 	{method: http.MethodPost, pattern: "/mockpay/checkout/:paymentNo/close", requestPath: "/mockpay/checkout/1/close"},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments", requestPath: "/mocklogistics/api/v1/shipments", public: true},
+	{method: http.MethodGet, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo", requestPath: "/mocklogistics/api/v1/shipments/1"},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/outbound", requestPath: "/mocklogistics/api/v1/shipments/1/outbound"},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/advance", requestPath: "/mocklogistics/api/v1/shipments/1/advance"},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/complete", requestPath: "/mocklogistics/api/v1/shipments/1/complete"},
+	{method: http.MethodGet, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/notifications", requestPath: "/mocklogistics/api/v1/shipments/1/notifications"},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/notifications/:notificationID/retry", requestPath: "/mocklogistics/api/v1/shipments/1/notifications/2/retry"},
+	{method: http.MethodPost, pattern: "/mocklogistics/webhook", requestPath: "/mocklogistics/webhook", public: true, publicCode: http.StatusNoContent},
 }
 
 func newTestRouter(t *testing.T) *gin.Engine {
@@ -124,19 +133,26 @@ func newTestRouter(t *testing.T) *gin.Engine {
 	if err != nil {
 		t.Fatalf("create mock payment module: %v", err)
 	}
+	mockLogisticsModule, err := mocklogisticsmodule.NewModule(nil, mocklogisticsmodule.Config{
+		WebhookSecret: "test-signing-key",
+	})
+	if err != nil {
+		t.Fatalf("create mock logistics module: %v", err)
+	}
 	r := gin.New()
 	router.Register(r, router.Modules{
-		User:        usermodule.NewModule(nil),
-		Shop:        shopmodule.NewModule(nil),
-		Product:     productmodule.NewModule(nil, inventoryModule.Lifecycle()),
-		Inventory:   inventoryModule,
-		Cart:        cartmodule.NewModule(nil),
-		Feed:        feedmodule.NewModule(nil),
-		Order:       orderModule,
-		Payment:     paymentModule,
-		MockPayment: mockPaymentModule,
-		UserAuth:    usermodule.AuthMiddleware(invalidUserSession{}),
-		ShopAuth:    shopmodule.AuthMiddleware(invalidShopSession{}),
+		User:          usermodule.NewModule(nil),
+		Shop:          shopmodule.NewModule(nil),
+		Product:       productmodule.NewModule(nil, inventoryModule.Lifecycle()),
+		Inventory:     inventoryModule,
+		Cart:          cartmodule.NewModule(nil),
+		Feed:          feedmodule.NewModule(nil),
+		Order:         orderModule,
+		Payment:       paymentModule,
+		MockPayment:   mockPaymentModule,
+		MockLogistics: mockLogisticsModule,
+		UserAuth:      usermodule.AuthMiddleware(invalidUserSession{}),
+		ShopAuth:      shopmodule.AuthMiddleware(invalidShopSession{}),
 	})
 	return r
 }

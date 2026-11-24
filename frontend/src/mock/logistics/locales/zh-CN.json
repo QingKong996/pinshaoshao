@@ -1,0 +1,182 @@
+{
+  "shell": {
+    "title": "MockLogistics 沙箱",
+    "subtitle": "MOCK LOGISTICS PLATFORM",
+    "sandbox": "独立沙箱",
+    "footer": "仅用于本地联调，模拟商家出库、转运、派送和签收，不依赖商城业务模块。"
+  },
+  "documentTitle": {
+    "console": "模拟物流 · {{brand}}",
+    "detail": "物流单 {{shipmentNo}} · {{brand}}"
+  },
+  "actions": {
+    "refresh": "刷新",
+    "retry": "重试",
+    "retrying": "重试中",
+    "dismiss": "关闭提示",
+    "back": "返回物流控制台",
+    "outbound": "商家确认出库",
+    "advance": "推进下一节点",
+    "complete": "确认签收完成",
+    "processing": "处理中"
+  },
+  "console": {
+    "title": "模拟物流平台",
+    "description": "创建物流单，由商家确认出库，再逐步推进揽收、运输、派送和签收，并观察签名回调。",
+    "create": {
+      "title": "创建物流单",
+      "description": "商家订单号用于幂等。未填写的收件人、城市、承运商和商品信息会由 gofakeit 自动生成。"
+    },
+    "lookup": {
+      "title": "查询物流单",
+      "description": "输入创建后返回的物流单号，查看当前状态、轨迹和回调记录。",
+      "label": "物流单号",
+      "placeholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "submit": "查询",
+      "required": "请输入物流单号"
+    },
+    "guide": {
+      "title": "沙箱工作流",
+      "create": {
+        "title": "创建物流单",
+        "description": "生成物流单号、运单号、承运商和收寄件人信息，初始状态为待出库。"
+      },
+      "pickup": {
+        "title": "商家出库",
+        "description": "必须在详情页由商家确认出库，之后才能进入快递揽收。"
+      },
+      "advance": {
+        "title": "推进并签收",
+        "description": "依次推进揽收、运输、转运和派送；派送中后由完成动作签收。每次状态变化都会生成签名回调。"
+      },
+      "isolation": "MockLogistics 使用独立表、独立路由 /mocklogistics 和独立前端目录，不调用商城 order、payment 或 inventory 模块。"
+    }
+  },
+  "form": {
+    "merchantOrderNo": "商家订单号",
+    "merchantOrderNoHint": "相同订单号重放时，请求参数必须保持一致。",
+    "itemSummary": "商品摘要",
+    "itemSummaryHint": "留空时由 gofakeit 生成。",
+    "carrier": "承运商",
+    "carrierHint": "留空时随机选择常用快递。",
+    "originCity": "始发城市",
+    "destinationCity": "目的城市",
+    "cityHint": "留空时自动生成，并确保始发和目的城市不同。",
+    "receiverName": "收件人",
+    "receiverPhone": "收件电话",
+    "receiverAddress": "收件地址",
+    "receiverHint": "收件信息可留空，由 gofakeit 自动补齐。",
+    "optional": "（可选）",
+    "notifyURL": "回调地址",
+    "notifyURLHint": "默认使用内置接收器；接入其他服务时替换为真实地址。",
+    "autofillHint": "空白字段会使用 gofakeit 生成更逼真的 mock 数据。",
+    "submit": "创建物流单",
+    "submitting": "创建中",
+    "reset": "重置"
+  },
+  "validation": {
+    "merchantOrderNoRequired": "请填写商家订单号",
+    "merchantOrderNoLength": "商家订单号不能超过 64 个字符",
+    "itemSummaryLength": "商品摘要不能超过 200 个字符",
+    "carrierLength": "承运商不能超过 64 个字符",
+    "cityLength": "城市名称不能超过 64 个字符",
+    "receiverNameLength": "收件人不能超过 100 个字符",
+    "receiverPhoneLength": "收件电话不能超过 32 个字符",
+    "receiverAddressLength": "收件地址不能超过 500 个字符",
+    "notifyRequired": "请填写回调地址",
+    "notifyLength": "回调地址不能超过 2048 个字符",
+    "notifyInvalid": "回调地址必须是有效的 HTTP 或 HTTPS URL"
+  },
+  "status": {
+    "pending_outbound": "待出库",
+    "pending_pickup": "待揽收",
+    "picked_up": "已揽收",
+    "in_transit": "运输中",
+    "at_transit_hub": "转运中心",
+    "out_for_delivery": "派送中",
+    "delivered": "已签收"
+  },
+  "notificationStatus": {
+    "pending": "待投递",
+    "delivering": "投递中",
+    "succeeded": "已送达",
+    "exhausted": "已耗尽"
+  },
+  "detail": {
+    "subtitle": "商家订单 {{merchantOrderNo}}",
+    "trackingNo": "运单号",
+    "currentLocation": "当前位置",
+    "carrier": "承运商",
+    "route": "运输线路",
+    "routeValue": "{{origin}} → {{destination}}",
+    "actions": {
+      "title": "物流操作",
+      "description": "状态只能按顺序推进，商家出库是第一步。",
+      "outboundHint": "商家确认商品已经离开仓库后，物流才会进入待揽收。",
+      "advanceHint": "推进到下一个物流节点，并生成对应回调。",
+      "completeHint": "快件已进入派送中，确认后完成签收。",
+      "terminalHint": "物流单已完成，不能再推进。"
+    },
+    "fields": {
+      "title": "物流单信息",
+      "description": "字段直接来自模拟物流 API。",
+      "shipmentNo": "物流单号",
+      "trackingNo": "运单号",
+      "merchantOrderNo": "商家订单号",
+      "itemSummary": "商品摘要",
+      "carrier": "承运商",
+      "notifyURL": "回调地址",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "dispatchedAt": "出库时间",
+      "pickedUpAt": "揽收时间",
+      "deliveredAt": "签收时间"
+    },
+    "parties": {
+      "title": "收寄信息",
+      "description": "未填写的字段由 gofakeit 生成。",
+      "sender": "寄件人",
+      "receiver": "收件人",
+      "phone": "电话",
+      "address": "地址"
+    },
+    "timeline": {
+      "title": "物流轨迹",
+      "description": "每次推进都会写入一条事件，并触发签名回调。",
+      "empty": "暂无物流轨迹。",
+      "sequence": "节点 {{sequence}}",
+      "location": "位置"
+    },
+    "notifications": {
+      "title": "回调投递",
+      "description": "每次状态变化生成一条签名通知，失败按退避计划重试。",
+      "empty": "商家出库后会在这里生成回调通知。",
+      "eventId": "事件 ID",
+      "targetURL": "目标地址",
+      "attempts": "尝试次数",
+      "attemptValue": "{{attempts}} / {{max}}",
+      "nextAttempt": "下次尝试",
+      "lastAttempt": "上次尝试",
+      "deliveredAt": "送达时间",
+      "lastError": "最近错误"
+    }
+  },
+  "errors": {
+    "unknown": "发生未知错误，请稍后重试。",
+    "network": "无法连接模拟物流服务，请确认后端已启动。",
+    "invalidRequest": "请求参数不符合要求，请检查表单。",
+    "duplicateOrder": "该商家订单号已用不同参数创建过物流单。",
+    "invalidShipment": "物流单号格式无效。",
+    "notFound": "物流单不存在。",
+    "invalidTransition": "当前状态不能执行该操作，请按物流顺序推进。",
+    "server": "模拟物流服务暂时不可用。",
+    "notificationNotFound": "回调通知不存在。",
+    "notificationNotRetryable": "仅已耗尽的通知可以人工重试。",
+    "loadTitle": "无法加载物流单",
+    "createTitle": "创建物流单失败",
+    "actionTitle": "物流操作失败",
+    "notificationsTitle": "无法加载回调记录",
+    "loadNotifications": "请稍后刷新回调记录。",
+    "retryTitle": "重试回调失败"
+  }
+}

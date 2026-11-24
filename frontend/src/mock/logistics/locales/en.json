@@ -1,0 +1,182 @@
+{
+  "shell": {
+    "title": "MockLogistics Sandbox",
+    "subtitle": "MOCK LOGISTICS PLATFORM",
+    "sandbox": "Isolated sandbox",
+    "footer": "For local integration only. It simulates merchant outbound, transit, delivery, and signed callbacks without storefront business modules."
+  },
+  "documentTitle": {
+    "console": "Mock logistics · {{brand}}",
+    "detail": "Shipment {{shipmentNo}} · {{brand}}"
+  },
+  "actions": {
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "retrying": "Retrying",
+    "dismiss": "Dismiss",
+    "back": "Back to logistics",
+    "outbound": "Confirm merchant outbound",
+    "advance": "Advance shipment",
+    "complete": "Confirm delivery",
+    "processing": "Processing"
+  },
+  "console": {
+    "title": "Mock logistics platform",
+    "description": "Create shipments, confirm merchant outbound, advance pickup, transit, delivery, and completion, then inspect signed callbacks.",
+    "create": {
+      "title": "Create shipment",
+      "description": "The merchant order number is idempotent. Missing receiver, city, carrier, and item fields are generated with gofakeit."
+    },
+    "lookup": {
+      "title": "Look up a shipment",
+      "description": "Enter the shipment number returned by create to inspect its status, timeline, and callbacks.",
+      "label": "Shipment number",
+      "placeholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "submit": "Look up",
+      "required": "Enter a shipment number"
+    },
+    "guide": {
+      "title": "Sandbox workflow",
+      "create": {
+        "title": "Create a shipment",
+        "description": "Generate the shipment number, tracking number, carrier, and sender/receiver details. The initial status is pending outbound."
+      },
+      "pickup": {
+        "title": "Merchant outbound",
+        "description": "A merchant must confirm outbound from the detail page before pickup can begin."
+      },
+      "advance": {
+        "title": "Advance and complete",
+        "description": "Advance through pickup, transit, hub, and delivery. Confirm delivery after out for delivery. Every change creates a signed callback."
+      },
+      "isolation": "MockLogistics uses its own tables, /mocklogistics routes, and frontend folder. It does not call the storefront order, payment, or inventory modules."
+    }
+  },
+  "form": {
+    "merchantOrderNo": "Merchant order number",
+    "merchantOrderNoHint": "Replays with the same merchant order number must use an identical payload.",
+    "itemSummary": "Item summary",
+    "itemSummaryHint": "Leave blank to generate with gofakeit.",
+    "carrier": "Carrier",
+    "carrierHint": "Leave blank to choose a common carrier automatically.",
+    "originCity": "Origin city",
+    "destinationCity": "Destination city",
+    "cityHint": "Leave blank to generate distinct origin and destination cities.",
+    "receiverName": "Receiver",
+    "receiverPhone": "Receiver phone",
+    "receiverAddress": "Receiver address",
+    "receiverHint": "Receiver fields may be blank and are filled with gofakeit.",
+    "optional": " (optional)",
+    "notifyURL": "Notification URL",
+    "notifyURLHint": "The built-in receiver is used by default. Replace it when integrating another service.",
+    "autofillHint": "Blank fields use gofakeit to produce more realistic mock data.",
+    "submit": "Create shipment",
+    "submitting": "Creating",
+    "reset": "Reset"
+  },
+  "validation": {
+    "merchantOrderNoRequired": "Enter a merchant order number",
+    "merchantOrderNoLength": "Merchant order number must be 64 characters or fewer",
+    "itemSummaryLength": "Item summary must be 200 characters or fewer",
+    "carrierLength": "Carrier must be 64 characters or fewer",
+    "cityLength": "City must be 64 characters or fewer",
+    "receiverNameLength": "Receiver must be 100 characters or fewer",
+    "receiverPhoneLength": "Receiver phone must be 32 characters or fewer",
+    "receiverAddressLength": "Receiver address must be 500 characters or fewer",
+    "notifyRequired": "Enter a notification URL",
+    "notifyLength": "Notification URL must be 2048 characters or fewer",
+    "notifyInvalid": "Notification URL must be a valid HTTP or HTTPS URL"
+  },
+  "status": {
+    "pending_outbound": "Pending outbound",
+    "pending_pickup": "Pending pickup",
+    "picked_up": "Picked up",
+    "in_transit": "In transit",
+    "at_transit_hub": "At transit hub",
+    "out_for_delivery": "Out for delivery",
+    "delivered": "Delivered"
+  },
+  "notificationStatus": {
+    "pending": "Pending",
+    "delivering": "Delivering",
+    "succeeded": "Delivered",
+    "exhausted": "Exhausted"
+  },
+  "detail": {
+    "subtitle": "Merchant order {{merchantOrderNo}}",
+    "trackingNo": "Tracking number",
+    "currentLocation": "Current location",
+    "carrier": "Carrier",
+    "route": "Route",
+    "routeValue": "{{origin}} → {{destination}}",
+    "actions": {
+      "title": "Shipment actions",
+      "description": "Statuses advance in order. Merchant outbound is always the first step.",
+      "outboundHint": "Confirm outbound after the merchant releases the parcel from the warehouse.",
+      "advanceHint": "Move the shipment to the next logistics node and queue its callback.",
+      "completeHint": "The parcel is out for delivery. Confirm to finish delivery.",
+      "terminalHint": "This shipment is complete and cannot advance further."
+    },
+    "fields": {
+      "title": "Shipment details",
+      "description": "These values come directly from the mock logistics API.",
+      "shipmentNo": "Shipment number",
+      "trackingNo": "Tracking number",
+      "merchantOrderNo": "Merchant order number",
+      "itemSummary": "Item summary",
+      "carrier": "Carrier",
+      "notifyURL": "Notification URL",
+      "createdAt": "Created",
+      "updatedAt": "Updated",
+      "dispatchedAt": "Dispatched",
+      "pickedUpAt": "Picked up",
+      "deliveredAt": "Delivered"
+    },
+    "parties": {
+      "title": "Sender and receiver",
+      "description": "Blank values are generated by gofakeit.",
+      "sender": "Sender",
+      "receiver": "Receiver",
+      "phone": "Phone",
+      "address": "Address"
+    },
+    "timeline": {
+      "title": "Tracking timeline",
+      "description": "Each advance writes an event and triggers a signed callback.",
+      "empty": "No tracking events yet.",
+      "sequence": "Node {{sequence}}",
+      "location": "Location"
+    },
+    "notifications": {
+      "title": "Callback delivery",
+      "description": "Every status change creates a signed notification. Failures use a backoff schedule.",
+      "empty": "A callback appears here after merchant outbound.",
+      "eventId": "Event ID",
+      "targetURL": "Target URL",
+      "attempts": "Attempts",
+      "attemptValue": "{{attempts}} / {{max}}",
+      "nextAttempt": "Next attempt",
+      "lastAttempt": "Last attempt",
+      "deliveredAt": "Delivered",
+      "lastError": "Last error"
+    }
+  },
+  "errors": {
+    "unknown": "Something went wrong. Try again.",
+    "network": "Cannot reach the mock logistics service. Check that the backend is running.",
+    "invalidRequest": "The request is invalid. Check the form values.",
+    "duplicateOrder": "This merchant order number already exists with a different payload.",
+    "invalidShipment": "The shipment number is invalid.",
+    "notFound": "Shipment not found.",
+    "invalidTransition": "The shipment cannot perform this action in its current state.",
+    "server": "The mock logistics service is unavailable.",
+    "notificationNotFound": "Callback notification not found.",
+    "notificationNotRetryable": "Only exhausted notifications can be retried.",
+    "loadTitle": "Unable to load shipment",
+    "createTitle": "Unable to create shipment",
+    "actionTitle": "Shipment action failed",
+    "notificationsTitle": "Unable to load callbacks",
+    "loadNotifications": "Refresh the callback history and try again.",
+    "retryTitle": "Unable to retry callback"
+  }
+}
