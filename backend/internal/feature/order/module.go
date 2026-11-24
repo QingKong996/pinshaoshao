@@ -41,3 +41,10 @@ func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
 	protected.GET("/orders/:orderID", m.controller.Get)
 	protected.POST("/orders/:orderID/cancel", m.controller.Cancel)
 }
+
+// RegisterMerchant mounts the shop-scoped order routes on the engine.
+func (m *Module) RegisterMerchant(r *gin.Engine, authMiddleware gin.HandlerFunc) {
+	protected := r.Group("/api/v1/merchant")
+	protected.Use(authMiddleware)
+	protected.GET("/orders", m.controller.ListMerchant)
+}

@@ -93,6 +93,32 @@ type OrderListResult struct {
 	Total    int64
 }
 
+type MerchantOrderListFilter struct {
+	Status   SubOrderStatus
+	Page     int
+	PageSize int
+}
+
+type MerchantOrderSummary struct {
+	ID               int
+	OrderID          int
+	Status           SubOrderStatus
+	TotalAmountCents int64
+	ItemCount        int
+	ReceiverName     string
+	ReceiverPhone    string
+	ShippingAddress  string
+	PaidAt           *time.Time
+	CreatedAt        time.Time
+}
+
+type MerchantOrderListResult struct {
+	Orders   []MerchantOrderSummary
+	Page     int
+	PageSize int
+	Total    int64
+}
+
 type CreateOrderItem struct {
 	CartItemID int
 	Quantity   int

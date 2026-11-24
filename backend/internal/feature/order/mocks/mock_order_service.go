@@ -116,3 +116,18 @@ func (mr *MockOrderServiceMockRecorder) List(ctx, userID, filter any) *gomock.Ca
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockOrderService)(nil).List), ctx, userID, filter)
 }
+
+// ListMerchant mocks base method.
+func (m *MockOrderService) ListMerchant(ctx context.Context, shopID int, filter model.MerchantOrderListFilter) (*model.MerchantOrderListResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMerchant", ctx, shopID, filter)
+	ret0, _ := ret[0].(*model.MerchantOrderListResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMerchant indicates an expected call of ListMerchant.
+func (mr *MockOrderServiceMockRecorder) ListMerchant(ctx, shopID, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMerchant", reflect.TypeOf((*MockOrderService)(nil).ListMerchant), ctx, shopID, filter)
+}

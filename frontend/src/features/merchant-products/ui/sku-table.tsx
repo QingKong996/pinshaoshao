@@ -19,9 +19,9 @@ import {
   TableRow,
 } from "@/shared/ui/table"
 import { formatPriceCents } from "@/shared/lib/format"
+import { TableEmptyState } from "@/shared/ui/table-empty-state"
 import type { ProductSKU } from "../types"
 import { formatSpecs } from "./format-specs"
-import { TableEmptyState } from "./table-empty-state"
 
 const skuFeatures = tableFeatures({
   columnMeta: {} as {

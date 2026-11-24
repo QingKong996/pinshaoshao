@@ -9,6 +9,12 @@ type Module interface {
 	Register(r *gin.Engine, authMiddleware gin.HandlerFunc)
 }
 
+// OrderModule registers both buyer and merchant order routes.
+type OrderModule interface {
+	Module
+	RegisterMerchant(r *gin.Engine, authMiddleware gin.HandlerFunc)
+}
+
 // Modules contains the registered modules and their authentication middleware.
 type Modules struct {
 	User        Module
@@ -17,7 +23,7 @@ type Modules struct {
 	Inventory   Module
 	Cart        Module
 	Feed        Module
-	Order       Module
+	Order       OrderModule
 	Payment     Module
 	MockPayment Module
 	UserAuth    gin.HandlerFunc
@@ -33,6 +39,7 @@ func Register(r *gin.Engine, modules Modules) {
 	modules.Cart.Register(r, modules.UserAuth)
 	modules.Feed.Register(r, modules.UserAuth)
 	modules.Order.Register(r, modules.UserAuth)
+	modules.Order.RegisterMerchant(r, modules.ShopAuth)
 	modules.Payment.Register(r, modules.UserAuth)
 	modules.MockPayment.Register(r, nil)
 }
