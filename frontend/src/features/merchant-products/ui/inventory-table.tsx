@@ -10,8 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table"
+import { TableEmptyState } from "@/shared/ui/table-empty-state"
 import type { InventoryItem } from "../types"
-import { TableEmptyState } from "./table-empty-state"
 import {
   inventoryTableFeatures,
   useInventoryColumns,

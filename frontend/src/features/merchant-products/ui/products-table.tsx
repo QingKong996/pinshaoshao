@@ -19,12 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table"
+import { TableEmptyState } from "@/shared/ui/table-empty-state"
 import type { Product } from "../types"
 import {
   productTableFeatures,
   useProductColumns,
 } from "./product-table-columns"
-import { TableEmptyState } from "./table-empty-state"
 
 export function ProductsTable({
   products,

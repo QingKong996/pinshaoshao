@@ -23,8 +23,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/ui/tooltip"
+import { TableEmptyState } from "@/shared/ui/table-empty-state"
 import type { ProductCategory } from "../types"
-import { TableEmptyState } from "./table-empty-state"
 
 const categoryFeatures = tableFeatures({
   columnMeta: {} as {

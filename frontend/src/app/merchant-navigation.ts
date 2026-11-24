@@ -1,4 +1,5 @@
 import {
+  ClipboardList,
   LayoutDashboard,
   Package,
   Store,
@@ -9,6 +10,7 @@ export const MERCHANT_CONSOLE_BASE_PATH = "/merchant"
 
 export const MERCHANT_CONSOLE_PATHS = {
   dashboard: "/merchant/dashboard",
+  orders: "/merchant/orders",
   products: "/merchant/products",
   categories: "/merchant/categories",
   inventory: "/merchant/inventory",
@@ -45,6 +47,11 @@ export const MERCHANT_CONSOLE_NAV: MerchantConsoleNavItem[] = [
     to: MERCHANT_CONSOLE_PATHS.dashboard,
     icon: LayoutDashboard,
     labelKey: "console:nav.dashboard",
+  },
+  {
+    to: MERCHANT_CONSOLE_PATHS.orders,
+    icon: ClipboardList,
+    labelKey: "console:nav.orders",
   },
   {
     icon: Package,

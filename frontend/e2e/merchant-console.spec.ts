@@ -44,6 +44,31 @@ async function mockMerchantApi(page: Page) {
       })
       return
     }
+    if (request.method() === "GET" && pathname.endsWith("/merchant/orders")) {
+      await route.fulfill({
+        json: {
+          items: [
+            {
+              id: 4,
+              order_id: 12,
+              status: "awaiting_shipment",
+              total_amount_cents: 3998,
+              item_count: 2,
+              receiver_name: "Receiver",
+              receiver_phone: "1234567890",
+              shipping_address: "Shanghai",
+              paid_at: "2026-11-20T12:05:00Z",
+              created_at: "2026-11-20T12:00:00Z",
+            },
+          ],
+          page: 1,
+          page_size: 10,
+          total: 1,
+          total_pages: 1,
+        },
+      })
+      return
+    }
     if (request.method() === "GET" && pathname.endsWith("/merchant/products")) {
       await route.fulfill({
         json: {
@@ -182,6 +207,14 @@ test("merchant can sign in, inspect products, and confirm deletion", async ({
     page.getByRole("heading", { name: "Overview" }),
   ).toBeVisible()
   await expect(page.getByText("Example Shop")).toBeVisible()
+
+  await page.getByRole("link", { name: "Orders" }).click()
+  await expect(page).toHaveURL(/\/merchant\/orders$/)
+  await expect(
+    page.getByRole("heading", { name: "Orders" }),
+  ).toBeVisible()
+  await expect(page.getByText("Sub-order #4")).toBeVisible()
+  await expect(page.getByText("Awaiting shipment")).toBeVisible()
 
   await page.getByRole("link", { name: "Product info" }).click()
   await expect(page).toHaveURL(/\/merchant\/products$/)

@@ -4,6 +4,7 @@
   "sidebarToggle": "打开导航菜单",
   "nav": {
     "dashboard": "概览",
+    "orders": "订单管理",
     "products": "商品",
     "productInfo": "商品信息",
     "categories": "分类管理",
@@ -12,6 +13,7 @@
   },
   "documentTitle": {
     "dashboard": "概览 · 商户中心 · {{brand}}",
+    "orders": "订单管理 · 商户中心 · {{brand}}",
     "products": "商品信息 · 商户中心 · {{brand}}",
     "categories": "分类管理 · 商户中心 · {{brand}}",
     "inventory": "库存管理 · 商户中心 · {{brand}}",
@@ -76,6 +78,36 @@
       "title": "店铺信息",
       "noDescription": "还没有填写店铺描述。",
       "statusLabel": "店铺状态"
+    }
+  },
+  "orders": {
+    "title": "订单管理",
+    "description": "查看店铺订单并跟踪履约状态。",
+    "filters": {
+      "description": "按订单当前状态筛选。",
+      "allStatuses": "全部状态"
+    },
+    "table": {
+      "order": "订单",
+      "subOrder": "子订单 #{{id}}",
+      "recipient": "收货人",
+      "shippingAddress": "收货地址",
+      "status": "状态",
+      "items": "商品数",
+      "total": "金额",
+      "createdAt": "下单时间"
+    },
+    "status": {
+      "pending_payment": "待支付",
+      "awaiting_shipment": "待发货",
+      "shipped": "已发货",
+      "completed": "已完成",
+      "cancelled": "已取消"
+    },
+    "empty": {
+      "title": "还没有订单",
+      "description": "店铺产生订单后会显示在这里。",
+      "filtered": "没有符合筛选条件的订单。"
     }
   },
   "products": {

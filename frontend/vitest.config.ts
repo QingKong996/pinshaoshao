@@ -29,6 +29,7 @@ export default mergeConfig(
           "src/features/cart/model/**/*.{ts,tsx}",
           "src/features/feed/model/**/*.{ts,tsx}",
           "src/features/merchant-dashboard/model/**/*.ts",
+          "src/features/merchant-orders/model/**/*.ts",
           "src/features/merchant-products/model/**/*.ts",
           "src/features/order/model/**/*.{ts,tsx}",
         ],

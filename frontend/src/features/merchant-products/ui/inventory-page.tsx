@@ -15,7 +15,7 @@ import { InventoryFilters } from "./inventory-filters"
 import { InventoryTable } from "./inventory-table"
 import { QueryError } from "./query-error"
 import { StockFormDialog } from "./stock-form-dialog"
-import { TablePagination } from "./table-pagination"
+import { TablePagination } from "@/shared/ui/table-pagination"
 
 const EMPTY_INVENTORY: InventoryItem[] = []
 

@@ -8,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select"
-import { PAGE_SIZE_OPTIONS } from "../model/pagination"
+
+const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50] as const
 
 type TablePaginationProps = {
   page: number
@@ -17,6 +18,7 @@ type TablePaginationProps = {
   totalPages: number
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
+  pageSizeOptions?: readonly number[]
 }
 
 export function TablePagination({
@@ -26,13 +28,14 @@ export function TablePagination({
   totalPages,
   onPageChange,
   onPageSizeChange,
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
 }: TablePaginationProps) {
   const { t } = useTranslation("console")
   const visibleTotalPages = Math.max(1, totalPages)
   const visiblePage = Math.min(page, visibleTotalPages)
   const firstItem = total === 0 ? 0 : (visiblePage - 1) * pageSize + 1
   const lastItem = Math.min(visiblePage * pageSize, total)
-  const pageSizeItems = PAGE_SIZE_OPTIONS.map((size) => ({
+  const pageSizeItems = pageSizeOptions.map((size) => ({
     value: String(size),
     label: String(size),
   }))

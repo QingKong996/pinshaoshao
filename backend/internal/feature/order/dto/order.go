@@ -29,6 +29,12 @@ type ListOrdersQuery struct {
 	PageSize *int `form:"page_size" binding:"omitempty,min=1,max=100" example:"10"`
 }
 
+type ListMerchantOrdersQuery struct {
+	Page     *int   `form:"page" binding:"omitempty,min=1,max=1000000" example:"1"`
+	PageSize *int   `form:"page_size" binding:"omitempty,min=1,max=100" example:"10"`
+	Status   string `form:"status" binding:"omitempty,oneof=pending_payment awaiting_shipment shipped completed cancelled" example:"awaiting_shipment"`
+}
+
 type OrderResponse struct {
 	ID               int                `json:"id" example:"1"`
 	Status           string             `json:"status" example:"pending_payment"`
@@ -79,4 +85,25 @@ type OrderListResponse struct {
 	PageSize   int                    `json:"page_size" example:"10"`
 	Total      int64                  `json:"total" example:"25"`
 	TotalPages int                    `json:"total_pages" example:"3"`
+}
+
+type MerchantOrderSummaryResponse struct {
+	ID               int        `json:"id" example:"1"`
+	OrderID          int        `json:"order_id" example:"12"`
+	Status           string     `json:"status" example:"awaiting_shipment"`
+	TotalAmountCents int64      `json:"total_amount_cents" example:"3998"`
+	ItemCount        int        `json:"item_count" example:"2"`
+	ReceiverName     string     `json:"receiver_name" example:"张三"`
+	ReceiverPhone    string     `json:"receiver_phone" example:"13800138000"`
+	ShippingAddress  string     `json:"shipping_address" example:"上海市浦东新区世纪大道 100 号"`
+	PaidAt           *time.Time `json:"paid_at"`
+	CreatedAt        time.Time  `json:"created_at" example:"2026-11-20T12:00:00Z"`
+}
+
+type MerchantOrderListResponse struct {
+	Items      []MerchantOrderSummaryResponse `json:"items"`
+	Page       int                            `json:"page" example:"1"`
+	PageSize   int                            `json:"page_size" example:"10"`
+	Total      int64                          `json:"total" example:"25"`
+	TotalPages int                            `json:"total_pages" example:"3"`
 }

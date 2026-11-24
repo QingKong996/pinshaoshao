@@ -4,6 +4,7 @@
   "sidebarToggle": "Open navigation",
   "nav": {
     "dashboard": "Overview",
+    "orders": "Orders",
     "products": "Products",
     "productInfo": "Product info",
     "categories": "Categories",
@@ -12,6 +13,7 @@
   },
   "documentTitle": {
     "dashboard": "Overview · Merchant center · {{brand}}",
+    "orders": "Orders · Merchant center · {{brand}}",
     "products": "Product info · Merchant center · {{brand}}",
     "categories": "Categories · Merchant center · {{brand}}",
     "inventory": "Inventory · Merchant center · {{brand}}",
@@ -76,6 +78,36 @@
       "title": "Shop profile",
       "noDescription": "No shop description yet.",
       "statusLabel": "Shop status"
+    }
+  },
+  "orders": {
+    "title": "Orders",
+    "description": "Review orders for your shop and track their fulfillment status.",
+    "filters": {
+      "description": "Filter orders by their current status.",
+      "allStatuses": "All statuses"
+    },
+    "table": {
+      "order": "Order",
+      "subOrder": "Sub-order #{{id}}",
+      "recipient": "Recipient",
+      "shippingAddress": "Shipping address",
+      "status": "Status",
+      "items": "Items",
+      "total": "Total",
+      "createdAt": "Placed"
+    },
+    "status": {
+      "pending_payment": "Awaiting payment",
+      "awaiting_shipment": "Awaiting shipment",
+      "shipped": "Shipped",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "empty": {
+      "title": "No orders yet",
+      "description": "Orders placed at your shop will appear here.",
+      "filtered": "No orders match the current filters."
     }
   },
   "products": {
