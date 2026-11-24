@@ -1,0 +1,162 @@
+{
+  "shell": {
+    "title": "MockPay Sandbox",
+    "subtitle": "MOCK PAYMENT PLATFORM",
+    "sandbox": "Isolated sandbox",
+    "footer": "For local integration only. No real funds are processed, and no storefront business module is used."
+  },
+  "documentTitle": {
+    "console": "Mock payments · {{brand}}",
+    "detail": "Payment {{paymentNo}} · {{brand}}"
+  },
+  "actions": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "retrying": "Retrying",
+    "dismiss": "Dismiss",
+    "back": "Back to payments",
+    "openCheckout": "Open checkout",
+    "copyCheckout": "Copy checkout URL",
+    "close": "Close payment"
+  },
+  "console": {
+    "title": "Mock payment platform",
+    "description": "Create payment orders, use the standalone checkout, and inspect signed callbacks and retries.",
+    "create": {
+      "title": "Create payment",
+      "description": "These fields mirror the create API. Replaying the same merchant order number and payload returns the original payment."
+    },
+    "lookup": {
+      "title": "Look up a payment",
+      "description": "Enter an existing payment number to inspect its status and callback history.",
+      "label": "Payment number",
+      "placeholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "submit": "Look up",
+      "required": "Enter a payment number"
+    },
+    "guide": {
+      "title": "Sandbox workflow",
+      "create": {
+        "title": "Create a payment",
+        "description": "Set the merchant order, amount, and callback URL to create an isolated payment."
+      },
+      "pay": {
+        "title": "Pay in checkout",
+        "description": "Open checkout_url and choose Pay now. This console never bypasses the checkout."
+      },
+      "notify": {
+        "title": "Watch callback delivery",
+        "description": "A signed notification is sent after payment. Failed deliveries back off and can be retried after exhaustion."
+      },
+      "isolation": "MockPay uses its own tables and frontend folder. It does not call the storefront order, payment, or inventory modules."
+    }
+  },
+  "form": {
+    "merchantOrderNo": "Merchant order number",
+    "merchantOrderNoHint": "Replays with the same merchant order number must use an identical payload.",
+    "currency": "Currency",
+    "subject": "Subject",
+    "amount": "Amount (cents)",
+    "amountHint": "Use the smallest currency unit. For example, 3998 renders as 39.98.",
+    "notifyURL": "Notification URL",
+    "notifyURLHint": "The server sends a signed event with POST.",
+    "returnURL": "Return URL after payment",
+    "optional": " (optional)",
+    "expiresIn": "Expires in (seconds)",
+    "expiresHint": "Allowed range: 60–86400 seconds.",
+    "submit": "Create payment",
+    "submitting": "Creating",
+    "reset": "Reset"
+  },
+  "validation": {
+    "merchantOrderNoRequired": "Enter a merchant order number",
+    "merchantOrderNoLength": "Merchant order number must be 64 characters or fewer",
+    "amountRequired": "Enter an amount",
+    "amountInvalid": "Amount must be a positive safe integer in cents",
+    "currencyLength": "Currency must be exactly 3 letters",
+    "subjectRequired": "Enter a subject",
+    "subjectLength": "Subject must be 200 characters or fewer",
+    "notifyRequired": "Enter a notification URL",
+    "notifyLength": "Notification URL must be 2048 characters or fewer",
+    "notifyInvalid": "Notification URL must be a valid HTTP or HTTPS URL",
+    "returnLength": "Return URL must be 2048 characters or fewer",
+    "returnInvalid": "Return URL must be a valid HTTP or HTTPS URL",
+    "expiresInvalid": "Expiry must be an integer between 60 and 86400 seconds"
+  },
+  "status": {
+    "pending": "Pending",
+    "paid": "Paid",
+    "closed": "Closed"
+  },
+  "notificationStatus": {
+    "pending": "Pending",
+    "delivering": "Delivering",
+    "succeeded": "Delivered",
+    "exhausted": "Exhausted"
+  },
+  "detail": {
+    "subtitle": "Merchant order {{merchantOrderNo}}",
+    "amountLabel": "Payment amount",
+    "expiresAt": "Expires {{date}}",
+    "expiredNotice": "This payment is past its expiry. The background worker will close it shortly.",
+    "fields": {
+      "title": "Payment details",
+      "description": "These values come directly from the mock payment API.",
+      "paymentNo": "Payment number",
+      "merchantOrderNo": "Merchant order number",
+      "checkoutURL": "Checkout URL",
+      "returnURL": "Return URL",
+      "createdAt": "Created",
+      "expiresAt": "Expires",
+      "paidAt": "Paid",
+      "closedAt": "Closed"
+    },
+    "state": {
+      "title": "Payment state machine",
+      "description": "pending transitions exactly once.",
+      "or": "or",
+      "note": "pending can become paid or closed. Both paid and closed are terminal. The background worker closes expired payments automatically."
+    },
+    "notifications": {
+      "title": "Callback delivery",
+      "description": "Signed notifications use a backoff schedule. In-flight records refresh automatically.",
+      "emptyPending": "A payment.paid notification appears here after the payment succeeds.",
+      "empty": "No callback notifications yet.",
+      "eventId": "Event ID",
+      "targetURL": "Target URL",
+      "attempts": "Attempts",
+      "attemptValue": "{{attempts}} / {{max}}",
+      "nextAttempt": "Next attempt",
+      "lastAttempt": "Last attempt",
+      "deliveredAt": "Delivered",
+      "lastError": "Last error"
+    },
+    "closeDialog": {
+      "title": "Close this payment?",
+      "description": "Closing “{{subject}}” prevents payment and cannot be undone.",
+      "cancel": "Keep open",
+      "confirm": "Close payment"
+    }
+  },
+  "errors": {
+    "unknown": "Something went wrong. Try again.",
+    "network": "Cannot reach the mock payment service. Check that the backend is running.",
+    "invalidRequest": "The request is invalid. Check the form values.",
+    "duplicateOrder": "This merchant order number already exists with a different payload.",
+    "invalidPayment": "The payment number is invalid.",
+    "notFound": "Payment not found.",
+    "expired": "The payment has expired.",
+    "server": "The mock payment service is unavailable.",
+    "notClosable": "The payment cannot be closed in its current state.",
+    "notificationNotFound": "Callback notification not found.",
+    "notificationNotRetryable": "Only exhausted notifications can be retried.",
+    "loadTitle": "Unable to load payment",
+    "createTitle": "Unable to create payment",
+    "closeTitle": "Unable to close payment",
+    "notificationsTitle": "Unable to load callbacks",
+    "loadNotifications": "Refresh the callback history and try again.",
+    "retryTitle": "Unable to retry callback"
+  }
+}

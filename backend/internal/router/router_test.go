@@ -21,6 +21,7 @@ import (
 	userapperr "pinshaoshao/internal/feature/user/apperr"
 	usermodel "pinshaoshao/internal/feature/user/model"
 	"pinshaoshao/internal/http/httpx"
+	mockpaymentmodule "pinshaoshao/internal/mockpayment"
 	"pinshaoshao/internal/router"
 
 	"github.com/gin-gonic/gin"
@@ -82,29 +83,45 @@ var routeCases = []routeCase{
 	{method: http.MethodGet, pattern: "/api/v1/merchant/inventory", requestPath: "/api/v1/merchant/inventory", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodPatch, pattern: "/api/v1/merchant/inventory/:skuID", requestPath: "/api/v1/merchant/inventory/2", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/merchant/dashboard", requestPath: "/api/v1/merchant/dashboard", authError: shopapperr.ErrInvalidShopSession.Error()},
+	{method: http.MethodPost, pattern: "/api/v1/mock-payments", requestPath: "/api/v1/mock-payments"},
+	{method: http.MethodGet, pattern: "/api/v1/mock-payments/:paymentNo", requestPath: "/api/v1/mock-payments/1"},
+	{method: http.MethodPost, pattern: "/api/v1/mock-payments/:paymentNo/close", requestPath: "/api/v1/mock-payments/1/close"},
+	{method: http.MethodGet, pattern: "/api/v1/mock-payments/:paymentNo/notifications", requestPath: "/api/v1/mock-payments/1/notifications"},
+	{method: http.MethodPost, pattern: "/api/v1/mock-payments/:paymentNo/notifications/retry", requestPath: "/api/v1/mock-payments/1/notifications/retry"},
+	{method: http.MethodGet, pattern: "/mock-payment/checkout/:paymentNo", requestPath: "/mock-payment/checkout/1"},
+	{method: http.MethodPost, pattern: "/mock-payment/checkout/:paymentNo/pay", requestPath: "/mock-payment/checkout/1/pay"},
+	{method: http.MethodPost, pattern: "/mock-payment/checkout/:paymentNo/close", requestPath: "/mock-payment/checkout/1/close"},
 }
 
-func newTestRouter() *gin.Engine {
+func newTestRouter(t *testing.T) *gin.Engine {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
 
 	inventoryModule := inventorymodule.NewModule(nil)
+	mockPaymentModule, err := mockpaymentmodule.NewModule(nil, mockpaymentmodule.Config{
+		WebhookSecret: "test-signing-key",
+	})
+	if err != nil {
+		t.Fatalf("create mock payment module: %v", err)
+	}
 	r := gin.New()
 	router.Register(r, router.Modules{
-		User:      usermodule.NewModule(nil),
-		Shop:      shopmodule.NewModule(nil),
-		Product:   productmodule.NewModule(nil, inventoryModule.Lifecycle()),
-		Inventory: inventoryModule,
-		Cart:      cartmodule.NewModule(nil),
-		Feed:      feedmodule.NewModule(nil),
-		Order:     ordermodule.NewModule(nil, inventoryModule.Reservation()),
-		UserAuth:  usermodule.AuthMiddleware(invalidUserSession{}),
-		ShopAuth:  shopmodule.AuthMiddleware(invalidShopSession{}),
+		User:        usermodule.NewModule(nil),
+		Shop:        shopmodule.NewModule(nil),
+		Product:     productmodule.NewModule(nil, inventoryModule.Lifecycle()),
+		Inventory:   inventoryModule,
+		Cart:        cartmodule.NewModule(nil),
+		Feed:        feedmodule.NewModule(nil),
+		Order:       ordermodule.NewModule(nil, inventoryModule.Reservation()),
+		MockPayment: mockPaymentModule,
+		UserAuth:    usermodule.AuthMiddleware(invalidUserSession{}),
+		ShopAuth:    shopmodule.AuthMiddleware(invalidShopSession{}),
 	})
 	return r
 }
 
 func TestRegisteredRoutes(t *testing.T) {
-	r := newTestRouter()
+	r := newTestRouter(t)
 	got := make([]string, 0, len(r.Routes()))
 	for _, route := range r.Routes() {
 		got = append(got, route.Method+" "+route.Path)
@@ -123,7 +140,7 @@ func TestRegisteredRoutes(t *testing.T) {
 }
 
 func TestAuthenticationRoutesArePublic(t *testing.T) {
-	r := newTestRouter()
+	r := newTestRouter(t)
 
 	for _, route := range routeCases {
 		if !route.public {
@@ -141,7 +158,7 @@ func TestAuthenticationRoutesArePublic(t *testing.T) {
 }
 
 func TestProtectedRoutesRejectInvalidSessions(t *testing.T) {
-	r := newTestRouter()
+	r := newTestRouter(t)
 
 	for _, route := range routeCases {
 		if route.authError == "" {

@@ -14,6 +14,7 @@ import (
 	shopmodule "pinshaoshao/internal/feature/shop"
 	usermodule "pinshaoshao/internal/feature/user"
 	"pinshaoshao/internal/middleware"
+	mockpaymentmodule "pinshaoshao/internal/mockpayment"
 	"pinshaoshao/internal/router"
 	"time"
 
@@ -80,17 +81,24 @@ func main() {
 	cartModule := cartmodule.NewModule(pool)
 	feedModule := feedmodule.NewModule(pool)
 	orderModule := ordermodule.NewModule(pool, inventoryModule.Reservation())
+	mockPaymentModule, err := mockpaymentmodule.NewModule(pool, mockpaymentmodule.ConfigFromEnv())
+	if err != nil {
+		fatal("create mock payment module", "error", err)
+	}
+	mockPaymentModule.Start(context.Background())
+	defer mockPaymentModule.Stop()
 
 	router.Register(r, router.Modules{
-		User:      userModule,
-		Shop:      shopModule,
-		Product:   productModule,
-		Inventory: inventoryModule,
-		Cart:      cartModule,
-		Feed:      feedModule,
-		Order:     orderModule,
-		UserAuth:  userModule.AuthMiddleware(),
-		ShopAuth:  shopModule.AuthMiddleware(),
+		User:        userModule,
+		Shop:        shopModule,
+		Product:     productModule,
+		Inventory:   inventoryModule,
+		Cart:        cartModule,
+		Feed:        feedModule,
+		Order:       orderModule,
+		MockPayment: mockPaymentModule,
+		UserAuth:    userModule.AuthMiddleware(),
+		ShopAuth:    shopModule.AuthMiddleware(),
 	})
 
 	if err := r.Run(":" + port); err != nil {

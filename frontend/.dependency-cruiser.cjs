@@ -28,7 +28,7 @@ module.exports = {
       name: "shared-does-not-import-business",
       severity: "error",
       from: { path: "^src/shared/" },
-      to: { path: "^src/(app|features)/" },
+      to: { path: "^src/(app|features|mockpayment)/" },
     },
     {
       name: "features-do-not-import-app",
@@ -41,6 +41,51 @@ module.exports = {
       severity: "error",
       from: { path: "^(src/app/|src/main\\.tsx$|\\.storybook/)" },
       to: { path: "^src/features/[^/]+/(?!index\\.ts$)" },
+    },
+    {
+      name: "application-uses-public-mockpayment-entry",
+      severity: "error",
+      from: { path: "^(src/app/|src/main\\.tsx$|\\.storybook/)" },
+      to: { path: "^src/mockpayment/(?!index\\.ts$)" },
+    },
+    {
+      name: "features-do-not-import-mockpayment",
+      severity: "error",
+      from: { path: "^src/features/" },
+      to: { path: "^src/mockpayment/" },
+    },
+    {
+      name: "mockpayment-does-not-import-application",
+      severity: "error",
+      from: { path: "^src/mockpayment/" },
+      to: { path: "^src/(app|features)/" },
+    },
+    {
+      name: "mockpayment-internals-do-not-import-public-entry",
+      severity: "error",
+      from: {
+        path: "^src/mockpayment/",
+        pathNot: "^src/mockpayment/index\\.ts$",
+      },
+      to: { path: "^src/mockpayment/index\\.ts$" },
+    },
+    {
+      name: "mockpayment-api-only-uses-dto-and-infrastructure",
+      severity: "error",
+      from: { path: "^src/mockpayment/api/" },
+      to: { path: "^src/mockpayment/(model|ui)/" },
+    },
+    {
+      name: "mockpayment-model-does-not-import-ui",
+      severity: "error",
+      from: { path: "^src/mockpayment/model/" },
+      to: { path: "^(src/mockpayment/ui/|src/shared/ui/)" },
+    },
+    {
+      name: "mockpayment-ui-uses-model",
+      severity: "error",
+      from: { path: "^src/mockpayment/ui/" },
+      to: { path: "^src/mockpayment/api/" },
     },
     {
       name: "feature-model-does-not-import-ui",
