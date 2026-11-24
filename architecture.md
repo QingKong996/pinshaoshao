@@ -39,6 +39,7 @@ flowchart TB
         Feed[feed]
         Order[order]
         Payment[payment]
+        Logistics[logistics]
     end
 
     MockPayment[internal/mock/payment<br/>独立模拟支付平台]
@@ -61,6 +62,7 @@ flowchart TB
     Main --> Feed
     Main --> Order
     Main --> Payment
+    Main --> Logistics
     Main --> MockPayment
     Main --> MockLogistics
 
@@ -72,13 +74,16 @@ flowchart TB
     Router --> Feed
     Router --> Order
     Router --> Payment
+    Router --> Logistics
     Router --> MockPayment
     Router --> MockLogistics
 
     Product -. 使用库存接口 .-> Inventory
     Order -. 使用库存接口 .-> Inventory
     Payment -. 使用订单支付端口 .-> Order
+    Logistics -. 使用订单履约端口 .-> Order
     Payment -. 创建渠道支付单 / 接收签名回调 .-> MockPayment
+    Logistics -. 创建物流单 / 接收签名回调 .-> MockLogistics
 
     Features --> DatabaseLayer
     Features --> Security
@@ -92,10 +97,10 @@ flowchart TB
 
 - 后端采用 DDD + Clean Architecture 风格的模块化单体。
 - 每个 feature 自包含 `controller`、`service`、`repository`、`model`、`dto` 和 `module.go`；调用方向为 Controller → Service → Repository。
-- feature 之间不直接访问对方的 repository。product、order 通过 inventory 暴露的接口协作；payment 通过 order 暴露的 `paymentport.Lifecycle` 锁定订单并完成支付结算。
+- feature 之间不直接访问对方的 repository。product、order 通过 inventory 暴露的接口协作；payment 通过 order 暴露的 `paymentport.Lifecycle` 锁定订单并完成支付结算；logistics 通过 `shippingport.Lifecycle` 发货、扣减冻结库存并完成签收。
 - `internal/mock/payment` 与 `internal/mock/logistics` 各自拥有 handler、service、repository、model 和 dto，不引用任何业务 feature。
 - `payment` 拥有业务支付单；它只通过 HTTP 调用模拟支付平台创建渠道支付会话，并通过签名回调接收支付结果。
-- 业务 feature 与 `internal/mock` 不互相 import。支付业务与模拟支付只通过网络交互；回调验签算法放在中立的 `internal/webhooksig`。模拟物流当前独立运行，商家出库由模拟控制台或 HTTP API 触发。
+- 业务 feature 与 `internal/mock` 不互相 import。支付业务与模拟支付、物流业务与模拟物流都只通过网络交互；回调验签算法放在中立的 `internal/webhooksig`。业务物流记录发货单与轨迹，模拟物流负责承运状态机、出库动作和回调投递。
 - `module.go` 是各模块的装配入口，`cmd/server` 是全局 composition root，`internal/router` 只负责挂载路由。
 
 ## 前端
@@ -128,6 +133,7 @@ flowchart TB
 
 - `src/app` 是前端 composition root，只负责路由、Provider、布局和全局配置。
 - `src/features` 是按业务能力组织的垂直切片，模块内部按 `ui`、`model`、`api` 分层，并通过各自的 `index.ts` 暴露公共入口。
+- 物流切片同时服务买家订单详情、物流详情和商户发货页面；跨 feature 的组合只发生在 `src/app`。
 - `src/mock/payment` 与 `src/mock/logistics` 统一放在 `src/mock` 下，只依赖 `src/shared`，业务 feature 不依赖它们。
 - `src/shared` 只提供通用基础能力，不反向依赖 app、feature 或 mock 模块。
 - 上述依赖方向由 `frontend/.dependency-cruiser.cjs` 和 `npm run lint:architecture` 强制检查。
@@ -161,7 +167,7 @@ flowchart LR
 
 - 所有模块共用一个 PostgreSQL 数据库连接池，但各模块只操作自己的 repository 和表。
 - 数据库结构通过 `backend/migrations` 顺序迁移；模拟支付使用独立的 `mock_payment_orders`、`mock_payment_notifications`，模拟物流使用 `mock_shipments`、`mock_logistics_events`、`mock_logistics_notifications`。
-- 业务 feature 与模拟平台之间没有共享领域模型或业务代码，只通过 HTTP API 和签名回调交互。业务支付状态保存在 `payments`，不复制渠道内部状态。
+- 业务 feature 与模拟平台之间没有共享领域模型或业务代码，只通过 HTTP API 和签名回调交互。业务支付状态保存在 `payments`，业务物流状态保存在 `shipments`、`shipment_events`，不复制渠道内部状态。
 - 后端架构测试禁止 `internal/feature` 与 `internal/mock` 互相导入，也禁止模拟支付与模拟物流互相导入。
 - 开发环境中 Vite 代理 `/api`、`/mockpay/api`、`/mockpay/checkout` 与 `/mocklogistics/api` 到 Go 后端，避免模拟控制台 SPA 路由与后端路径冲突。
 - 当前不引入微服务、消息队列或跨库事务；后台任务随 API 进程启动和停止。
@@ -186,5 +192,7 @@ flowchart LR
 - 物流状态机、轨迹事件、回调 outbox 和重试全部封装在 `internal/mock/logistics`。
 - 商家必须先确认出库，之后才能揽收和转运；派送中后通过完成动作签收。
 - 模拟数据由 `gofakeit` 生成，状态和时间戳仍由显式状态机控制。
+- 业务 `internal/feature/logistics` 通过 HTTP 创建物流单并立即出库；签名回调写入业务发货单轨迹，并在签收时完成订单。
+- 业务发货单保存在 `shipments`、`shipment_events`，与模拟平台表没有外键关系。
 
-具体支付接口、状态机和回调协议见 [docs/mock-payment.md](docs/mock-payment.md)，物流接口见 [docs/mock-logistics.md](docs/mock-logistics.md)。
+具体支付接口、状态机和回调协议见 [docs/mock-payment.md](docs/mock-payment.md)，业务支付见 [docs/payment.md](docs/payment.md)，业务物流见 [docs/logistics.md](docs/logistics.md)，模拟物流接口见 [docs/mock-logistics.md](docs/mock-logistics.md)。

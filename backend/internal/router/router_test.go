@@ -12,6 +12,7 @@ import (
 	cartmodule "pinshaoshao/internal/feature/cart"
 	feedmodule "pinshaoshao/internal/feature/feed"
 	inventorymodule "pinshaoshao/internal/feature/inventory"
+	logisticsmodule "pinshaoshao/internal/feature/logistics"
 	ordermodule "pinshaoshao/internal/feature/order"
 	paymentmodule "pinshaoshao/internal/feature/payment"
 	productmodule "pinshaoshao/internal/feature/product"
@@ -68,6 +69,12 @@ var routeCases = []routeCase{
 	{method: http.MethodGet, pattern: "/api/v1/payments/:paymentNo", requestPath: "/api/v1/payments/1", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/payments/:paymentNo/pay", requestPath: "/api/v1/payments/1/pay", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/payment/webhook", requestPath: "/api/v1/payment/webhook", public: true, publicCode: http.StatusUnauthorized},
+	{method: http.MethodGet, pattern: "/api/v1/shipments", requestPath: "/api/v1/shipments", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodGet, pattern: "/api/v1/shipments/:shipmentNo", requestPath: "/api/v1/shipments/1", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/api/v1/logistics/webhook", requestPath: "/api/v1/logistics/webhook", public: true, publicCode: http.StatusUnauthorized},
+	{method: http.MethodPost, pattern: "/api/v1/merchant/shipments", requestPath: "/api/v1/merchant/shipments", authError: shopapperr.ErrInvalidShopSession.Error()},
+	{method: http.MethodGet, pattern: "/api/v1/merchant/shipments", requestPath: "/api/v1/merchant/shipments", authError: shopapperr.ErrInvalidShopSession.Error()},
+	{method: http.MethodGet, pattern: "/api/v1/merchant/shipments/:shipmentNo", requestPath: "/api/v1/merchant/shipments/1", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/feed", requestPath: "/api/v1/feed", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/products/:productID", requestPath: "/api/v1/products/1", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/merchant/login", requestPath: "/api/v1/merchant/login", public: true},
@@ -127,6 +134,18 @@ func newTestRouter(t *testing.T) *gin.Engine {
 	if err != nil {
 		t.Fatalf("create payment module: %v", err)
 	}
+	logisticsModule, err := logisticsmodule.NewModule(
+		nil,
+		orderModule.ShippingLifecycle(),
+		logisticsmodule.Config{
+			GatewayBaseURL: "http://localhost:8080",
+			WebhookSecret:  "test-signing-key",
+			NotifyURL:      "http://localhost:8080/api/v1/logistics/webhook",
+		},
+	)
+	if err != nil {
+		t.Fatalf("create logistics module: %v", err)
+	}
 	mockPaymentModule, err := mockpaymentmodule.NewModule(nil, mockpaymentmodule.Config{
 		WebhookSecret: "test-signing-key",
 	})
@@ -149,6 +168,7 @@ func newTestRouter(t *testing.T) *gin.Engine {
 		Feed:          feedmodule.NewModule(nil),
 		Order:         orderModule,
 		Payment:       paymentModule,
+		Logistics:     logisticsModule,
 		MockPayment:   mockPaymentModule,
 		MockLogistics: mockLogisticsModule,
 		UserAuth:      usermodule.AuthMiddleware(invalidUserSession{}),

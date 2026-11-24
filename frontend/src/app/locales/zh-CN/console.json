@@ -5,6 +5,8 @@
   "nav": {
     "dashboard": "概览",
     "orders": "订单管理",
+    "logistics": "物流管理",
+    "shipmentDetail": "物流详情",
     "products": "商品",
     "productInfo": "商品信息",
     "categories": "分类管理",
@@ -95,7 +97,8 @@
       "status": "状态",
       "items": "商品数",
       "total": "金额",
-      "createdAt": "下单时间"
+      "createdAt": "下单时间",
+      "actions": "操作"
     },
     "status": {
       "pending_payment": "待支付",

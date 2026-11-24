@@ -20,9 +20,12 @@ import { MerchantInventoryRoute } from "./routes/merchant-inventory-route"
 import { MerchantOrdersRoute } from "./routes/merchant-orders-route"
 import { MerchantProductDetailRoute } from "./routes/merchant-product-detail-route"
 import { MerchantProductsRoute } from "./routes/merchant-products-route"
+import { MerchantShipmentDetailRoute } from "./routes/merchant-shipment-detail-route"
+import { MerchantShipmentsRoute } from "./routes/merchant-shipments-route"
 import { OrderDetailRoute } from "./routes/order-detail-route"
 import { OrdersRoute } from "./routes/orders-route"
 import { ProductDetailRoute } from "./routes/product-detail-route"
+import { ShipmentDetailRoute } from "./routes/shipment-detail-route"
 import {
   SignInPage,
   SignUpPage,
@@ -52,6 +55,7 @@ export const router = createBrowserRouter([
       { path: "/products/:productID", element: <ProductDetailRoute /> },
       { path: "/orders", element: <OrdersRoute /> },
       { path: "/orders/:orderID", element: <OrderDetailRoute /> },
+      { path: "/shipments/:shipmentNo", element: <ShipmentDetailRoute /> },
       {
         path: MOCK_PAYMENT_ROUTE_PATHS.list,
         element: <MockPaymentPage />,
@@ -103,6 +107,34 @@ export const router = createBrowserRouter([
                 {
                   to: MERCHANT_CONSOLE_PATHS.orders,
                   labelKey: "console:nav.orders",
+                },
+              ],
+            } satisfies MerchantConsoleRouteHandle,
+          },
+          {
+            path: MERCHANT_CONSOLE_PATHS.logistics,
+            element: <MerchantShipmentsRoute />,
+            handle: {
+              breadcrumbs: [
+                {
+                  to: MERCHANT_CONSOLE_PATHS.logistics,
+                  labelKey: "console:nav.logistics",
+                },
+              ],
+            } satisfies MerchantConsoleRouteHandle,
+          },
+          {
+            path: `${MERCHANT_CONSOLE_PATHS.logistics}/:shipmentNo`,
+            element: <MerchantShipmentDetailRoute />,
+            handle: {
+              breadcrumbs: [
+                {
+                  to: MERCHANT_CONSOLE_PATHS.logistics,
+                  labelKey: "console:nav.logistics",
+                },
+                {
+                  to: MERCHANT_CONSOLE_PATHS.logistics,
+                  labelKey: "console:nav.shipmentDetail",
                 },
               ],
             } satisfies MerchantConsoleRouteHandle,

@@ -18,4 +18,5 @@ type Lifecycle interface {
 type Reservation interface {
 	Freeze(ctx context.Context, db database.DBTX, items []model.ReservationItem) error
 	Release(ctx context.Context, db database.DBTX, items []model.ReservationItem) error
+	Commit(ctx context.Context, db database.DBTX, items []model.ReservationItem) error
 }

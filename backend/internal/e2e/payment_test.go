@@ -20,11 +20,13 @@ import (
 	"time"
 
 	inventorymodule "pinshaoshao/internal/feature/inventory"
+	logisticsmodule "pinshaoshao/internal/feature/logistics"
 	ordermodule "pinshaoshao/internal/feature/order"
 	orderdto "pinshaoshao/internal/feature/order/dto"
 	paymentmodule "pinshaoshao/internal/feature/payment"
 	paymentdto "pinshaoshao/internal/feature/payment/dto"
 	"pinshaoshao/internal/http/authctx"
+	mocklogisticsmodule "pinshaoshao/internal/mock/logistics"
 	mockpaymentmodule "pinshaoshao/internal/mock/payment"
 	mockpaymentdto "pinshaoshao/internal/mock/payment/dto"
 
@@ -263,6 +265,19 @@ func startTestApp(t *testing.T, userID int) *testApp {
 	if err != nil {
 		t.Fatalf("create payment module: %v", err)
 	}
+	logisticsModule, err := logisticsmodule.NewModule(
+		testPool,
+		orderModule.ShippingLifecycle(),
+		logisticsmodule.Config{
+			GatewayBaseURL: baseURL,
+			WebhookSecret:  testWebhookSecret,
+			NotifyURL:      baseURL + "/api/v1/logistics/webhook",
+			HTTPClient:     &http.Client{Timeout: 5 * time.Second},
+		},
+	)
+	if err != nil {
+		t.Fatalf("create logistics module: %v", err)
+	}
 	mockPaymentModule, err := mockpaymentmodule.NewModule(testPool, mockpaymentmodule.Config{
 		WebhookSecret:            testWebhookSecret,
 		PublicBaseURL:            baseURL,
@@ -273,21 +288,43 @@ func startTestApp(t *testing.T, userID int) *testApp {
 	if err != nil {
 		t.Fatalf("create mock payment module: %v", err)
 	}
+	mockLogisticsModule, err := mocklogisticsmodule.NewModule(testPool, mocklogisticsmodule.Config{
+		WebhookSecret:            testWebhookSecret,
+		NotificationPollInterval: 25 * time.Millisecond,
+		NotificationRetryDelays:  []time.Duration{50 * time.Millisecond},
+		HTTPClient:               &http.Client{Timeout: 5 * time.Second},
+	})
+	if err != nil {
+		t.Fatalf("create mock logistics module: %v", err)
+	}
 	workerCtx, stopWorkers := context.WithCancel(context.Background())
 	mockPaymentModule.Start(workerCtx)
+	mockLogisticsModule.Start(workerCtx)
 	t.Cleanup(func() {
 		stopWorkers()
 		mockPaymentModule.Stop()
+		mockLogisticsModule.Stop()
 	})
 
+	var shopID int
+	if err := testPool.QueryRow(
+		context.Background(),
+		`SELECT id FROM shops ORDER BY id LIMIT 1`,
+	).Scan(&shopID); err != nil {
+		t.Fatalf("read test shop: %v", err)
+	}
 	router := gin.New()
 	auth := func(ctx *gin.Context) {
 		ctx.Set(authctx.UserIDKey, userID)
+		ctx.Set(authctx.ShopIDKey, shopID)
 		ctx.Next()
 	}
 	orderModule.Register(router, auth)
 	paymentModule.Register(router, auth)
+	logisticsModule.Register(router, auth)
+	logisticsModule.RegisterMerchant(router, auth)
 	mockPaymentModule.Register(router, nil)
+	mockLogisticsModule.Register(router, nil)
 	server.Config.Handler = router
 	server.Start()
 
@@ -462,7 +499,9 @@ func requireFrozenStock(t *testing.T, skuID int, want int) {
 func resetDatabase(t *testing.T) {
 	t.Helper()
 
-	const query = `TRUNCATE mock_payment_notifications, mock_payment_orders, payments,
+	const query = `TRUNCATE shipment_events, shipments,
+mock_logistics_notifications, mock_logistics_events, mock_shipments,
+mock_payment_notifications, mock_payment_orders, payments,
 order_item_snapshots, sub_orders, orders, inventory_items, product_skus, products,
 product_categories, shop_sessions, shops, sessions, users RESTART IDENTITY CASCADE`
 	if _, err := testPool.Exec(context.Background(), query); err != nil {

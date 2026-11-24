@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { useDocumentTitle } from "@/shared/hooks/use-document-title"
 import { Card } from "@/shared/ui/card"
@@ -18,7 +18,13 @@ import { QueryError } from "./query-error"
 const DEFAULT_PAGE_SIZE = 10
 const EMPTY_ORDERS: MerchantOrder[] = []
 
-export default function MerchantOrdersPage({ token }: { token: string }) {
+export default function MerchantOrdersPage({
+  token,
+  renderRowActions,
+}: {
+  token: string
+  renderRowActions?: (order: MerchantOrder) => ReactNode
+}) {
   const { t } = useTranslation("console")
   useDocumentTitle(t("documentTitle.orders"))
 
@@ -77,6 +83,7 @@ export default function MerchantOrdersPage({ token }: { token: string }) {
             orders={orders}
             isPending={ordersQuery.isPending}
             isEmpty={!hasFilters && total === 0}
+            renderRowActions={renderRowActions}
           />
 
           <TablePagination

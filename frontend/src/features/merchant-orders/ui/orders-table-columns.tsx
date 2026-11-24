@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, type ReactNode } from "react"
 import { createColumnHelper, tableFeatures } from "@tanstack/react-table"
 import { useTranslation } from "react-i18next"
 import {
@@ -20,12 +20,14 @@ const merchantOrderColumnHelper = createColumnHelper<
   MerchantOrder
 >()
 
-export function useMerchantOrderColumns() {
+export function useMerchantOrderColumns(
+  renderRowActions?: (order: MerchantOrder) => ReactNode,
+) {
   const { t } = useTranslation("console")
 
   return useMemo(
-    () =>
-      merchantOrderColumnHelper.columns([
+    () => {
+      const columns = [
         merchantOrderColumnHelper.accessor("order_id", {
           header: t("orders.table.order"),
           cell: ({ row }) => (
@@ -87,7 +89,18 @@ export function useMerchantOrderColumns() {
           },
           cell: ({ getValue }) => formatDateTimeSeconds(getValue()),
         }),
-      ]),
-    [t],
+      ]
+      if (renderRowActions) {
+        columns.push(
+          merchantOrderColumnHelper.display({
+            id: "actions",
+            header: t("orders.table.actions"),
+            cell: ({ row }) => renderRowActions(row.original),
+          }),
+        )
+      }
+      return merchantOrderColumnHelper.columns(columns)
+    },
+    [renderRowActions, t],
   )
 }

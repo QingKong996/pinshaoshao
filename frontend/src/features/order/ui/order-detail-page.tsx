@@ -26,7 +26,7 @@ import { useDocumentTitle } from "@/shared/hooks/use-document-title"
 import { describeOrderError } from "../model/errors"
 import { useCancelOrder } from "../model/mutations"
 import { useOrder } from "../model/queries"
-import type { Order } from "../types"
+import type { Order, SubOrder } from "../types"
 import { formatOrderSpecs } from "./format-specs"
 import {
   OrderStatusBadge,
@@ -37,10 +37,12 @@ export function OrderDetailPage({
   token,
   orderID,
   renderSidebar,
+  renderSubOrderFooter,
 }: {
   token: string
   orderID: number
   renderSidebar?: (order: Order) => ReactNode
+  renderSubOrderFooter?: (order: Order, subOrder: SubOrder) => ReactNode
 }) {
   const { t } = useTranslation("order")
   useDocumentTitle(t("detail.documentTitle", { id: orderID }))
@@ -192,6 +194,7 @@ export function OrderDetailPage({
                     </li>
                   ))}
                 </ul>
+                {renderSubOrderFooter?.(order, subOrder)}
               </CardContent>
             </Card>
           ))}

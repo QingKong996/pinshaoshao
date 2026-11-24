@@ -4,7 +4,7 @@
 
 模拟支付位于 `internal/mock/payment`，两者统一放在 `backend/internal/mock` 下。前端分别位于 `frontend/src/mock/payment` 和 `frontend/src/mock/logistics`。
 
-该模块用于本地开发和联调，不提供鉴权，也不对接真实承运商。商家出库由控制台或 HTTP API 显式触发。
+该模块用于本地开发和联调，不提供鉴权，也不对接真实承运商。商家出库由控制台或 HTTP API 显式触发；业务物流接入见 [logistics.md](logistics.md)。
 
 ## 配置
 
@@ -165,7 +165,7 @@ v1=hex(HMAC-SHA256(MOCKLOGISTICS_WEBHOOK_SECRET, timestamp + "." + raw_request_b
 - 禁止 `internal/feature` 导入 `internal/mock`，也禁止模拟模块导入业务 feature。
 - 模拟支付与模拟物流也不互相导入，二者只共享 `internal/webhooksig` 这类中立基础设施。
 - 前端应用层只从 `src/mock/logistics/index.ts` 公共入口导入，业务 feature 不依赖模拟模块。
-- 当前物流模块独立运行，不改商城订单状态；商家出库通过模拟控制台或 HTTP API 执行。
+- 模拟物流本身不改商城订单状态。业务 `logistics` feature 通过 HTTP 创建并出库物流单，再通过签名回调推进子订单与父订单；模拟控制台仍可直接操作物流平台用于联调。
 
 ## 测试
 
