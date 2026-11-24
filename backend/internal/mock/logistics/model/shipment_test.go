@@ -60,3 +60,49 @@ func TestShipmentStateMachine(t *testing.T) {
 		t.Fatalf("repeat complete error = %v, want invalid transition", err)
 	}
 }
+
+func TestShipmentNextAutoAction(t *testing.T) {
+	dispatchedAt := time.Date(2026, 11, 24, 12, 0, 0, 0, time.UTC)
+	deliveryDuration := 5 * time.Minute
+	shipment := &model.Shipment{
+		Status:       model.StatusPendingPickup,
+		DispatchedAt: &dispatchedAt,
+	}
+
+	if _, ok := shipment.NextAutoAction(
+		dispatchedAt.Add(time.Minute-time.Nanosecond),
+		deliveryDuration,
+	); ok {
+		t.Fatal("first automatic action should not be due before one fifth")
+	}
+	action, ok := shipment.NextAutoAction(
+		dispatchedAt.Add(time.Minute),
+		deliveryDuration,
+	)
+	if !ok || action != model.ActionAdvance {
+		t.Fatalf("first automatic action = %s/%v, want advance", action, ok)
+	}
+
+	shipment.Status = model.StatusOutForDelivery
+	if _, ok := shipment.NextAutoAction(
+		dispatchedAt.Add(deliveryDuration-time.Nanosecond),
+		deliveryDuration,
+	); ok {
+		t.Fatal("delivery should not be due before the total duration")
+	}
+	action, ok = shipment.NextAutoAction(
+		dispatchedAt.Add(deliveryDuration),
+		deliveryDuration,
+	)
+	if !ok || action != model.ActionComplete {
+		t.Fatalf("delivery action = %s/%v, want complete", action, ok)
+	}
+
+	shipment.Status = model.StatusDelivered
+	if _, ok := shipment.NextAutoAction(
+		dispatchedAt.Add(deliveryDuration),
+		deliveryDuration,
+	); ok {
+		t.Fatal("delivered shipment should not have an automatic action")
+	}
+}

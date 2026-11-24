@@ -22,7 +22,7 @@
   },
   "console": {
     "title": "模拟物流平台",
-    "description": "创建物流单，由商家确认出库，再逐步推进揽收、运输、派送和签收，并观察签名回调。",
+    "description": "创建物流单，由商家确认出库，之后揽收、运输、派送和签收会自动推进；也可以手动加速并观察签名回调。",
     "create": {
       "title": "创建物流单",
       "description": "商家订单号用于幂等。未填写的收件人、城市、承运商和商品信息会由 gofakeit 自动生成。"
@@ -46,8 +46,8 @@
         "description": "必须在详情页由商家确认出库，之后才能进入快递揽收。"
       },
       "advance": {
-        "title": "推进并签收",
-        "description": "依次推进揽收、运输、转运和派送；派送中后由完成动作签收。每次状态变化都会生成签名回调。"
+        "title": "自动推进并签收",
+        "description": "商家出库后，沙箱会在配置的配送时长内（默认 4 分钟）自动推进揽收、运输、转运、派送并签收，同时生成签名回调。手动操作可以加速。"
       },
       "isolation": "MockLogistics 使用独立表、独立路由 /mocklogistics 和独立前端目录，不调用商城 order、payment 或 inventory 模块。"
     }
@@ -111,10 +111,10 @@
     "routeValue": "{{origin}} → {{destination}}",
     "actions": {
       "title": "物流操作",
-      "description": "状态只能按顺序推进，商家出库是第一步。",
+      "description": "出库后状态会自动推进，手动操作可以加速。",
       "outboundHint": "商家确认商品已经离开仓库后，物流才会进入待揽收。",
-      "advanceHint": "推进到下一个物流节点，并生成对应回调。",
-      "completeHint": "快件已进入派送中，确认后完成签收。",
+      "advanceHint": "立即推进到下一节点，无需等待自动推进。",
+      "completeHint": "到达配送时长后会自动签收；也可以现在手动确认签收。",
       "terminalHint": "物流单已完成，不能再推进。"
     },
     "fields": {
@@ -142,7 +142,7 @@
     },
     "timeline": {
       "title": "物流轨迹",
-      "description": "每次推进都会写入一条事件，并触发签名回调。",
+      "description": "自动或手动状态变化都会写入轨迹，并触发签名回调。",
       "empty": "暂无物流轨迹。",
       "sequence": "节点 {{sequence}}",
       "location": "位置"

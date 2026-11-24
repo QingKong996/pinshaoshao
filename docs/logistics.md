@@ -9,6 +9,7 @@
 - `logistics` 拥有 `shipments` 与 `shipment_events`。
 - 每个子订单最多一张业务发货单；重复发货请求返回已有发货单。
 - 商家发货时，业务服务调用 MockLogistics 创建物流单并立即确认出库。
+- MockLogistics 按 `MOCKLOGISTICS_DELIVERY_DURATION` 自动推进并签收；业务侧只消费签名回调。
 - 发货单落库、子订单变为 `shipped`、父订单重新计算状态、冻结库存转售出，在同一个数据库事务内完成。
 - 签名回调只更新轨迹和发货单状态；签收时在同一事务内完成子订单与父订单。
 - `logistics` 不直接访问订单表或库存表，只通过 `order/shippingport` 暴露的履约端口协作。

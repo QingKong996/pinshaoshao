@@ -17,9 +17,15 @@ import { useRetryMockShipmentNotification } from "../model/mutations"
 import { useMockShipmentNotifications } from "../model/queries"
 import { NotificationStatusBadge } from "./shipment-status-badge"
 
-export function NotificationList({ shipmentNo }: { shipmentNo: string }) {
+export function NotificationList({
+  shipmentNo,
+  isActive,
+}: {
+  shipmentNo: string
+  isActive: boolean
+}) {
   const { t } = useTranslation("mocklogistics")
-  const notifications = useMockShipmentNotifications(shipmentNo)
+  const notifications = useMockShipmentNotifications(shipmentNo, isActive)
   const retryNotification = useRetryMockShipmentNotification(shipmentNo)
   const items = notifications.data?.items ?? []
 

@@ -180,18 +180,20 @@ flowchart LR
     Merchant[商家控制台 / 调用方]
     API[MockLogistics API<br/>创建、查询、出库、推进、完成]
     DB[(mock_shipments<br/>mock_logistics_events<br/>mock_logistics_notifications)]
+    Progress[自动推进 Worker]
     Notifier[通知投递 Worker]
     Receiver[notify_url]
 
     Merchant -->|REST| API
     API --> DB
+    Progress --> DB
     Notifier --> DB
     Notifier -->|HMAC-SHA256 签名| Receiver
 ```
 
 - 物流状态机、轨迹事件、回调 outbox 和重试全部封装在 `internal/mock/logistics`。
-- 商家必须先确认出库，之后才能揽收和转运；派送中后通过完成动作签收。
-- 模拟数据由 `gofakeit` 生成，状态和时间戳仍由显式状态机控制。
+- 商家必须先确认出库，之后按可配置的总配送时长自动完成揽收、转运、派送和签收；手动推进与签收仍可用。
+- 模拟数据由 `gofakeit` 生成，状态和时间戳仍由显式状态机控制；自动推进 worker 只按计划触发同一状态机。
 - 业务 `internal/feature/logistics` 通过 HTTP 创建物流单并立即出库；签名回调写入业务发货单轨迹，并在签收时完成订单。
 - 业务发货单保存在 `shipments`、`shipment_events`，与模拟平台表没有外键关系。
 

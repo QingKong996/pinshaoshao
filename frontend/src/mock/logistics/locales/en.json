@@ -22,7 +22,7 @@
   },
   "console": {
     "title": "Mock logistics platform",
-    "description": "Create shipments, confirm merchant outbound, advance pickup, transit, delivery, and completion, then inspect signed callbacks.",
+    "description": "Create shipments, confirm merchant outbound, then watch pickup, transit, delivery, and completion advance automatically. Manual controls can move faster.",
     "create": {
       "title": "Create shipment",
       "description": "The merchant order number is idempotent. Missing receiver, city, carrier, and item fields are generated with gofakeit."
@@ -46,8 +46,8 @@
         "description": "A merchant must confirm outbound from the detail page before pickup can begin."
       },
       "advance": {
-        "title": "Advance and complete",
-        "description": "Advance through pickup, transit, hub, and delivery. Confirm delivery after out for delivery. Every change creates a signed callback."
+        "title": "Automatic progression",
+        "description": "After merchant outbound, the sandbox advances through pickup, transit, hub, and delivery within the configured window (4 minutes by default), then signs automatically. Manual actions can move faster."
       },
       "isolation": "MockLogistics uses its own tables, /mocklogistics routes, and frontend folder. It does not call the storefront order, payment, or inventory modules."
     }
@@ -111,10 +111,10 @@
     "routeValue": "{{origin}} → {{destination}}",
     "actions": {
       "title": "Shipment actions",
-      "description": "Statuses advance in order. Merchant outbound is always the first step.",
+      "description": "Statuses advance automatically after outbound. Manual actions can move faster.",
       "outboundHint": "Confirm outbound after the merchant releases the parcel from the warehouse.",
-      "advanceHint": "Move the shipment to the next logistics node and queue its callback.",
-      "completeHint": "The parcel is out for delivery. Confirm to finish delivery.",
+      "advanceHint": "Advance immediately instead of waiting for the next automatic step.",
+      "completeHint": "Delivery completes automatically at the end of the window; confirm to finish now.",
       "terminalHint": "This shipment is complete and cannot advance further."
     },
     "fields": {
@@ -142,7 +142,7 @@
     },
     "timeline": {
       "title": "Tracking timeline",
-      "description": "Each advance writes an event and triggers a signed callback.",
+      "description": "Each automatic or manual change writes an event and triggers a signed callback.",
       "empty": "No tracking events yet.",
       "sequence": "Node {{sequence}}",
       "location": "Location"
