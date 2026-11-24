@@ -23,6 +23,7 @@ import zhCNFeed from "./locales/zh-CN/feed.json"
 import zhCNHome from "./locales/zh-CN/home.json"
 import zhCNOrder from "./locales/zh-CN/order.json"
 import { BRAND } from "@/shared/config/brand"
+import { mockPaymentResources } from "@/mockpayment"
 
 export const NAMESPACES = [
   "common",
@@ -32,6 +33,7 @@ export const NAMESPACES = [
   "cart",
   "order",
   "feed",
+  "mockpayment",
 ] as const
 
 export const resources = {
@@ -43,6 +45,7 @@ export const resources = {
     cart: zhCNCart,
     order: zhCNOrder,
     feed: zhCNFeed,
+    ...mockPaymentResources["zh-CN"],
   },
   en: {
     common: enCommon,
@@ -52,6 +55,7 @@ export const resources = {
     cart: enCart,
     order: enOrder,
     feed: enFeed,
+    ...mockPaymentResources.en,
   },
 }
 

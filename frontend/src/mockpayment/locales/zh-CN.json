@@ -1,0 +1,162 @@
+{
+  "shell": {
+    "title": "MockPay 沙箱",
+    "subtitle": "MOCK PAYMENT PLATFORM",
+    "sandbox": "独立沙箱",
+    "footer": "仅用于本地联调，不处理真实资金，也不依赖商城业务模块。"
+  },
+  "documentTitle": {
+    "console": "模拟支付 · {{brand}}",
+    "detail": "支付单 {{paymentNo}} · {{brand}}"
+  },
+  "actions": {
+    "copy": "复制",
+    "copied": "已复制",
+    "refresh": "刷新",
+    "retry": "重试",
+    "retrying": "重试中",
+    "dismiss": "关闭提示",
+    "back": "返回支付单列表",
+    "openCheckout": "打开收银台",
+    "copyCheckout": "复制收银台链接",
+    "close": "关闭支付单"
+  },
+  "console": {
+    "title": "模拟支付平台",
+    "description": "创建支付单、打开独立收银台，并观察签名回调和自动重试。",
+    "create": {
+      "title": "创建支付单",
+      "description": "参数与后端创建接口一致；相同商户订单号和参数重放时会返回原支付单。"
+    },
+    "lookup": {
+      "title": "查询支付单",
+      "description": "输入已有支付单号，查看状态与回调记录。",
+      "label": "支付单号",
+      "placeholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "submit": "查询",
+      "required": "请输入支付单号"
+    },
+    "guide": {
+      "title": "沙箱工作流",
+      "create": {
+        "title": "创建支付单",
+        "description": "填写商户订单号、金额和回调地址，生成独立支付单。"
+      },
+      "pay": {
+        "title": "在收银台支付",
+        "description": "打开 checkout_url，在独立收银台点击 Pay now；本页面不会绕过收银台。"
+      },
+      "notify": {
+        "title": "观察回调投递",
+        "description": "支付成功后发送签名通知，失败按退避计划重试；耗尽后可人工重试。"
+      },
+      "isolation": "MockPay 使用独立表和独立前端目录，不调用商城 order、payment 或 inventory 模块。"
+    }
+  },
+  "form": {
+    "merchantOrderNo": "商户订单号",
+    "merchantOrderNoHint": "同一订单号重放时，请求参数必须保持一致。",
+    "currency": "币种",
+    "subject": "支付标题",
+    "amount": "金额（分）",
+    "amountHint": "最小货币单位，例如 3998 表示 39.98。",
+    "notifyURL": "回调地址",
+    "notifyURLHint": "服务端会以 POST 发送签名事件。",
+    "returnURL": "支付完成返回地址",
+    "optional": "（可选）",
+    "expiresIn": "有效期（秒）",
+    "expiresHint": "允许 60–86400 秒。",
+    "submit": "创建支付单",
+    "submitting": "创建中",
+    "reset": "重置"
+  },
+  "validation": {
+    "merchantOrderNoRequired": "请填写商户订单号",
+    "merchantOrderNoLength": "商户订单号不能超过 64 个字符",
+    "amountRequired": "请填写金额",
+    "amountInvalid": "金额必须是大于 0 的安全整数（单位：分）",
+    "currencyLength": "币种必须是 3 个字母",
+    "subjectRequired": "请填写支付标题",
+    "subjectLength": "支付标题不能超过 200 个字符",
+    "notifyRequired": "请填写回调地址",
+    "notifyLength": "回调地址不能超过 2048 个字符",
+    "notifyInvalid": "回调地址必须是有效的 HTTP 或 HTTPS URL",
+    "returnLength": "返回地址不能超过 2048 个字符",
+    "returnInvalid": "返回地址必须是有效的 HTTP 或 HTTPS URL",
+    "expiresInvalid": "有效期必须是 60–86400 之间的整数秒数"
+  },
+  "status": {
+    "pending": "待支付",
+    "paid": "已支付",
+    "closed": "已关闭"
+  },
+  "notificationStatus": {
+    "pending": "待投递",
+    "delivering": "投递中",
+    "succeeded": "已送达",
+    "exhausted": "已耗尽"
+  },
+  "detail": {
+    "subtitle": "商户订单号 {{merchantOrderNo}}",
+    "amountLabel": "支付金额",
+    "expiresAt": "有效期至 {{date}}",
+    "expiredNotice": "已超过有效期，后台将很快自动关闭该支付单。",
+    "fields": {
+      "title": "支付单信息",
+      "description": "字段直接来自模拟支付 API。",
+      "paymentNo": "支付单号",
+      "merchantOrderNo": "商户订单号",
+      "checkoutURL": "收银台地址",
+      "returnURL": "支付完成返回地址",
+      "createdAt": "创建时间",
+      "expiresAt": "过期时间",
+      "paidAt": "支付时间",
+      "closedAt": "关闭时间"
+    },
+    "state": {
+      "title": "支付状态机",
+      "description": "pending 只能单向流转一次。",
+      "or": "或",
+      "note": "pending 可转为 paid 或 closed；paid 与 closed 都是终态。过期支付单由后台任务自动关闭。"
+    },
+    "notifications": {
+      "title": "回调投递",
+      "description": "签名通知按退避计划投递，投递中的记录会自动刷新。",
+      "emptyPending": "支付成功后会在这里生成 payment.paid 通知。",
+      "empty": "暂无回调通知。",
+      "eventId": "事件 ID",
+      "targetURL": "目标地址",
+      "attempts": "尝试次数",
+      "attemptValue": "{{attempts}} / {{max}}",
+      "nextAttempt": "下次尝试",
+      "lastAttempt": "上次尝试",
+      "deliveredAt": "送达时间",
+      "lastError": "最近错误"
+    },
+    "closeDialog": {
+      "title": "关闭支付单？",
+      "description": "关闭“{{subject}}”后将无法再支付，且操作不可撤销。",
+      "cancel": "保留",
+      "confirm": "确认关闭"
+    }
+  },
+  "errors": {
+    "unknown": "发生未知错误，请稍后重试。",
+    "network": "无法连接模拟支付服务，请确认后端已启动。",
+    "invalidRequest": "请求参数不符合要求，请检查表单。",
+    "duplicateOrder": "该商户订单号已用不同参数创建过支付单。",
+    "invalidPayment": "支付单号格式无效。",
+    "notFound": "支付单不存在。",
+    "expired": "支付单已过期。",
+    "server": "模拟支付服务暂时不可用。",
+    "notClosable": "当前状态无法关闭支付单。",
+    "notificationNotFound": "回调通知不存在。",
+    "notificationNotRetryable": "仅已耗尽的通知可以人工重试。",
+    "loadTitle": "无法加载支付单",
+    "createTitle": "创建支付单失败",
+    "closeTitle": "关闭支付单失败",
+    "notificationsTitle": "无法加载回调记录",
+    "loadNotifications": "请稍后刷新回调记录。",
+    "retryTitle": "重试回调失败"
+  }
+}

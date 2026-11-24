@@ -28,6 +28,11 @@ import {
   MerchantSignInPage,
   MerchantSignUpPage,
 } from "@/features/auth"
+import {
+  MOCK_PAYMENT_ROUTE_PATHS,
+  MockPaymentDetailPage,
+  MockPaymentPage,
+} from "@/mockpayment"
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +46,14 @@ export const router = createBrowserRouter([
       { path: "/products/:productID", element: <ProductDetailRoute /> },
       { path: "/orders", element: <OrdersRoute /> },
       { path: "/orders/:orderID", element: <OrderDetailRoute /> },
+      {
+        path: MOCK_PAYMENT_ROUTE_PATHS.list,
+        element: <MockPaymentPage />,
+      },
+      {
+        path: MOCK_PAYMENT_ROUTE_PATHS.detail,
+        element: <MockPaymentDetailPage />,
+      },
       {
         path: "/merchant/signin",
         element: <MerchantSignInPage redirectTo={MERCHANT_CONSOLE_HOME_PATH} />,
