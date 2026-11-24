@@ -181,7 +181,13 @@ export function ShipmentDetail({
 
       <ActionHint status={shipment.status} />
       <ShipmentTimeline shipment={shipment} />
-      <NotificationList shipmentNo={shipment.shipment_no} />
+      <NotificationList
+        shipmentNo={shipment.shipment_no}
+        isActive={
+          shipment.status !== "pending_outbound" &&
+          shipment.status !== "delivered"
+        }
+      />
     </div>
   )
 }

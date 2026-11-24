@@ -23,10 +23,17 @@ import (
 const (
 	defaultNotificationInterval  = 500 * time.Millisecond
 	defaultNotificationBatchSize = 20
+	defaultDeliveryDuration      = 4 * time.Minute
+	maxDeliveryDuration          = 5 * time.Minute
+	defaultShipmentPollInterval  = 500 * time.Millisecond
+	defaultShipmentBatchSize     = 100
 )
 
 type Config struct {
 	WebhookSecret             string
+	DeliveryDuration          time.Duration
+	ShipmentPollInterval      time.Duration
+	ShipmentBatchSize         int
 	NotificationPollInterval  time.Duration
 	NotificationBatchSize     int
 	NotificationMaxAttempts   int
@@ -40,10 +47,58 @@ func ConfigFromEnv() Config {
 	if secret == "" {
 		secret = strings.TrimSpace(os.Getenv("MOCKPAY_WEBHOOK_SECRET"))
 	}
-	return Config{WebhookSecret: secret}
+	config := Config{WebhookSecret: secret}
+
+	value := strings.TrimSpace(os.Getenv("MOCKLOGISTICS_DELIVERY_DURATION"))
+	if value == "" {
+		return config
+	}
+	duration, err := time.ParseDuration(value)
+	if err != nil {
+		slog.Warn(
+			"ignore invalid MOCKLOGISTICS_DELIVERY_DURATION",
+			"value",
+			value,
+			"error",
+			err,
+		)
+		return config
+	}
+	if duration <= 0 {
+		slog.Warn(
+			"ignore non-positive MOCKLOGISTICS_DELIVERY_DURATION",
+			"value",
+			value,
+		)
+		return config
+	}
+	if duration > maxDeliveryDuration {
+		slog.Warn(
+			"clamp MOCKLOGISTICS_DELIVERY_DURATION",
+			"value",
+			value,
+			"max",
+			maxDeliveryDuration,
+		)
+		duration = maxDeliveryDuration
+	}
+	config.DeliveryDuration = duration
+	return config
 }
 
 func (c Config) withDefaults() Config {
+	if c.DeliveryDuration <= 0 {
+		c.DeliveryDuration = defaultDeliveryDuration
+	}
+	if c.DeliveryDuration > maxDeliveryDuration {
+		c.DeliveryDuration = maxDeliveryDuration
+	}
+	if c.ShipmentPollInterval <= 0 {
+		c.ShipmentPollInterval = defaultShipmentPollInterval
+	}
+	if c.ShipmentBatchSize <= 0 {
+		c.ShipmentBatchSize = defaultShipmentBatchSize
+	}
 	if c.NotificationPollInterval <= 0 {
 		c.NotificationPollInterval = defaultNotificationInterval
 	}
@@ -60,6 +115,7 @@ type Module struct {
 	shipments     *logisticshandler.ShipmentHandler
 	notifications *logisticshandler.NotificationHandler
 	delivery      *logisticsservice.NotificationService
+	progress      *logisticsservice.ShipmentService
 	config        Config
 
 	mu      sync.Mutex
@@ -96,6 +152,7 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 		shipments:     logisticshandler.NewShipmentHandler(shipmentService),
 		notifications: logisticshandler.NewNotificationHandler(shipmentService, notificationService),
 		delivery:      notificationService,
+		progress:      shipmentService,
 		config:        config,
 	}, nil
 }
@@ -123,8 +180,9 @@ func (m *Module) Start(ctx context.Context) {
 	workerCtx, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
 	m.started = true
-	m.wg.Add(1)
+	m.wg.Add(2)
 	go m.runNotificationWorker(workerCtx)
+	go m.runShipmentWorker(workerCtx)
 }
 
 func (m *Module) Stop() {
@@ -150,6 +208,28 @@ func (m *Module) runNotificationWorker(ctx context.Context) {
 		if err := m.delivery.DeliverDue(ctx, m.config.NotificationBatchSize); err != nil &&
 			ctx.Err() == nil {
 			slog.ErrorContext(ctx, "deliver mock logistics notifications", "error", err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+func (m *Module) runShipmentWorker(ctx context.Context) {
+	defer m.wg.Done()
+	ticker := time.NewTicker(m.config.ShipmentPollInterval)
+	defer ticker.Stop()
+
+	for {
+		if _, err := m.progress.AdvanceDue(
+			ctx,
+			m.config.DeliveryDuration,
+			m.config.ShipmentBatchSize,
+		); err != nil && ctx.Err() == nil {
+			slog.ErrorContext(ctx, "advance mock logistics shipments", "error", err)
 		}
 
 		select {

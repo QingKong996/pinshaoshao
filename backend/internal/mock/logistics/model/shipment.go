@@ -41,6 +41,8 @@ const (
 	StatusDelivered       Status = "delivered"
 )
 
+const deliveryProgressStageCount = 5
+
 type Action string
 
 const (
@@ -184,6 +186,43 @@ func (s *Shipment) Apply(action Action, now time.Time) (Transition, error) {
 
 func (s *Shipment) IsDispatched() bool {
 	return dispatchedStatuses[s.Status]
+}
+
+// NextAutoAction returns the next automatic transition once its stage is due.
+func (s *Shipment) NextAutoAction(
+	now time.Time,
+	deliveryDuration time.Duration,
+) (Action, bool) {
+	if s.DispatchedAt == nil || deliveryDuration <= 0 {
+		return "", false
+	}
+
+	stage := 0
+	switch s.Status {
+	case StatusPendingPickup:
+		stage = 1
+	case StatusPickedUp:
+		stage = 2
+	case StatusInTransit:
+		stage = 3
+	case StatusAtTransitHub:
+		stage = 4
+	case StatusOutForDelivery:
+		stage = 5
+	default:
+		return "", false
+	}
+
+	dueAt := s.DispatchedAt.Add(
+		deliveryDuration * time.Duration(stage) / deliveryProgressStageCount,
+	)
+	if now.Before(dueAt) {
+		return "", false
+	}
+	if s.Status == StatusOutForDelivery {
+		return ActionComplete, true
+	}
+	return ActionAdvance, true
 }
 
 type NotificationStatus string

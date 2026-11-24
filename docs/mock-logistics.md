@@ -4,13 +4,16 @@
 
 模拟支付位于 `internal/mock/payment`，两者统一放在 `backend/internal/mock` 下。前端分别位于 `frontend/src/mock/payment` 和 `frontend/src/mock/logistics`。
 
-该模块用于本地开发和联调，不提供鉴权，也不对接真实承运商。商家出库由控制台或 HTTP API 显式触发；业务物流接入见 [logistics.md](logistics.md)。
+该模块用于本地开发和联调，不提供鉴权，也不对接真实承运商。商家出库由控制台或 HTTP API 显式触发，之后按配置的总配送时长自动推进；业务物流接入见 [logistics.md](logistics.md)。
 
 ## 配置
 
 | 环境变量 | 必填 | 说明 |
 | --- | --- | --- |
 | `MOCKLOGISTICS_WEBHOOK_SECRET` | 是 | 物流回调 HMAC-SHA256 密钥；为空时回退到 `MOCKPAY_WEBHOOK_SECRET` 以便本地联调 |
+| `MOCKLOGISTICS_DELIVERY_DURATION` | 否 | 商家出库到签收的总时长，Go duration 格式；默认 `4m`，最大 `5m`，超过上限会截断到 `5m` |
+
+无法解析或非正数的配送时长会回退到默认值。
 
 启动前执行 `backend/migrations/20261124140000_create_mock_logistics.sql` 迁移。
 
@@ -38,11 +41,13 @@ out_for_delivery
 delivered
 ```
 
+- 商家出库后，后台按总配送时长平均推进 5 个节点；默认 4 分钟完成，进程重启后仍按 `dispatched_at` 继续推进。
+- 总配送时长由 `MOCKLOGISTICS_DELIVERY_DURATION` 配置，例如 `2m`、`90s`；大于 `5m` 的值会截断到 `5m`。
 - 创建后为 `pending_outbound`，不能直接推进，必须先由商家确认出库。
 - `outbound` 是商家动作；重复调用已出库的物流单会返回当前状态，不重复写事件或回调。
-- `advance` 每次只推进一个节点；`out_for_delivery` 不能继续 `advance`，必须调用 `complete`。
-- `complete` 只在 `out_for_delivery` 可用；重复完成已签收物流单是幂等成功。
-- 创建只写初始轨迹，不发送回调；从商家出库开始，每次真实状态变化都会写一条物流事件，并在同一事务内写入一条回调通知。
+- `advance` 每次只推进一个节点，可用来加速自动流程；`out_for_delivery` 不能继续 `advance`。
+- `complete` 用于在派送中提前签收；自动流程到达总配送时长后会自行签收。重复完成已签收物流单是幂等成功。
+- 创建只写初始轨迹，不发送回调；从商家出库开始，自动或手动状态变化都会写一条物流事件，并在同一事务内写入一条回调通知。
 
 ## Mock 数据
 
@@ -64,8 +69,8 @@ delivered
 | `POST` | `/mocklogistics/api/v1/shipments` | 创建物流单，`merchant_order_no` 幂等 |
 | `GET` | `/mocklogistics/api/v1/shipments/:shipmentNo` | 查询物流单、当前状态和完整轨迹 |
 | `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/outbound` | 商家确认出库 |
-| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/advance` | 推进到下一物流节点 |
-| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/complete` | 确认签收并完成 |
+| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/advance` | 手动推进到下一物流节点，可加速自动流程 |
+| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/complete` | 手动提前签收；自动流程会按时签收 |
 | `GET` | `/mocklogistics/api/v1/shipments/:shipmentNo/notifications` | 查询回调投递记录 |
 | `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/notifications/:notificationID/retry` | 重置已耗尽的通知并立即重试 |
 | `POST` | `/mocklogistics/webhook` | 内置回调接收器 |
@@ -85,7 +90,7 @@ curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments \
   }'
 ```
 
-推进完整流程：
+手动推进完整流程（可选，自动流程无需调用）：
 
 ```bash
 curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/outbound
@@ -101,7 +106,7 @@ curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/c
 | 路径 | 说明 |
 | --- | --- |
 | `/mocklogistics` | 创建物流单、按物流单号查询 |
-| `/mocklogistics/shipments/:shipmentNo` | 状态、商家出库、推进、完成、轨迹和回调记录 |
+| `/mocklogistics/shipments/:shipmentNo` | 状态、商家出库、自动/手动推进、完成、轨迹和回调记录 |
 
 `/mocklogistics/api` 由 Vite 代理到 `http://localhost:8080`。前端路由本身不代理。
 
@@ -166,12 +171,13 @@ v1=hex(HMAC-SHA256(MOCKLOGISTICS_WEBHOOK_SECRET, timestamp + "." + raw_request_b
 - 模拟支付与模拟物流也不互相导入，二者只共享 `internal/webhooksig` 这类中立基础设施。
 - 前端应用层只从 `src/mock/logistics/index.ts` 公共入口导入，业务 feature 不依赖模拟模块。
 - 模拟物流本身不改商城订单状态。业务 `logistics` feature 通过 HTTP 创建并出库物流单，再通过签名回调推进子订单与父订单；模拟控制台仍可直接操作物流平台用于联调。
+- 自动推进 worker 与通知 worker 随模块 `Start` 启动，只查询 `mock_shipments` 并调用同一状态机，不绕过事件和回调事务。
 
 ## 测试
 
 ```bash
 go test ./internal/mock/... ./internal/router ./internal/architecture
-go test -tags integration ./internal/mock/logistics -run TestMockLogisticsFlow
+go test -tags integration ./internal/mock/logistics -run TestMockLogistics
 
 cd frontend
 npm run lint

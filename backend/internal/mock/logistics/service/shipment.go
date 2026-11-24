@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -59,6 +60,7 @@ var cityOptions = []string{
 type ShipmentRepository interface {
 	Create(ctx context.Context, shipment *model.Shipment) (*model.Shipment, bool, error)
 	Get(ctx context.Context, shipmentNo string) (*model.Shipment, error)
+	ListInProgress(ctx context.Context, limit int) ([]*model.Shipment, error)
 	Transition(
 		ctx context.Context,
 		shipmentNo string,
@@ -168,6 +170,35 @@ func (s *ShipmentService) Advance(ctx context.Context, shipmentNo string) (*mode
 
 func (s *ShipmentService) Complete(ctx context.Context, shipmentNo string) (*model.Shipment, error) {
 	return s.transition(ctx, shipmentNo, model.ActionComplete)
+}
+
+func (s *ShipmentService) AdvanceDue(
+	ctx context.Context,
+	deliveryDuration time.Duration,
+	limit int,
+) (int, error) {
+	shipments, err := s.repository.ListInProgress(ctx, limit)
+	if err != nil {
+		return 0, fmt.Errorf("service.ListInProgressShipments: %w", err)
+	}
+
+	now := s.now().UTC()
+	advanced := 0
+	for _, shipment := range shipments {
+		action, ok := shipment.NextAutoAction(now, deliveryDuration)
+		if !ok {
+			continue
+		}
+		if _, err := s.transition(ctx, shipment.ShipmentNo, action); err != nil {
+			if errors.Is(err, model.ErrInvalidShipmentTransition) ||
+				errors.Is(err, model.ErrShipmentNotFound) {
+				continue
+			}
+			return advanced, fmt.Errorf("service.AdvanceDueShipments: %w", err)
+		}
+		advanced++
+	}
+	return advanced, nil
 }
 
 func (s *ShipmentService) transition(

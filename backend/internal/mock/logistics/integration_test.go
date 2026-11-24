@@ -240,6 +240,48 @@ func TestMockLogisticsFlow(t *testing.T) {
 	}
 }
 
+func TestMockLogisticsAutoDelivery(t *testing.T) {
+	resetTables(t)
+	shipmentService, _, _ := newTestServices()
+	ctx := context.Background()
+
+	shipment, _, err := shipmentService.Create(ctx, logisticsservice.CreateShipmentInput{
+		MerchantOrderNo: "logistics-auto-order",
+		NotifyURL:       "http://localhost:8080/mocklogistics/webhook",
+	})
+	if err != nil {
+		t.Fatalf("create shipment: %v", err)
+	}
+	if _, err := shipmentService.Outbound(ctx, shipment.ShipmentNo); err != nil {
+		t.Fatalf("outbound shipment: %v", err)
+	}
+
+	for range 5 {
+		advanced, err := shipmentService.AdvanceDue(
+			ctx,
+			time.Nanosecond,
+			10,
+		)
+		if err != nil {
+			t.Fatalf("advance due shipment: %v", err)
+		}
+		if advanced != 1 {
+			t.Fatalf("advanced = %d, want 1", advanced)
+		}
+	}
+
+	shipment, err = shipmentService.Get(ctx, shipment.ShipmentNo)
+	if err != nil {
+		t.Fatalf("get delivered shipment: %v", err)
+	}
+	if shipment.Status != model.StatusDelivered || shipment.DeliveredAt == nil {
+		t.Fatalf("delivered shipment = %+v", shipment)
+	}
+	if len(shipment.Events) != 7 {
+		t.Fatalf("event count = %d, want 7", len(shipment.Events))
+	}
+}
+
 func assertAndDeliverCallback(
 	t *testing.T,
 	notificationService *logisticsservice.NotificationService,

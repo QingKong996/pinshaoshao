@@ -128,6 +128,42 @@ func (r *ShipmentRepository) Get(ctx context.Context, shipmentNo string) (*model
 	return shipment, nil
 }
 
+func (r *ShipmentRepository) ListInProgress(
+	ctx context.Context,
+	limit int,
+) ([]*model.Shipment, error) {
+	const query = `SELECT ` + shipmentColumns + `
+FROM mock_shipments
+WHERE status IN (
+    'pending_pickup',
+    'picked_up',
+    'in_transit',
+    'at_transit_hub',
+    'out_for_delivery'
+)
+ORDER BY updated_at, id
+LIMIT $1`
+
+	rows, err := r.pool.Query(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list in-progress shipments: %w", err)
+	}
+	defer rows.Close()
+
+	shipments := make([]*model.Shipment, 0)
+	for rows.Next() {
+		shipment, err := scanShipment(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan in-progress shipment: %w", err)
+		}
+		shipments = append(shipments, shipment)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return shipments, nil
+}
+
 func (r *ShipmentRepository) Transition(
 	ctx context.Context,
 	shipmentNo string,

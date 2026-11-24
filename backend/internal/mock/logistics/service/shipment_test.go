@@ -39,6 +39,18 @@ func (r *fakeShipmentRepository) Get(context.Context, string) (*model.Shipment, 
 	return r.shipment, nil
 }
 
+func (r *fakeShipmentRepository) ListInProgress(
+	context.Context,
+	int,
+) ([]*model.Shipment, error) {
+	if r.shipment == nil ||
+		!r.shipment.IsDispatched() ||
+		r.shipment.Status.IsTerminal() {
+		return nil, nil
+	}
+	return []*model.Shipment{r.shipment}, nil
+}
+
 func (r *fakeShipmentRepository) Transition(
 	_ context.Context,
 	_ string,
@@ -154,5 +166,76 @@ func TestCreateShipmentRejectsInvalidURL(t *testing.T) {
 	})
 	if !errors.Is(err, model.ErrInvalidShipmentInput) {
 		t.Fatalf("error = %v, want invalid shipment input", err)
+	}
+}
+
+func TestAdvanceDueFollowsDeliverySchedule(t *testing.T) {
+	dispatchedAt := time.Date(2026, 11, 24, 12, 0, 0, 0, time.UTC)
+	repository := &fakeShipmentRepository{
+		shipment: &model.Shipment{
+			ShipmentNo:   "4f2614df-f674-4b5e-a9e4-3fc5e7f62013",
+			Status:       model.StatusPendingPickup,
+			DispatchedAt: &dispatchedAt,
+			CreatedAt:    dispatchedAt,
+			UpdatedAt:    dispatchedAt,
+		},
+	}
+	service := NewShipmentService(repository)
+	deliveryDuration := 5 * time.Minute
+	now := dispatchedAt
+	service.now = func() time.Time { return now }
+
+	advanced, err := service.AdvanceDue(
+		context.Background(),
+		deliveryDuration,
+		10,
+	)
+	if err != nil {
+		t.Fatalf("advance before first stage: %v", err)
+	}
+	if advanced != 0 {
+		t.Fatalf("advanced = %d, want 0 before first stage", advanced)
+	}
+
+	for stage, want := range []model.Status{
+		model.StatusPickedUp,
+		model.StatusInTransit,
+		model.StatusAtTransitHub,
+		model.StatusOutForDelivery,
+		model.StatusDelivered,
+	} {
+		now = dispatchedAt.Add(
+			time.Duration(stage+1) * deliveryDuration / 5,
+		)
+		advanced, err = service.AdvanceDue(
+			context.Background(),
+			deliveryDuration,
+			10,
+		)
+		if err != nil {
+			t.Fatalf("advance to %s: %v", want, err)
+		}
+		if advanced != 1 {
+			t.Fatalf("advanced = %d, want 1 for %s", advanced, want)
+		}
+		if repository.shipment.Status != want {
+			t.Fatalf(
+				"status = %s, want %s",
+				repository.shipment.Status,
+				want,
+			)
+		}
+	}
+
+	advanced, err = service.AdvanceDue(
+		context.Background(),
+		deliveryDuration,
+		10,
+	)
+	if err != nil {
+		t.Fatalf("advance delivered shipment: %v", err)
+	}
+	if advanced != 0 {
+		t.Fatalf("advanced = %d, want 0 for delivered shipment", advanced)
 	}
 }
