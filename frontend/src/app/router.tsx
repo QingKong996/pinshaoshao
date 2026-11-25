@@ -37,12 +37,19 @@ import {
   MOCK_PAYMENT_ROUTE_PATHS,
   MockPaymentDetailPage,
   MockPaymentPage,
+  MockPaymentSignInPage,
+  mockPaymentAuth,
 } from "@/mock/payment"
 import {
   MOCK_LOGISTICS_ROUTE_PATHS,
   MockLogisticsDetailPage,
   MockLogisticsPage,
+  MockLogisticsSignInPage,
+  mockLogisticsAuth,
 } from "@/mock/logistics"
+
+const { RequireMockAuth: RequireMockPaymentAuth } = mockPaymentAuth
+const { RequireMockAuth: RequireMockLogisticsAuth } = mockLogisticsAuth
 
 export const router = createBrowserRouter([
   {
@@ -58,20 +65,44 @@ export const router = createBrowserRouter([
       { path: "/orders/:orderID", element: <OrderDetailRoute /> },
       { path: "/shipments/:shipmentNo", element: <ShipmentDetailRoute /> },
       {
+        path: MOCK_PAYMENT_ROUTE_PATHS.signIn,
+        element: <MockPaymentSignInPage />,
+      },
+      {
         path: MOCK_PAYMENT_ROUTE_PATHS.list,
-        element: <MockPaymentPage />,
+        element: (
+          <RequireMockPaymentAuth>
+            <MockPaymentPage />
+          </RequireMockPaymentAuth>
+        ),
       },
       {
         path: MOCK_PAYMENT_ROUTE_PATHS.detail,
-        element: <MockPaymentDetailPage />,
+        element: (
+          <RequireMockPaymentAuth>
+            <MockPaymentDetailPage />
+          </RequireMockPaymentAuth>
+        ),
+      },
+      {
+        path: MOCK_LOGISTICS_ROUTE_PATHS.signIn,
+        element: <MockLogisticsSignInPage />,
       },
       {
         path: MOCK_LOGISTICS_ROUTE_PATHS.list,
-        element: <MockLogisticsPage />,
+        element: (
+          <RequireMockLogisticsAuth>
+            <MockLogisticsPage />
+          </RequireMockLogisticsAuth>
+        ),
       },
       {
         path: MOCK_LOGISTICS_ROUTE_PATHS.detail,
-        element: <MockLogisticsDetailPage />,
+        element: (
+          <RequireMockLogisticsAuth>
+            <MockLogisticsDetailPage />
+          </RequireMockLogisticsAuth>
+        ),
       },
       {
         path: "/merchant/signin",

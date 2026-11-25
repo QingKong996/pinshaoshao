@@ -1,21 +1,25 @@
 # 模拟支付平台
 
-`internal/mock/payment` 是独立于 `internal/feature` 的开发用支付平台。它不引用任何业务 feature，业务侧通过 HTTP 接入；数据库只新增 `mock_payment_orders` 和 `mock_payment_notifications` 两张表。它与主 API 运行在同一进程、同一端口，通过 `/mockpay` 路由命名空间与业务接口隔离。
+`internal/mock/payment` 是独立于 `internal/feature` 的开发用支付平台。它不引用任何业务 feature，业务侧通过 HTTP 接入。它与主 API 运行在同一进程、同一端口，通过 `/mockpay` 路由命名空间与业务接口隔离，并使用同一个 PostgreSQL 实例中的独立 `pinshaoshao_mockpay` 逻辑数据库。
 
 商城业务支付接入见 [payment.md](payment.md)。
 
 前端位于 `frontend/src/mock/payment`，与 `frontend/src/mock/logistics` 一起放在 `frontend/src/mock` 下，只复用 `frontend/src/shared`。
 
-该模块用于本地开发和联调，不提供商户鉴权，也不处理真实资金。
+该模块用于本地开发和联调，不处理真实资金。运营 API 使用独立 Bearer Session 鉴权；收银台继续使用高熵 `paymentNo` 作为能力凭证。
 
 ## 配置
 
 | 环境变量 | 必填 | 说明 |
 | --- | --- | --- |
+| `MOCKPAY_DATABASE_URL` | 是 | `pinshaoshao_mockpay` 逻辑数据库 DSN，不回退到 `DATABASE_URL` |
 | `MOCKPAY_WEBHOOK_SECRET` | 是 | 回调 HMAC-SHA256 密钥 |
 | `MOCKPAY_PUBLIC_BASE_URL` | 否 | 服务 origin，例如 `http://localhost:8080`，不包含 `/mockpay`；为空时返回相对路径 |
+| `MOCKPAY_AUTH_USERNAME` | 是 | MockPay 运营账号 |
+| `MOCKPAY_AUTH_PASSWORD` | 是 | MockPay 运营密码；仅以 Argon2id 哈希落库 |
+| `MOCKPAY_AUTH_SESSION_TTL` | 否 | Session 有效期，默认 `24h` |
 
-启动前执行 `backend/migrations/20261124120000_create_mock_payments.sql` 迁移。
+数据库创建、迁移和隔离校验见 [mock-databases.md](mock-databases.md)。
 
 ## 状态机
 
@@ -40,22 +44,30 @@ pending ──claim──> delivering ──2xx──> succeeded
 
 ## HTTP API
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| `POST` | `/mockpay/api/v1/payments` | 创建支付单，`merchant_order_no` 幂等 |
-| `GET` | `/mockpay/api/v1/payments/:paymentNo` | 查询支付单；到期时顺带关闭 |
-| `POST` | `/mockpay/api/v1/payments/:paymentNo/close` | 主动关闭支付单 |
-| `GET` | `/mockpay/api/v1/payments/:paymentNo/notifications` | 查询回调投递状态 |
-| `POST` | `/mockpay/api/v1/payments/:paymentNo/notifications/retry` | 重置已耗尽的通知并立即重试 |
-| `GET` | `/mockpay/checkout/:paymentNo` | 收银台页面 |
-| `POST` | `/mockpay/checkout/:paymentNo/pay` | 收银台模拟支付 |
-| `POST` | `/mockpay/checkout/:paymentNo/close` | 收银台关闭支付单 |
+| 方法 | 路径 | 鉴权 | 说明 |
+| --- | --- | --- | --- |
+| `POST` | `/mockpay/api/v1/auth/login` | 公开 | 用户名和密码换取 Session token |
+| `POST` | `/mockpay/api/v1/auth/logout` | Bearer Session | 撤销当前 Session |
+| `POST` | `/mockpay/api/v1/payments` | Bearer Session | 创建支付单，`merchant_order_no` 幂等 |
+| `GET` | `/mockpay/api/v1/payments/:paymentNo` | Bearer Session | 查询支付单；到期时顺带关闭 |
+| `POST` | `/mockpay/api/v1/payments/:paymentNo/close` | Bearer Session | 主动关闭支付单 |
+| `GET` | `/mockpay/api/v1/payments/:paymentNo/notifications` | Bearer Session | 查询回调投递状态 |
+| `POST` | `/mockpay/api/v1/payments/:paymentNo/notifications/retry` | Bearer Session | 重置已耗尽的通知并立即重试 |
+| `GET` | `/mockpay/checkout/:paymentNo` | `paymentNo` 能力凭证 | 收银台页面 |
+| `POST` | `/mockpay/checkout/:paymentNo/pay` | `paymentNo` 能力凭证 | 收银台模拟支付 |
+| `POST` | `/mockpay/checkout/:paymentNo/close` | `paymentNo` 能力凭证 | 收银台关闭支付单 |
 
 创建支付单：
 
 ```bash
+curl -X POST http://localhost:8080/mockpay/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"<MOCKPAY_AUTH_USERNAME>","password":"<MOCKPAY_AUTH_PASSWORD>"}'
+
+export TOKEN='<token returned by login>'
 curl -X POST http://localhost:8080/mockpay/api/v1/payments \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
     "merchant_order_no": "order-20261124-001",
     "amount_cents": 3998,
@@ -73,10 +85,13 @@ curl -X POST http://localhost:8080/mockpay/api/v1/payments \
 
 | 路径 | 说明 |
 | --- | --- |
-| `/mockpay` | 创建支付单、按支付单号查询 |
-| `/mockpay/payments/:paymentNo` | 支付详情、显式状态机、收银台入口、主动关单、回调投递与人工重试 |
+| `/mockpay/signin` | MockPay 运营登录 |
+| `/mockpay` | 创建支付单、按支付单号查询；需要运营 Session |
+| `/mockpay/payments/:paymentNo` | 支付详情、显式状态机、收银台入口、主动关单、回调投递与人工重试；需要运营 Session |
 
 `/api`、`/mockpay/api` 与 `/mockpay/checkout` 均由 Vite 代理到 `http://localhost:8080`；`/mockpay` 前端路由本身不代理。开发时先启动后端并执行迁移，再运行：
+
+MockPay 前端 Session 使用独立的 `sessionStorage` 键，不复用买家或商户 `localStorage`。业务支付 Gateway 使用同一运营账号登录，并在收到 `401` 后刷新 Session、重试一次请求。
 
 ```bash
 cd frontend
@@ -138,13 +153,15 @@ v1=hex(HMAC-SHA256(MOCKPAY_WEBHOOK_SECRET, timestamp + "." + raw_request_body))
 
 - `mock_payment_orders`：商户订单号、支付单号、金额、回调地址、有效期、支付/关闭时间和显式状态。
 - `mock_payment_notifications`：回调事件 outbox、目标地址、原始 payload、投递次数、锁定租约、下次重试时间和错误。
+- `mock_auth_accounts`：环境变量引导的运营账号及 Argon2id 密码哈希。
+- `mock_auth_sessions`：32 字节 Session token 的 SHA-256 哈希、账号关联、创建时间和过期时间。
 
-两张表与业务订单表没有外键关系。MockPay 当前不单独部署，与主 API 共用进程、端口和数据库。
+这些表与业务表没有外键关系，也不存在跨数据库查询。MockPay 当前不单独部署，与主 API 共用进程和端口，但使用独立的 `pinshaoshao_mockpay` 逻辑数据库。
 
 ## 测试
 
 ```bash
-go test ./internal/mock/... ./internal/router
+go test ./internal/mock/... ./internal/http/sessionclient ./internal/router ./internal/architecture
 go test -tags integration ./internal/mock/payment -run TestMockPayment
 go test -tags integration ./internal/e2e
 

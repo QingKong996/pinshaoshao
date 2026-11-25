@@ -14,35 +14,44 @@ import (
 
 	"pinshaoshao/internal/feature/payment/apperr"
 	"pinshaoshao/internal/feature/payment/model"
+	"pinshaoshao/internal/http/sessionclient"
 )
 
 const (
+	loginPath              = "/mockpay/api/v1/auth/login"
 	createPaymentPath      = "/mockpay/api/v1/payments"
 	closePaymentPathPrefix = "/mockpay/api/v1/payments/"
 	maxResponseBytes       = 64 << 10
 )
 
 type Client struct {
-	baseURL    *url.URL
-	httpClient *http.Client
+	baseURL *url.URL
+	session *sessionclient.Client
 }
 
-func NewClient(baseURL string, httpClient *http.Client) (*Client, error) {
+func NewClient(
+	baseURL string,
+	username string,
+	password string,
+	httpClient *http.Client,
+) (*Client, error) {
 	parsed, err := url.Parse(strings.TrimRight(strings.TrimSpace(baseURL), "/"))
 	if err != nil ||
 		(parsed.Scheme != "http" && parsed.Scheme != "https") ||
 		parsed.Host == "" {
 		return nil, fmt.Errorf("invalid mock payment gateway URL")
 	}
-	if httpClient == nil {
-		httpClient = &http.Client{
-			Timeout: 5 * time.Second,
-			CheckRedirect: func(*http.Request, []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		}
+	session, err := sessionclient.New(
+		parsed.String(),
+		loginPath,
+		username,
+		password,
+		httpClient,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create mock payment session: %w", err)
 	}
-	return &Client{baseURL: parsed, httpClient: httpClient}, nil
+	return &Client{baseURL: parsed, session: session}, nil
 }
 
 type createPaymentRequest struct {
@@ -83,14 +92,19 @@ func (c *Client) CreatePayment(
 	}
 
 	endpoint := c.baseURL.ResolveReference(&url.URL{Path: createPaymentPath})
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), bytes.NewReader(payload))
-	if err != nil {
-		return nil, fmt.Errorf("create mock payment request: %w", err)
-	}
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Accept", "application/json")
-
-	response, err := c.httpClient.Do(request)
+	response, err := c.session.Do(ctx, func() (*http.Request, error) {
+		request, err := http.NewRequest(
+			http.MethodPost,
+			endpoint.String(),
+			bytes.NewReader(payload),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("create mock payment request: %w", err)
+		}
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Accept", "application/json")
+		return request, nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", apperr.ErrPaymentProviderUnavailable, err)
 	}
@@ -140,13 +154,14 @@ func (c *Client) ClosePayment(ctx context.Context, providerPaymentNo string) err
 	endpoint := c.baseURL.ResolveReference(&url.URL{
 		Path: closePaymentPathPrefix + url.PathEscape(providerPaymentNo) + "/close",
 	})
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), nil)
-	if err != nil {
-		return fmt.Errorf("create mock payment close request: %w", err)
-	}
-	request.Header.Set("Accept", "application/json")
-
-	response, err := c.httpClient.Do(request)
+	response, err := c.session.Do(ctx, func() (*http.Request, error) {
+		request, err := http.NewRequest(http.MethodPost, endpoint.String(), nil)
+		if err != nil {
+			return nil, fmt.Errorf("create mock payment close request: %w", err)
+		}
+		request.Header.Set("Accept", "application/json")
+		return request, nil
+	})
 	if err != nil {
 		return fmt.Errorf("%w: %v", apperr.ErrPaymentProviderUnavailable, err)
 	}

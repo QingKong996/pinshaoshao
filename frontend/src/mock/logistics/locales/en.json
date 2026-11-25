@@ -6,8 +6,20 @@
     "footer": "For local integration only. It simulates merchant outbound, transit, delivery, and signed callbacks without storefront business modules."
   },
   "documentTitle": {
+    "signIn": "Sign in to MockLogistics · {{brand}}",
     "console": "Mock logistics · {{brand}}",
     "detail": "Shipment {{shipmentNo}} · {{brand}}"
+  },
+  "auth": {
+    "title": "MockLogistics operator sign-in",
+    "description": "Use the configured MockLogistics operator credentials for this sandbox.",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in",
+    "invalidCredentials": "The username or password is incorrect.",
+    "unavailable": "MockLogistics is unavailable. Try again.",
+    "signOut": "Sign out"
   },
   "actions": {
     "refresh": "Refresh",

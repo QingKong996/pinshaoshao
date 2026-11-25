@@ -1,4 +1,6 @@
 export { MOCK_LOGISTICS_ROUTE_PATHS } from "./model/paths"
+export { mockLogisticsAuth } from "./model/auth"
 export { mockLogisticsResources } from "./locales"
 export { MockLogisticsDetailPage } from "./ui/mock-logistics-detail-page"
 export { MockLogisticsPage } from "./ui/mock-logistics-page"
+export { MockLogisticsSignInPage } from "./ui/mock-logistics-sign-in-page"

@@ -26,6 +26,7 @@ import (
 	paymentmodule "pinshaoshao/internal/feature/payment"
 	paymentdto "pinshaoshao/internal/feature/payment/dto"
 	"pinshaoshao/internal/http/authctx"
+	mockauth "pinshaoshao/internal/mock/auth"
 	mocklogisticsmodule "pinshaoshao/internal/mock/logistics"
 	mockpaymentmodule "pinshaoshao/internal/mock/payment"
 	mockpaymentdto "pinshaoshao/internal/mock/payment/dto"
@@ -41,7 +42,16 @@ import (
 
 const testWebhookSecret = "payment-e2e-webhook-secret"
 
-var testPool *pgxpool.Pool
+const (
+	testMockUsername = "mock-operator"
+	testMockPassword = "mockpay-test-password"
+)
+
+var (
+	testPool              *pgxpool.Pool
+	testMockPayPool       *pgxpool.Pool
+	testMockLogisticsPool *pgxpool.Pool
+)
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
@@ -60,9 +70,31 @@ func TestMain(m *testing.M) {
 	}
 
 	dsn := container.MustConnectionString(ctx, "sslmode=disable")
-	if err := migrate(ctx, dsn); err != nil {
-		slog.Error("migrate test database", "error", err)
-		os.Exit(1)
+	databaseNames := []string{
+		"pinshaoshao_mockpay_e2e",
+		"pinshaoshao_mocklogistics_e2e",
+	}
+	for _, databaseName := range databaseNames {
+		if err := createDatabase(ctx, dsn, databaseName); err != nil {
+			slog.Error("create test database", "database", databaseName, "error", err)
+			os.Exit(1)
+		}
+	}
+
+	mockPayDSN := databaseDSN(dsn, "pinshaoshao_mockpay_e2e")
+	mockLogisticsDSN := databaseDSN(dsn, "pinshaoshao_mocklogistics_e2e")
+	for position, migration := range []struct {
+		dsn  string
+		path string
+	}{
+		{dsn: dsn, path: filepath.Join("..", "..", "migrations")},
+		{dsn: mockPayDSN, path: filepath.Join("..", "..", "migrations", "mockpay")},
+		{dsn: mockLogisticsDSN, path: filepath.Join("..", "..", "migrations", "mocklogistics")},
+	} {
+		if err := migrate(ctx, migration.dsn, migration.path); err != nil {
+			slog.Error("migrate test database", "position", position, "error", err)
+			os.Exit(1)
+		}
 	}
 
 	testPool, err = pgxpool.New(ctx, dsn)
@@ -70,17 +102,29 @@ func TestMain(m *testing.M) {
 		slog.Error("connect test database", "error", err)
 		os.Exit(1)
 	}
+	testMockPayPool, err = pgxpool.New(ctx, mockPayDSN)
+	if err != nil {
+		slog.Error("connect mock payment test database", "error", err)
+		os.Exit(1)
+	}
+	testMockLogisticsPool, err = pgxpool.New(ctx, mockLogisticsDSN)
+	if err != nil {
+		slog.Error("connect mock logistics test database", "error", err)
+		os.Exit(1)
+	}
 
 	code := m.Run()
 
 	testPool.Close()
+	testMockPayPool.Close()
+	testMockLogisticsPool.Close()
 	if err := testcontainers.TerminateContainer(container); err != nil {
 		slog.Error("terminate postgres container", "error", err)
 	}
 	os.Exit(code)
 }
 
-func migrate(ctx context.Context, dsn string) error {
+func migrate(ctx context.Context, dsn string, migrationPath string) error {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return err
@@ -91,7 +135,29 @@ func migrate(ctx context.Context, dsn string) error {
 		return err
 	}
 	goose.SetLogger(goose.NopLogger())
-	return goose.UpContext(ctx, db, filepath.Join("..", "..", "migrations"))
+	return goose.UpContext(ctx, db, migrationPath)
+}
+
+func createDatabase(ctx context.Context, dsn string, databaseName string) error {
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	_, err = db.ExecContext(
+		ctx,
+		fmt.Sprintf(`CREATE DATABASE "%s"`, databaseName),
+	)
+	return err
+}
+
+func databaseDSN(dsn string, databaseName string) string {
+	parsed, err := url.Parse(dsn)
+	if err != nil {
+		panic(err)
+	}
+	parsed.Path = "/" + databaseName
+	return parsed.String()
 }
 
 func TestPaymentHTTPFlow(t *testing.T) {
@@ -238,8 +304,10 @@ func TestPaymentHTTPFlow(t *testing.T) {
 }
 
 type testApp struct {
-	serverURL string
-	client    *http.Client
+	serverURL          string
+	mockPayToken       string
+	mockLogisticsToken string
+	client             *http.Client
 }
 
 func startTestApp(t *testing.T, userID int) *testApp {
@@ -255,11 +323,13 @@ func startTestApp(t *testing.T, userID int) *testApp {
 		testPool,
 		orderModule.PaymentLifecycle(),
 		paymentmodule.Config{
-			GatewayBaseURL: baseURL,
-			WebhookSecret:  testWebhookSecret,
-			NotifyURL:      baseURL + "/api/v1/payment/webhook",
-			ReturnURLBase:  "http://127.0.0.1:4173",
-			HTTPClient:     &http.Client{Timeout: 5 * time.Second},
+			GatewayBaseURL:  baseURL,
+			WebhookSecret:   testWebhookSecret,
+			NotifyURL:       baseURL + "/api/v1/payment/webhook",
+			ReturnURLBase:   "http://127.0.0.1:4173",
+			HTTPClient:      &http.Client{Timeout: 5 * time.Second},
+			GatewayUsername: testMockUsername,
+			GatewayPassword: testMockPassword,
 		},
 	)
 	if err != nil {
@@ -269,33 +339,49 @@ func startTestApp(t *testing.T, userID int) *testApp {
 		testPool,
 		orderModule.ShippingLifecycle(),
 		logisticsmodule.Config{
-			GatewayBaseURL: baseURL,
-			WebhookSecret:  testWebhookSecret,
-			NotifyURL:      baseURL + "/api/v1/logistics/webhook",
-			HTTPClient:     &http.Client{Timeout: 5 * time.Second},
+			GatewayBaseURL:  baseURL,
+			WebhookSecret:   testWebhookSecret,
+			NotifyURL:       baseURL + "/api/v1/logistics/webhook",
+			HTTPClient:      &http.Client{Timeout: 5 * time.Second},
+			GatewayUsername: testMockUsername,
+			GatewayPassword: testMockPassword,
 		},
 	)
 	if err != nil {
 		t.Fatalf("create logistics module: %v", err)
 	}
-	mockPaymentModule, err := mockpaymentmodule.NewModule(testPool, mockpaymentmodule.Config{
+	mockPaymentModule, err := mockpaymentmodule.NewModule(testMockPayPool, mockpaymentmodule.Config{
 		WebhookSecret:            testWebhookSecret,
 		PublicBaseURL:            baseURL,
 		NotificationPollInterval: 25 * time.Millisecond,
 		ExpiryPollInterval:       time.Hour,
 		NotificationRetryDelays:  []time.Duration{50 * time.Millisecond},
+		Auth: mockauth.Config{
+			Username: testMockUsername,
+			Password: testMockPassword,
+		},
 	})
 	if err != nil {
 		t.Fatalf("create mock payment module: %v", err)
 	}
-	mockLogisticsModule, err := mocklogisticsmodule.NewModule(testPool, mocklogisticsmodule.Config{
+	mockLogisticsModule, err := mocklogisticsmodule.NewModule(testMockLogisticsPool, mocklogisticsmodule.Config{
 		WebhookSecret:            testWebhookSecret,
 		NotificationPollInterval: 25 * time.Millisecond,
 		NotificationRetryDelays:  []time.Duration{50 * time.Millisecond},
 		HTTPClient:               &http.Client{Timeout: 5 * time.Second},
+		Auth: mockauth.Config{
+			Username: testMockUsername,
+			Password: testMockPassword,
+		},
 	})
 	if err != nil {
 		t.Fatalf("create mock logistics module: %v", err)
+	}
+	if err := mockPaymentModule.BootstrapAuth(context.Background()); err != nil {
+		t.Fatalf("bootstrap mock payment auth: %v", err)
+	}
+	if err := mockLogisticsModule.BootstrapAuth(context.Background()); err != nil {
+		t.Fatalf("bootstrap mock logistics auth: %v", err)
 	}
 	workerCtx, stopWorkers := context.WithCancel(context.Background())
 	mockPaymentModule.Start(workerCtx)
@@ -323,13 +409,21 @@ func startTestApp(t *testing.T, userID int) *testApp {
 	paymentModule.Register(router, auth)
 	logisticsModule.Register(router, auth)
 	logisticsModule.RegisterMerchant(router, auth)
-	mockPaymentModule.Register(router, nil)
-	mockLogisticsModule.Register(router, nil)
+	mockPaymentModule.Register(router, mockPaymentModule.AuthMiddleware())
+	mockLogisticsModule.Register(router, mockLogisticsModule.AuthMiddleware())
 	server.Config.Handler = router
 	server.Start()
+	mockPayToken := loginMockService(t, baseURL, "/mockpay/api/v1/auth/login")
+	mockLogisticsToken := loginMockService(
+		t,
+		baseURL,
+		"/mocklogistics/api/v1/auth/login",
+	)
 
 	return &testApp{
-		serverURL: baseURL,
+		serverURL:          baseURL,
+		mockPayToken:       mockPayToken,
+		mockLogisticsToken: mockLogisticsToken,
 		client: &http.Client{
 			Timeout: 5 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -337,6 +431,42 @@ func startTestApp(t *testing.T, userID int) *testApp {
 			},
 		},
 	}
+}
+
+func loginMockService(t *testing.T, baseURL string, loginPath string) string {
+	t.Helper()
+	body, err := json.Marshal(map[string]string{
+		"username": testMockUsername,
+		"password": testMockPassword,
+	})
+	if err != nil {
+		t.Fatalf("encode mock login: %v", err)
+	}
+	request, err := http.NewRequest(
+		http.MethodPost,
+		baseURL+loginPath,
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		t.Fatalf("create mock login request: %v", err)
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatalf("login mock service: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		responseBody, _ := io.ReadAll(io.LimitReader(response.Body, 1<<16))
+		t.Fatalf("mock login status = %d, body = %s", response.StatusCode, responseBody)
+	}
+	var result struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
+		t.Fatalf("decode mock login: %v", err)
+	}
+	return result.Token
 }
 
 func (a *testApp) doJSON(
@@ -399,7 +529,14 @@ func (a *testApp) do(
 	if err != nil {
 		t.Fatalf("create %s %s request: %v", method, target, err)
 	}
-	request.Header.Set("Authorization", "Bearer e2e-session")
+	token := "e2e-session"
+	switch {
+	case strings.Contains(target, "/mockpay/api/"):
+		token = a.mockPayToken
+	case strings.Contains(target, "/mocklogistics/api/"):
+		token = a.mockLogisticsToken
+	}
+	request.Header.Set("Authorization", "Bearer "+token)
 	if contentType != "" {
 		request.Header.Set("Content-Type", contentType)
 	}
@@ -499,12 +636,22 @@ func requireFrozenStock(t *testing.T, skuID int, want int) {
 func resetDatabase(t *testing.T) {
 	t.Helper()
 
-	const query = `TRUNCATE shipment_events, shipments,
-mock_logistics_notifications, mock_logistics_events, mock_shipments,
-mock_payment_notifications, mock_payment_orders, payments,
+	const query = `TRUNCATE shipment_events, shipments, payments,
 order_item_snapshots, sub_orders, orders, inventory_items, product_skus, products,
 product_categories, shop_sessions, shops, sessions, users RESTART IDENTITY CASCADE`
 	if _, err := testPool.Exec(context.Background(), query); err != nil {
 		t.Fatalf("reset database: %v", err)
+	}
+	if _, err := testMockPayPool.Exec(
+		context.Background(),
+		`TRUNCATE mock_payment_notifications, mock_payment_orders RESTART IDENTITY CASCADE`,
+	); err != nil {
+		t.Fatalf("reset mock payment database: %v", err)
+	}
+	if _, err := testMockLogisticsPool.Exec(
+		context.Background(),
+		`TRUNCATE mock_logistics_notifications, mock_logistics_events, mock_shipments RESTART IDENTITY CASCADE`,
+	); err != nil {
+		t.Fatalf("reset mock logistics database: %v", err)
 	}
 }

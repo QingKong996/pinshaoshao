@@ -34,7 +34,7 @@ flowchart LR
     Mock -->|signed webhook| Controller
 ```
 
-业务物流与模拟物流不互相 import。共享的签名算法位于中立的 `internal/webhooksig`。
+业务物流与模拟物流不互相 import。业务 Gateway 使用中立的 `internal/http/sessionclient` 登录并缓存 Bearer Session；共享的签名算法位于中立的 `internal/webhooksig`。
 
 ## 状态
 
@@ -64,6 +64,8 @@ awaiting_shipment --ship--> shipped --deliver--> completed
 | 环境变量 | 必填 | 说明 |
 | --- | --- | --- |
 | `MOCKLOGISTICS_WEBHOOK_SECRET` | 是 | 与 MockLogistics 共用的回调 HMAC 密钥 |
+| `MOCKLOGISTICS_AUTH_USERNAME` | 是 | MockLogistics 运营账号；业务 Gateway 使用同一账号登录 |
+| `MOCKLOGISTICS_AUTH_PASSWORD` | 是 | MockLogistics 运营密码 |
 | `LOGISTICS_PUBLIC_BASE_URL` | 否 | 本服务公开地址；默认回退到 `PAYMENT_PUBLIC_BASE_URL` 或 `http://localhost:$PORT` |
 | `LOGISTICS_GATEWAY_BASE_URL` | 否 | MockLogistics origin；默认同公开地址 |
 | `LOGISTICS_NOTIFY_URL` | 否 | 回调地址；默认 `$LOGISTICS_PUBLIC_BASE_URL/api/v1/logistics/webhook` |

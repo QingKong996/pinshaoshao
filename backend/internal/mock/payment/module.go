@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	mockauth "pinshaoshao/internal/mock/auth"
 	mockpayhandler "pinshaoshao/internal/mock/payment/handler"
 	"pinshaoshao/internal/mock/payment/model"
 	mockpayrepository "pinshaoshao/internal/mock/payment/repository"
@@ -38,12 +39,14 @@ type Config struct {
 	NotificationRetryDelays   []time.Duration
 	NotificationDeliveryLease time.Duration
 	HTTPClient                *http.Client
+	Auth                      mockauth.Config
 }
 
 func ConfigFromEnv() Config {
 	return Config{
 		WebhookSecret: strings.TrimSpace(os.Getenv("MOCKPAY_WEBHOOK_SECRET")),
 		PublicBaseURL: strings.TrimSpace(os.Getenv("MOCKPAY_PUBLIC_BASE_URL")),
+		Auth:          mockauth.ConfigFromEnv("MOCKPAY"),
 	}
 }
 
@@ -70,8 +73,10 @@ type Module struct {
 	paymentHandler  *mockpayhandler.PaymentHandler
 	checkoutHandler *mockpayhandler.CheckoutHandler
 	webhookHandler  *mockpayhandler.WebhookHandler
+	authHandler     *mockauth.Handler
 	payments        *mockpayservice.PaymentService
 	notifications   *mockpayservice.NotificationService
+	authService     *mockauth.Service
 	config          Config
 
 	mu      sync.Mutex
@@ -84,6 +89,10 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 	config = config.withDefaults()
 	if strings.TrimSpace(config.WebhookSecret) == "" {
 		return nil, errors.New("MOCKPAY_WEBHOOK_SECRET is required")
+	}
+	authService, err := mockauth.NewService(pool, config.Auth)
+	if err != nil {
+		return nil, err
 	}
 	notificationRepository := mockpayrepository.NewNotificationRepository(pool)
 	paymentRepository := mockpayrepository.NewPaymentRepository(
@@ -107,14 +116,28 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 		paymentHandler:  mockpayhandler.NewPaymentHandler(paymentService, config.PublicBaseURL),
 		checkoutHandler: mockpayhandler.NewCheckoutHandler(paymentService),
 		webhookHandler:  mockpayhandler.NewWebhookHandler(paymentService, notificationService),
+		authHandler:     mockauth.NewHandler(authService),
+		authService:     authService,
 		payments:        paymentService,
 		notifications:   notificationService,
 		config:          config,
 	}, nil
 }
 
-func (m *Module) Register(r *gin.Engine, _ gin.HandlerFunc) {
+func (m *Module) BootstrapAuth(ctx context.Context) error {
+	return m.authService.Bootstrap(ctx)
+}
+
+func (m *Module) AuthMiddleware() gin.HandlerFunc {
+	return m.authHandler.Middleware()
+}
+
+func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
+	r.POST("/mockpay/api/v1/auth/login", m.authHandler.Login)
+	r.POST("/mockpay/api/v1/auth/logout", authMiddleware, m.authHandler.Logout)
+
 	api := r.Group("/mockpay/api/v1/payments")
+	api.Use(authMiddleware)
 	api.POST("", m.paymentHandler.Create)
 	api.GET("/:paymentNo", m.paymentHandler.Get)
 	api.POST("/:paymentNo/close", m.paymentHandler.Close)

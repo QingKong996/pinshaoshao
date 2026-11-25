@@ -1,12 +1,11 @@
-import { apiClient } from "@/shared/api/client"
 import type {
   CreateMockPaymentInput,
   MockPayment,
   MockPaymentNotification,
   MockPaymentNotificationList,
 } from "../dto/payment"
+import { mockPayApiClient } from "./client"
 
-const MOCKPAY_API_BASE_URL = "/mockpay/api/v1"
 const PAYMENTS_PATH = "/payments"
 
 function paymentPath(paymentNo: string) {
@@ -14,41 +13,39 @@ function paymentPath(paymentNo: string) {
 }
 
 export async function createMockPayment(input: CreateMockPaymentInput) {
-  const { data } = await apiClient.post<MockPayment>(PAYMENTS_PATH, input, {
-    baseURL: MOCKPAY_API_BASE_URL,
-  })
+  const { data } = await mockPayApiClient.post<MockPayment>(
+    PAYMENTS_PATH,
+    input,
+  )
   return data
 }
 
 export async function getMockPayment(paymentNo: string) {
-  const { data } = await apiClient.get<MockPayment>(paymentPath(paymentNo), {
-    baseURL: MOCKPAY_API_BASE_URL,
-  })
+  const { data } = await mockPayApiClient.get<MockPayment>(
+    paymentPath(paymentNo),
+  )
   return data
 }
 
 export async function closeMockPayment(paymentNo: string) {
-  const { data } = await apiClient.post<MockPayment>(
+  const { data } = await mockPayApiClient.post<MockPayment>(
     `${paymentPath(paymentNo)}/close`,
     undefined,
-    { baseURL: MOCKPAY_API_BASE_URL },
   )
   return data
 }
 
 export async function listMockPaymentNotifications(paymentNo: string) {
-  const { data } = await apiClient.get<MockPaymentNotificationList>(
+  const { data } = await mockPayApiClient.get<MockPaymentNotificationList>(
     `${paymentPath(paymentNo)}/notifications`,
-    { baseURL: MOCKPAY_API_BASE_URL },
   )
   return data
 }
 
 export async function retryMockPaymentNotification(paymentNo: string) {
-  const { data } = await apiClient.post<MockPaymentNotification>(
+  const { data } = await mockPayApiClient.post<MockPaymentNotification>(
     `${paymentPath(paymentNo)}/notifications/retry`,
     undefined,
-    { baseURL: MOCKPAY_API_BASE_URL },
   )
   return data
 }

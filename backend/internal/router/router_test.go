@@ -23,6 +23,7 @@ import (
 	userapperr "pinshaoshao/internal/feature/user/apperr"
 	usermodel "pinshaoshao/internal/feature/user/model"
 	"pinshaoshao/internal/http/httpx"
+	mockauth "pinshaoshao/internal/mock/auth"
 	mocklogisticsmodule "pinshaoshao/internal/mock/logistics"
 	mockpaymentmodule "pinshaoshao/internal/mock/payment"
 	"pinshaoshao/internal/router"
@@ -100,21 +101,25 @@ var routeCases = []routeCase{
 	{method: http.MethodGet, pattern: "/api/v1/merchant/inventory", requestPath: "/api/v1/merchant/inventory", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodPatch, pattern: "/api/v1/merchant/inventory/:skuID", requestPath: "/api/v1/merchant/inventory/2", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/merchant/dashboard", requestPath: "/api/v1/merchant/dashboard", authError: shopapperr.ErrInvalidShopSession.Error()},
-	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments", requestPath: "/mockpay/api/v1/payments"},
-	{method: http.MethodGet, pattern: "/mockpay/api/v1/payments/:paymentNo", requestPath: "/mockpay/api/v1/payments/1"},
-	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments/:paymentNo/close", requestPath: "/mockpay/api/v1/payments/1/close"},
-	{method: http.MethodGet, pattern: "/mockpay/api/v1/payments/:paymentNo/notifications", requestPath: "/mockpay/api/v1/payments/1/notifications"},
-	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments/:paymentNo/notifications/retry", requestPath: "/mockpay/api/v1/payments/1/notifications/retry"},
+	{method: http.MethodPost, pattern: "/mockpay/api/v1/auth/login", requestPath: "/mockpay/api/v1/auth/login", public: true},
+	{method: http.MethodPost, pattern: "/mockpay/api/v1/auth/logout", requestPath: "/mockpay/api/v1/auth/logout", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments", requestPath: "/mockpay/api/v1/payments", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodGet, pattern: "/mockpay/api/v1/payments/:paymentNo", requestPath: "/mockpay/api/v1/payments/1", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments/:paymentNo/close", requestPath: "/mockpay/api/v1/payments/1/close", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodGet, pattern: "/mockpay/api/v1/payments/:paymentNo/notifications", requestPath: "/mockpay/api/v1/payments/1/notifications", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments/:paymentNo/notifications/retry", requestPath: "/mockpay/api/v1/payments/1/notifications/retry", authError: mockauth.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/mockpay/checkout/:paymentNo", requestPath: "/mockpay/checkout/1"},
 	{method: http.MethodPost, pattern: "/mockpay/checkout/:paymentNo/pay", requestPath: "/mockpay/checkout/1/pay"},
 	{method: http.MethodPost, pattern: "/mockpay/checkout/:paymentNo/close", requestPath: "/mockpay/checkout/1/close"},
-	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments", requestPath: "/mocklogistics/api/v1/shipments", public: true},
-	{method: http.MethodGet, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo", requestPath: "/mocklogistics/api/v1/shipments/1"},
-	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/outbound", requestPath: "/mocklogistics/api/v1/shipments/1/outbound"},
-	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/advance", requestPath: "/mocklogistics/api/v1/shipments/1/advance"},
-	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/complete", requestPath: "/mocklogistics/api/v1/shipments/1/complete"},
-	{method: http.MethodGet, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/notifications", requestPath: "/mocklogistics/api/v1/shipments/1/notifications"},
-	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/notifications/:notificationID/retry", requestPath: "/mocklogistics/api/v1/shipments/1/notifications/2/retry"},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/auth/login", requestPath: "/mocklogistics/api/v1/auth/login", public: true},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/auth/logout", requestPath: "/mocklogistics/api/v1/auth/logout", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments", requestPath: "/mocklogistics/api/v1/shipments", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodGet, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo", requestPath: "/mocklogistics/api/v1/shipments/1", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/outbound", requestPath: "/mocklogistics/api/v1/shipments/1/outbound", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/advance", requestPath: "/mocklogistics/api/v1/shipments/1/advance", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/complete", requestPath: "/mocklogistics/api/v1/shipments/1/complete", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodGet, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/notifications", requestPath: "/mocklogistics/api/v1/shipments/1/notifications", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/mocklogistics/api/v1/shipments/:shipmentNo/notifications/:notificationID/retry", requestPath: "/mocklogistics/api/v1/shipments/1/notifications/2/retry", authError: mockauth.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/mocklogistics/webhook", requestPath: "/mocklogistics/webhook", public: true, publicCode: http.StatusNoContent},
 }
 
@@ -128,9 +133,11 @@ func newTestRouter(t *testing.T) *gin.Engine {
 		nil,
 		orderModule.PaymentLifecycle(),
 		paymentmodule.Config{
-			GatewayBaseURL: "http://localhost:8080",
-			WebhookSecret:  "test-signing-key",
-			NotifyURL:      "http://localhost:8080/api/v1/payment/webhook",
+			GatewayBaseURL:  "http://localhost:8080",
+			WebhookSecret:   "test-signing-key",
+			NotifyURL:       "http://localhost:8080/api/v1/payment/webhook",
+			GatewayUsername: "mockpay-test",
+			GatewayPassword: "mockpay-test-password",
 		},
 	)
 	if err != nil {
@@ -140,9 +147,11 @@ func newTestRouter(t *testing.T) *gin.Engine {
 		nil,
 		orderModule.ShippingLifecycle(),
 		logisticsmodule.Config{
-			GatewayBaseURL: "http://localhost:8080",
-			WebhookSecret:  "test-signing-key",
-			NotifyURL:      "http://localhost:8080/api/v1/logistics/webhook",
+			GatewayBaseURL:  "http://localhost:8080",
+			WebhookSecret:   "test-signing-key",
+			NotifyURL:       "http://localhost:8080/api/v1/logistics/webhook",
+			GatewayUsername: "mocklogistics-test",
+			GatewayPassword: "mocklogistics-test-password",
 		},
 	)
 	if err != nil {
@@ -150,33 +159,52 @@ func newTestRouter(t *testing.T) *gin.Engine {
 	}
 	mockPaymentModule, err := mockpaymentmodule.NewModule(nil, mockpaymentmodule.Config{
 		WebhookSecret: "test-signing-key",
+		Auth: mockauth.Config{
+			Username: "mockpay-test",
+			Password: "mockpay-test-password",
+		},
 	})
 	if err != nil {
 		t.Fatalf("create mock payment module: %v", err)
 	}
 	mockLogisticsModule, err := mocklogisticsmodule.NewModule(nil, mocklogisticsmodule.Config{
 		WebhookSecret: "test-signing-key",
+		Auth: mockauth.Config{
+			Username: "mocklogistics-test",
+			Password: "mocklogistics-test-password",
+		},
 	})
 	if err != nil {
 		t.Fatalf("create mock logistics module: %v", err)
 	}
 	r := gin.New()
 	router.Register(r, router.Modules{
-		User:          usermodule.NewModule(nil),
-		Shop:          shopmodule.NewModule(nil),
-		Product:       productmodule.NewModule(nil, inventoryModule.Lifecycle()),
-		Inventory:     inventoryModule,
-		Cart:          cartmodule.NewModule(nil),
-		Feed:          feedmodule.NewModule(nil),
-		Order:         orderModule,
-		Payment:       paymentModule,
-		Logistics:     logisticsModule,
-		MockPayment:   mockPaymentModule,
-		MockLogistics: mockLogisticsModule,
-		UserAuth:      usermodule.AuthMiddleware(invalidUserSession{}),
-		ShopAuth:      shopmodule.AuthMiddleware(invalidShopSession{}),
+		User:              usermodule.NewModule(nil),
+		Shop:              shopmodule.NewModule(nil),
+		Product:           productmodule.NewModule(nil, inventoryModule.Lifecycle()),
+		Inventory:         inventoryModule,
+		Cart:              cartmodule.NewModule(nil),
+		Feed:              feedmodule.NewModule(nil),
+		Order:             orderModule,
+		Payment:           paymentModule,
+		Logistics:         logisticsModule,
+		MockPayment:       mockPaymentModule,
+		MockLogistics:     mockLogisticsModule,
+		UserAuth:          usermodule.AuthMiddleware(invalidUserSession{}),
+		ShopAuth:          shopmodule.AuthMiddleware(invalidShopSession{}),
+		MockPaymentAuth:   invalidMockSessionMiddleware(),
+		MockLogisticsAuth: invalidMockSessionMiddleware(),
 	})
 	return r
+}
+
+func invalidMockSessionMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("WWW-Authenticate", "Bearer")
+		c.AbortWithStatusJSON(http.StatusUnauthorized, httpx.ErrorResponse{
+			Error: mockauth.ErrInvalidSession.Error(),
+		})
+	}
 }
 
 func TestRegisteredRoutes(t *testing.T) {

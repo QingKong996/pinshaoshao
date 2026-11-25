@@ -1,13 +1,19 @@
 import type { ReactNode } from "react"
+import { LogOut } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router"
 import { Badge } from "@/shared/ui/badge"
 import { BrandMark } from "@/shared/ui/brand-mark"
 import { LanguageSwitcher } from "@/shared/ui/language-switcher"
+import { Button } from "@/shared/ui/button"
+import { mockPaymentAuth } from "../model/auth"
 import { MOCK_PAYMENT_ROUTE_PATHS } from "../model/paths"
+
+const { useMockAuth } = mockPaymentAuth
 
 export function MockPaymentShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation("mockpayment")
+  const { session, signOut } = useMockAuth()
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/20">
@@ -34,6 +40,17 @@ export function MockPaymentShell({ children }: { children: ReactNode }) {
               {t("shell.sandbox")}
             </Badge>
             <LanguageSwitcher />
+            {session ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void signOut()}
+              >
+                <LogOut aria-hidden />
+                <span className="hidden sm:inline">{t("auth.signOut")}</span>
+              </Button>
+            ) : null}
           </div>
         </div>
       </header>

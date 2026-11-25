@@ -2,7 +2,7 @@
 
 `internal/feature/payment` 是商城侧的支付 feature。它不实现收银台，也不保存渠道内部通知队列；渠道能力由同一 API 进程中的 `internal/mock/payment` 提供，双方仍只通过网络通信。
 
-支付 feature 与模拟支付平台不互相 import，只能通过 HTTP API 和签名回调通信。双方共享的仅有中立验签算法 `internal/webhooksig`，其中不包含业务逻辑。
+支付 feature 与模拟支付平台不互相 import，只能通过 HTTP API 和签名回调通信。业务 Gateway 复用中立的 `internal/http/sessionclient` 管理 MockPay Bearer Session，双方共享的算法位于中立 `internal/webhooksig`。
 
 ## 职责边界
 
@@ -21,6 +21,8 @@
 | `PAYMENT_GATEWAY_BASE_URL` | 否 | MockPay 服务 origin，不包含 `/mockpay/api/v1`；默认同 `PAYMENT_PUBLIC_BASE_URL` |
 | `PAYMENT_NOTIFY_URL` | 否 | 回调地址，默认 `$PAYMENT_PUBLIC_BASE_URL/api/v1/payment/webhook` |
 | `PAYMENT_RETURN_URL_BASE` | 否 | 渠道支付完成后的前端地址，默认 `http://localhost:5173` |
+| `MOCKPAY_AUTH_USERNAME` | 是 | MockPay 运营账号；业务 Gateway 使用同一账号登录 |
+| `MOCKPAY_AUTH_PASSWORD` | 是 | MockPay 运营密码 |
 
 启动前执行 `backend/migrations/20261124130000_create_payments.sql`。
 
