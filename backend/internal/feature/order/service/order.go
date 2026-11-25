@@ -32,6 +32,7 @@ type OrderRepository interface {
 	CreateDirect(ctx context.Context, userID int, input model.CreateDirectOrderInput) (*model.Order, error)
 	List(ctx context.Context, userID int, filter model.OrderListFilter) (*model.OrderListResult, error)
 	ListMerchant(ctx context.Context, shopID int, filter model.MerchantOrderListFilter) (*model.MerchantOrderListResult, error)
+	GetMerchant(ctx context.Context, shopID int, subOrderID int) (*model.MerchantOrderDetail, error)
 	Get(ctx context.Context, userID int, orderID int) (*model.Order, error)
 	Cancel(ctx context.Context, userID int, orderID int) (*model.Order, error)
 }

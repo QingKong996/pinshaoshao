@@ -23,6 +23,7 @@ export const MERCHANT_CONSOLE_HOME_PATH = MERCHANT_CONSOLE_PATHS.dashboard
 
 type MerchantConsoleNavKey =
   | keyof typeof MERCHANT_CONSOLE_PATHS
+  | "orderDetail"
   | "productInfo"
   | "shipmentDetail"
 

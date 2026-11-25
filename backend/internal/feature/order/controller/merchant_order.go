@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/dto"
@@ -82,6 +83,40 @@ func (c *OrderController) ListMerchant(ctx *gin.Context) {
 	})
 }
 
+// GetMerchant returns one sub-order owned by the authenticated shop.
+//
+// @Summary     Get a merchant order
+// @Description Get one sub-order owned by the authenticated shop with immutable item snapshots.
+// @Tags        Merchant Orders
+// @Produce     json
+// @Param       subOrderID path int true "Sub-order ID"
+// @Success     200 {object} dto.MerchantOrderDetailResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     403 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
+// @Security    BearerAuth
+// @Router      /merchant/orders/{subOrderID} [get]
+func (c *OrderController) GetMerchant(ctx *gin.Context) {
+	subOrderID, err := strconv.Atoi(ctx.Param("subOrderID"))
+	if err != nil || subOrderID <= 0 {
+		ctx.JSON(http.StatusBadRequest, httpx.ErrorResponse{Error: apperr.ErrInvalidOrderID.Error()})
+		return
+	}
+
+	order, err := c.orderService.GetMerchant(
+		ctx.Request.Context(),
+		authctx.MustShopID(ctx),
+		subOrderID,
+	)
+	if err != nil {
+		c.writeError(ctx, "get merchant order", err)
+		return
+	}
+	ctx.JSON(http.StatusOK, newMerchantOrderDetailResponse(order))
+}
+
 func newMerchantOrderSummaryResponse(order *model.MerchantOrderSummary) dto.MerchantOrderSummaryResponse {
 	return dto.MerchantOrderSummaryResponse{
 		ID:               order.ID,
@@ -94,5 +129,36 @@ func newMerchantOrderSummaryResponse(order *model.MerchantOrderSummary) dto.Merc
 		ShippingAddress:  order.ShippingAddress,
 		PaidAt:           order.PaidAt,
 		CreatedAt:        order.CreatedAt,
+	}
+}
+
+func newMerchantOrderDetailResponse(order *model.MerchantOrderDetail) dto.MerchantOrderDetailResponse {
+	items := make([]dto.OrderItemResponse, 0, len(order.Items))
+	for i := range order.Items {
+		item := &order.Items[i]
+		items = append(items, dto.OrderItemResponse{
+			ID:              item.ID,
+			ProductID:       item.ProductID,
+			SKUID:           item.SKUID,
+			ProductName:     item.ProductName,
+			SKUSpecs:        item.Specs,
+			UnitPriceCents:  item.UnitPriceCents,
+			Quantity:        item.Quantity,
+			LineAmountCents: item.LineAmountCents,
+		})
+	}
+	return dto.MerchantOrderDetailResponse{
+		ID:               order.ID,
+		OrderID:          order.OrderID,
+		Status:           string(order.Status),
+		TotalAmountCents: order.TotalAmountCents,
+		ItemCount:        order.ItemCount,
+		ReceiverName:     order.ReceiverName,
+		ReceiverPhone:    order.ReceiverPhone,
+		ShippingAddress:  order.ShippingAddress,
+		PaidAt:           order.PaidAt,
+		CreatedAt:        order.CreatedAt,
+		UpdatedAt:        order.UpdatedAt,
+		Items:            items,
 	}
 }

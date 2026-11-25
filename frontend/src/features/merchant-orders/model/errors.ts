@@ -1,6 +1,11 @@
 import type { TFunction } from "i18next"
 import { ApiError } from "@/shared/api/client"
 
+export const MERCHANT_ORDER_NOT_FOUND_ERROR = new ApiError(
+  404,
+  "merchant order not found",
+)
+
 export function describeMerchantOrderError(
   error: unknown,
   t: TFunction<"console">,

@@ -17,6 +17,7 @@ import { CheckoutRoute } from "./routes/checkout-route"
 import { MerchantCategoriesRoute } from "./routes/merchant-categories-route"
 import { MerchantDashboardRoute } from "./routes/merchant-dashboard-route"
 import { MerchantInventoryRoute } from "./routes/merchant-inventory-route"
+import { MerchantOrderDetailRoute } from "./routes/merchant-order-detail-route"
 import { MerchantOrdersRoute } from "./routes/merchant-orders-route"
 import { MerchantProductDetailRoute } from "./routes/merchant-product-detail-route"
 import { MerchantProductsRoute } from "./routes/merchant-products-route"
@@ -107,6 +108,22 @@ export const router = createBrowserRouter([
                 {
                   to: MERCHANT_CONSOLE_PATHS.orders,
                   labelKey: "console:nav.orders",
+                },
+              ],
+            } satisfies MerchantConsoleRouteHandle,
+          },
+          {
+            path: `${MERCHANT_CONSOLE_PATHS.orders}/:subOrderID`,
+            element: <MerchantOrderDetailRoute />,
+            handle: {
+              breadcrumbs: [
+                {
+                  to: MERCHANT_CONSOLE_PATHS.orders,
+                  labelKey: "console:nav.orders",
+                },
+                {
+                  to: MERCHANT_CONSOLE_PATHS.orders,
+                  labelKey: "console:nav.orderDetail",
                 },
               ],
             } satisfies MerchantConsoleRouteHandle,

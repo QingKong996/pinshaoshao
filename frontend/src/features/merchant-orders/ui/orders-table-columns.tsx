@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from "react"
 import { createColumnHelper, tableFeatures } from "@tanstack/react-table"
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router"
 import {
   formatDateTimeSeconds,
   formatPriceCents,
@@ -32,9 +33,12 @@ export function useMerchantOrderColumns(
           header: t("orders.table.order"),
           cell: ({ row }) => (
             <div className="flex flex-col gap-0.5">
-              <span className="font-medium tabular-nums">
+              <Link
+                to={String(row.original.id)}
+                className="w-fit font-medium text-primary tabular-nums hover:underline"
+              >
                 #{row.original.order_id}
-              </span>
+              </Link>
               <span className="text-xs text-muted-foreground tabular-nums">
                 {t("orders.table.subOrder", { id: row.original.id })}
               </span>
