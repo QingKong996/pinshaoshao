@@ -27,4 +27,5 @@ type Order struct {
 type Lifecycle interface {
 	LockForPayment(ctx context.Context, tx pgx.Tx, userID int, orderID int) (*Order, error)
 	SettlePayment(ctx context.Context, tx pgx.Tx, orderID int, paidAt time.Time) (OrderStatus, error)
+	CancelForPayment(ctx context.Context, tx pgx.Tx, userID int, orderID int) (OrderStatus, error)
 }

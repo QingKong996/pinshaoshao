@@ -26,6 +26,7 @@ type repositoryStub struct {
 	getForPayment          func(context.Context, int, string) (*model.Payment, error)
 	setProviderTransaction func(context.Context, string, string) error
 	applyPaidCallback      func(context.Context, model.PaidCallback) (*model.Payment, error)
+	closeForUser           func(context.Context, int, string) (*model.Payment, error)
 }
 
 func (s *repositoryStub) CreateForOrder(
@@ -68,8 +69,17 @@ func (s *repositoryStub) ApplyPaidCallback(
 	return s.applyPaidCallback(ctx, callback)
 }
 
+func (s *repositoryStub) CloseForUser(
+	ctx context.Context,
+	userID int,
+	paymentNo string,
+) (*model.Payment, error) {
+	return s.closeForUser(ctx, userID, paymentNo)
+}
+
 type gatewayStub struct {
-	create func(context.Context, model.ProviderPaymentRequest) (*model.ProviderPaymentResult, error)
+	create       func(context.Context, model.ProviderPaymentRequest) (*model.ProviderPaymentResult, error)
+	closePayment func(context.Context, string) error
 }
 
 func (s gatewayStub) CreatePayment(
@@ -77,6 +87,10 @@ func (s gatewayStub) CreatePayment(
 	input model.ProviderPaymentRequest,
 ) (*model.ProviderPaymentResult, error) {
 	return s.create(ctx, input)
+}
+
+func (s gatewayStub) ClosePayment(ctx context.Context, providerPaymentNo string) error {
+	return s.closePayment(ctx, providerPaymentNo)
 }
 
 func TestPaymentServiceCreateUsesSinglePaymentPerOrder(t *testing.T) {
@@ -218,6 +232,159 @@ func TestPaymentServicePayRejectsMismatchedProviderResponse(t *testing.T) {
 	_, err := paymentService.Pay(context.Background(), 3, testPaymentNo)
 	if !errors.Is(err, apperr.ErrPaymentProviderInvalid) {
 		t.Fatalf("error = %v, want %v", err, apperr.ErrPaymentProviderInvalid)
+	}
+}
+
+func TestPaymentServiceCloseClosesProviderAndOrder(t *testing.T) {
+	providerNo := testProviderNo
+	payment := &model.Payment{
+		PaymentNo:             testPaymentNo,
+		OrderID:               7,
+		Status:                model.PaymentStatusPending,
+		ProviderTransactionID: &providerNo,
+	}
+	closed := &model.Payment{
+		PaymentNo: testPaymentNo,
+		OrderID:   7,
+		Status:    model.PaymentStatusClosed,
+	}
+	var providerClosed string
+	var repositoryClosed bool
+	repository := &repositoryStub{
+		getForUser: func(_ context.Context, userID int, paymentNo string) (*model.Payment, error) {
+			if userID != 3 || paymentNo != testPaymentNo {
+				t.Fatalf("get payment arguments = %d/%q", userID, paymentNo)
+			}
+			return payment, nil
+		},
+		closeForUser: func(_ context.Context, userID int, paymentNo string) (*model.Payment, error) {
+			if userID != 3 || paymentNo != testPaymentNo {
+				t.Fatalf("close payment arguments = %d/%q", userID, paymentNo)
+			}
+			repositoryClosed = true
+			return closed, nil
+		},
+	}
+	gateway := gatewayStub{closePayment: func(_ context.Context, providerPaymentNo string) error {
+		providerClosed = providerPaymentNo
+		return nil
+	}}
+	paymentService := service.NewPaymentService(repository, service.Config{Gateway: gateway})
+
+	got, err := paymentService.Close(context.Background(), 3, testPaymentNo)
+	if err != nil {
+		t.Fatalf("close payment: %v", err)
+	}
+	if got != closed || providerClosed != testProviderNo || !repositoryClosed {
+		t.Fatalf("result/provider/repository = %+v/%q/%t", got, providerClosed, repositoryClosed)
+	}
+}
+
+func TestPaymentServiceCloseSkipsProviderWithoutTransaction(t *testing.T) {
+	payment := &model.Payment{
+		PaymentNo: testPaymentNo,
+		Status:    model.PaymentStatusPending,
+	}
+	repository := &repositoryStub{
+		getForUser: func(context.Context, int, string) (*model.Payment, error) {
+			return payment, nil
+		},
+		closeForUser: func(context.Context, int, string) (*model.Payment, error) {
+			return &model.Payment{
+				PaymentNo: testPaymentNo,
+				Status:    model.PaymentStatusClosed,
+			}, nil
+		},
+	}
+	gateway := gatewayStub{closePayment: func(context.Context, string) error {
+		t.Fatal("payment without a provider transaction must not call the provider")
+		return nil
+	}}
+	paymentService := service.NewPaymentService(repository, service.Config{Gateway: gateway})
+
+	closed, err := paymentService.Close(context.Background(), 3, testPaymentNo)
+	if err != nil {
+		t.Fatalf("close payment: %v", err)
+	}
+	if closed.Status != model.PaymentStatusClosed {
+		t.Fatalf("status = %q, want closed", closed.Status)
+	}
+}
+
+func TestPaymentServiceCloseIsIdempotentWhenAlreadyClosed(t *testing.T) {
+	closed := &model.Payment{PaymentNo: testPaymentNo, Status: model.PaymentStatusClosed}
+	repository := &repositoryStub{
+		getForUser: func(context.Context, int, string) (*model.Payment, error) {
+			return closed, nil
+		},
+		closeForUser: func(context.Context, int, string) (*model.Payment, error) {
+			t.Fatal("already closed payment must not be closed again")
+			return nil, nil
+		},
+	}
+	gateway := gatewayStub{closePayment: func(context.Context, string) error {
+		t.Fatal("already closed payment must not call the provider")
+		return nil
+	}}
+	paymentService := service.NewPaymentService(repository, service.Config{Gateway: gateway})
+
+	got, err := paymentService.Close(context.Background(), 3, testPaymentNo)
+	if err != nil {
+		t.Fatalf("close payment: %v", err)
+	}
+	if got != closed {
+		t.Fatalf("result = %+v, want %+v", got, closed)
+	}
+}
+
+func TestPaymentServiceCloseRejectsPaidPayment(t *testing.T) {
+	repository := &repositoryStub{
+		getForUser: func(context.Context, int, string) (*model.Payment, error) {
+			return &model.Payment{
+				PaymentNo: testPaymentNo,
+				Status:    model.PaymentStatusSucceeded,
+			}, nil
+		},
+		closeForUser: func(context.Context, int, string) (*model.Payment, error) {
+			t.Fatal("paid payment must not be closed")
+			return nil, nil
+		},
+	}
+	gateway := gatewayStub{closePayment: func(context.Context, string) error {
+		t.Fatal("paid payment must not call the provider")
+		return nil
+	}}
+	paymentService := service.NewPaymentService(repository, service.Config{Gateway: gateway})
+
+	_, err := paymentService.Close(context.Background(), 3, testPaymentNo)
+	if !errors.Is(err, apperr.ErrPaymentConflict) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrPaymentConflict)
+	}
+}
+
+func TestPaymentServiceCloseStopsWhenProviderRejects(t *testing.T) {
+	providerNo := testProviderNo
+	repository := &repositoryStub{
+		getForUser: func(context.Context, int, string) (*model.Payment, error) {
+			return &model.Payment{
+				PaymentNo:             testPaymentNo,
+				Status:                model.PaymentStatusPending,
+				ProviderTransactionID: &providerNo,
+			}, nil
+		},
+		closeForUser: func(context.Context, int, string) (*model.Payment, error) {
+			t.Fatal("local payment must not close after a provider conflict")
+			return nil, nil
+		},
+	}
+	gateway := gatewayStub{closePayment: func(context.Context, string) error {
+		return apperr.ErrPaymentConflict
+	}}
+	paymentService := service.NewPaymentService(repository, service.Config{Gateway: gateway})
+
+	_, err := paymentService.Close(context.Background(), 3, testPaymentNo)
+	if !errors.Is(err, apperr.ErrPaymentConflict) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrPaymentConflict)
 	}
 }
 

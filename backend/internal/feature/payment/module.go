@@ -145,6 +145,7 @@ func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
 	protected.POST("/payments", m.paymentController.Create)
 	protected.GET("/payments/:paymentNo", m.paymentController.Get)
 	protected.POST("/payments/:paymentNo/pay", m.paymentController.Pay)
+	protected.POST("/payments/:paymentNo/close", m.paymentController.Close)
 
 	r.POST("/api/v1/payment/webhook", m.webhookHandler.Handle)
 }

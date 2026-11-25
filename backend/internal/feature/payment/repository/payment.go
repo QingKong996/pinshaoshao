@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"pinshaoshao/internal/database"
 	orderapperr "pinshaoshao/internal/feature/order/apperr"
@@ -250,6 +251,63 @@ WHERE id = $1 AND status = 'pending'`
 	})
 	if err != nil {
 		return nil, fmt.Errorf("repository.ApplyPaidCallback: %w", err)
+	}
+	return result, nil
+}
+
+func (r *PaymentRepository) CloseForUser(
+	ctx context.Context,
+	userID int,
+	paymentNo string,
+) (*model.Payment, error) {
+	orderID, err := paymentOrderID(ctx, r.pool, paymentNo)
+	if err != nil {
+		return nil, err
+	}
+
+	var result *model.Payment
+	err = pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
+		status, err := r.orders.CancelForPayment(ctx, tx, userID, orderID)
+		if err != nil {
+			return mapOrderError(err)
+		}
+		if status != paymentport.OrderStatusCancelled {
+			return apperr.ErrPaymentConflict
+		}
+
+		payment, err := getByPaymentNo(ctx, tx, paymentNo, true)
+		if err != nil {
+			return err
+		}
+		if payment.OrderID != orderID {
+			return apperr.ErrPaymentConflict
+		}
+		switch payment.Status {
+		case model.PaymentStatusClosed:
+			result = payment
+			return nil
+		case model.PaymentStatusSucceeded:
+			return apperr.ErrPaymentConflict
+		}
+		if err := payment.MarkClosed(time.Now()); err != nil {
+			return err
+		}
+
+		const query = `UPDATE payments
+SET status = 'closed', updated_at = $2
+WHERE id = $1 AND status = 'pending'`
+		tag, err := tx.Exec(ctx, query, payment.ID, payment.UpdatedAt)
+		if err != nil {
+			return fmt.Errorf("close payment: %w", err)
+		}
+		if tag.RowsAffected() != 1 {
+			return apperr.ErrPaymentConflict
+		}
+		result = payment
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("repository.ClosePaymentForUser: %w", err)
 	}
 	return result, nil
 }

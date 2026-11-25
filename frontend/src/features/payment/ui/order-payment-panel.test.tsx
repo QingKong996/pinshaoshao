@@ -135,4 +135,85 @@ describe("OrderPaymentPanel", () => {
       ),
     ).toBeInTheDocument()
   })
+
+  it("closes payment and notifies when the order is cancelled", async () => {
+    const user = userEvent.setup()
+    const onOrderCancelled = vi.fn()
+    const createPayment = vi.fn()
+    const closePayment = vi.fn()
+
+    server.use(
+      http.post("*/api/v1/payments", () => {
+        createPayment()
+        return HttpResponse.json(pendingPayment, { status: 201 })
+      }),
+      http.post(
+        "*/api/v1/payments/4f2614df-f674-4b5e-a9e4-3fc5e7f62013/close",
+        () => {
+          closePayment()
+          return HttpResponse.json({
+            ...pendingPayment,
+            status: "closed",
+          })
+        },
+      ),
+    )
+
+    renderWithProviders(
+      <OrderPaymentPanel
+        {...panelProps}
+        onOrderCancelled={onOrderCancelled}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Close payment and cancel order",
+      }),
+    )
+    expect(await screen.findByText("Close this payment?")).toBeInTheDocument()
+    await user.click(
+      screen.getByRole("button", { name: "Close and cancel order" }),
+    )
+
+    await waitFor(() => {
+      expect(onOrderCancelled).toHaveBeenCalledOnce()
+    })
+    expect(createPayment).toHaveBeenCalledOnce()
+    expect(closePayment).toHaveBeenCalledOnce()
+    expect(await screen.findByText("Order cancelled")).toBeInTheDocument()
+  })
+
+  it("shows when a payment can no longer be closed", async () => {
+    const user = userEvent.setup()
+
+    server.use(
+      http.post("*/api/v1/payments", () =>
+        HttpResponse.json(pendingPayment, { status: 201 }),
+      ),
+      http.post("*/api/v1/payments/:paymentNo/close", () =>
+        HttpResponse.json(
+          { error: "payment conflicts with the existing transaction" },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    renderWithProviders(<OrderPaymentPanel {...panelProps} />)
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Close payment and cancel order",
+      }),
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Close and cancel order" }),
+    )
+
+    expect(
+      await screen.findByText(
+        "This payment can no longer be closed. Refresh for the latest status.",
+      ),
+    ).toBeInTheDocument()
+  })
 })

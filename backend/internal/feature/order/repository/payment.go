@@ -105,3 +105,35 @@ WHERE order_id = $1 AND status = 'pending_payment'`, orderID); err != nil {
 	}
 	return paymentport.OrderStatusPaid, nil
 }
+
+func (r *OrderRepository) CancelForPayment(
+	ctx context.Context,
+	tx pgx.Tx,
+	userID int,
+	orderID int,
+) (paymentport.OrderStatus, error) {
+	const lockQuery = `SELECT status::text
+FROM orders
+WHERE id = $1 AND user_id = $2
+FOR UPDATE`
+
+	var status string
+	if err := tx.QueryRow(ctx, lockQuery, orderID, userID).Scan(&status); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", apperr.ErrOrderNotFound
+		}
+		return "", fmt.Errorf("lock order for payment cancellation: %w", err)
+	}
+
+	current := paymentport.OrderStatus(status)
+	if current == paymentport.OrderStatusCancelled {
+		return current, nil
+	}
+	if current != paymentport.OrderStatusPendingPayment {
+		return current, nil
+	}
+	if err := r.cancelPendingOrder(ctx, tx, orderID); err != nil {
+		return "", fmt.Errorf("cancel order for payment: %w", err)
+	}
+	return paymentport.OrderStatusCancelled, nil
+}

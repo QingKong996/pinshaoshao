@@ -20,6 +20,7 @@ type PaymentService interface {
 	Create(ctx context.Context, userID int, orderID int) (*model.Payment, bool, error)
 	Get(ctx context.Context, userID int, paymentNo string) (*model.Payment, error)
 	Pay(ctx context.Context, userID int, paymentNo string) (*service.PaymentSession, error)
+	Close(ctx context.Context, userID int, paymentNo string) (*model.Payment, error)
 }
 
 type PaymentController struct {
@@ -125,6 +126,35 @@ func (c *PaymentController) Pay(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, newOrderPaymentResponse(session.Payment, session.CheckoutURL))
+}
+
+// Close closes an owned pending payment and cancels its order.
+//
+// @Summary     Close a payment
+// @Description Close an owned pending payment, cancel its pending order, and release reserved inventory.
+// @Tags        Payments
+// @Produce     json
+// @Param       paymentNo path string true "Payment number"
+// @Success     200 {object} dto.OrderPaymentResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     409 {object} httpx.ErrorResponse
+// @Failure     502 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
+// @Security    BearerAuth
+// @Router      /payments/{paymentNo}/close [post]
+func (c *PaymentController) Close(ctx *gin.Context) {
+	payment, err := c.paymentService.Close(
+		ctx.Request.Context(),
+		authctx.MustUserID(ctx),
+		ctx.Param("paymentNo"),
+	)
+	if err != nil {
+		writePaymentError(ctx, "close payment", err)
+		return
+	}
+	ctx.JSON(http.StatusOK, newOrderPaymentResponse(payment, ""))
 }
 
 func newOrderPaymentResponse(payment *model.Payment, checkoutURL string) dto.OrderPaymentResponse {

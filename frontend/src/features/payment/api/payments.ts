@@ -25,3 +25,12 @@ export async function payOrderPayment(token: string, paymentNo: string) {
   )
   return data
 }
+
+export async function closeOrderPayment(token: string, paymentNo: string) {
+  const { data } = await apiClient.post<OrderPayment>(
+    `${paymentPath(paymentNo)}/close`,
+    undefined,
+    authorized(token),
+  )
+  return data
+}
