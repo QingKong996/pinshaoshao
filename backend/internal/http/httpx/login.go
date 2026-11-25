@@ -15,6 +15,9 @@ func Login(
 	invalidCredentials error,
 	banned error,
 ) {
+	c.Header("Cache-Control", "no-store")
+	c.Header("Pragma", "no-cache")
+
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
