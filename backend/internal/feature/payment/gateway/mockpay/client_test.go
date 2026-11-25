@@ -13,14 +13,28 @@ import (
 	"pinshaoshao/internal/feature/payment/model"
 )
 
+const (
+	testUsername = "mockpay-test"
+	testPassword = "mockpay-test-password"
+	testToken    = "mockpay-session-token"
+)
+
 func TestClientCreatePayment(t *testing.T) {
 	const merchantNo = "4f2614df-f674-4b5e-a9e4-3fc5e7f62013"
 	const providerNo = "8ad23f19-24f5-48b8-bbc7-243e1f1e0a98"
 
 	var received createPaymentRequest
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == loginPath {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"token": testToken})
+			return
+		}
 		if r.Method != http.MethodPost || r.URL.Path != createPaymentPath {
 			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer "+testToken {
+			t.Fatalf("authorization = %q", got)
 		}
 		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
 			t.Fatalf("decode request: %v", err)
@@ -39,7 +53,7 @@ func TestClientCreatePayment(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient(server.URL, nil)
+	client, err := NewClient(server.URL, testUsername, testPassword, nil)
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -73,16 +87,24 @@ func TestClientClosePayment(t *testing.T) {
 
 	var calls int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == loginPath {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"token": testToken})
+			return
+		}
 		calls++
 		if r.Method != http.MethodPost ||
 			r.URL.Path != closePaymentPathPrefix+providerNo+"/close" {
 			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
 		}
+		if got := r.Header.Get("Authorization"); got != "Bearer "+testToken {
+			t.Fatalf("authorization = %q", got)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
-	client, err := NewClient(server.URL, nil)
+	client, err := NewClient(server.URL, testUsername, testPassword, nil)
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -95,12 +117,17 @@ func TestClientClosePayment(t *testing.T) {
 }
 
 func TestClientClosePaymentMapsConflict(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == loginPath {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"token": testToken})
+			return
+		}
 		http.Error(w, "payment is paid", http.StatusConflict)
 	}))
 	defer server.Close()
 
-	client, err := NewClient(server.URL, nil)
+	client, err := NewClient(server.URL, testUsername, testPassword, nil)
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}

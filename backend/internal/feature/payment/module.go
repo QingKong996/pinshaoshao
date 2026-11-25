@@ -36,6 +36,8 @@ type Config struct {
 	ReturnURLBase    string
 	WebhookTolerance time.Duration
 	HTTPClient       *http.Client
+	GatewayUsername  string
+	GatewayPassword  string
 }
 
 func ConfigFromEnv() Config {
@@ -60,10 +62,12 @@ func ConfigFromEnv() Config {
 		returnURLBase = "http://localhost:5173"
 	}
 	return Config{
-		GatewayBaseURL: gatewayBaseURL,
-		WebhookSecret:  strings.TrimSpace(os.Getenv("MOCKPAY_WEBHOOK_SECRET")),
-		NotifyURL:      notifyURL,
-		ReturnURLBase:  returnURLBase,
+		GatewayBaseURL:  gatewayBaseURL,
+		WebhookSecret:   strings.TrimSpace(os.Getenv("MOCKPAY_WEBHOOK_SECRET")),
+		NotifyURL:       notifyURL,
+		ReturnURLBase:   returnURLBase,
+		GatewayUsername: strings.TrimSpace(os.Getenv("MOCKPAY_AUTH_USERNAME")),
+		GatewayPassword: os.Getenv("MOCKPAY_AUTH_PASSWORD"),
 	}
 }
 
@@ -84,7 +88,12 @@ func NewModule(
 	if err := config.validate(); err != nil {
 		return nil, err
 	}
-	gateway, err := mockpay.NewClient(config.GatewayBaseURL, config.HTTPClient)
+	gateway, err := mockpay.NewClient(
+		config.GatewayBaseURL,
+		config.GatewayUsername,
+		config.GatewayPassword,
+		config.HTTPClient,
+	)
 	if err != nil {
 		return nil, err
 	}

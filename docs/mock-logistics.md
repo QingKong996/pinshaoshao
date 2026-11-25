@@ -1,21 +1,25 @@
 # 模拟物流平台
 
-`internal/mock/logistics` 是独立于 `internal/feature` 的开发用物流平台。它不引用任何业务 feature，数据库只新增 `mock_shipments`、`mock_logistics_events` 和 `mock_logistics_notifications`。它与主 API 运行在同一进程、同一端口，通过 `/mocklogistics` 路由命名空间隔离。
+`internal/mock/logistics` 是独立于 `internal/feature` 的开发用物流平台。它不引用任何业务 feature。它与主 API 运行在同一进程、同一端口，通过 `/mocklogistics` 路由命名空间隔离，并使用同一个 PostgreSQL 实例中的独立 `pinshaoshao_mocklogistics` 逻辑数据库。
 
 模拟支付位于 `internal/mock/payment`，两者统一放在 `backend/internal/mock` 下。前端分别位于 `frontend/src/mock/payment` 和 `frontend/src/mock/logistics`。
 
-该模块用于本地开发和联调，不提供鉴权，也不对接真实承运商。商家出库由控制台或 HTTP API 显式触发，之后按配置的总配送时长自动推进；业务物流接入见 [logistics.md](logistics.md)。
+该模块用于本地开发和联调，也不对接真实承运商。运营 API 使用独立 Bearer Session 鉴权。商家出库由控制台或 HTTP API 显式触发，之后按配置的总配送时长自动推进；业务物流接入见 [logistics.md](logistics.md)。
 
 ## 配置
 
 | 环境变量 | 必填 | 说明 |
 | --- | --- | --- |
+| `MOCKLOGISTICS_DATABASE_URL` | 是 | `pinshaoshao_mocklogistics` 逻辑数据库 DSN，不回退到 `DATABASE_URL` |
 | `MOCKLOGISTICS_WEBHOOK_SECRET` | 是 | 物流回调 HMAC-SHA256 密钥；为空时回退到 `MOCKPAY_WEBHOOK_SECRET` 以便本地联调 |
 | `MOCKLOGISTICS_DELIVERY_DURATION` | 否 | 商家出库到签收的总时长，Go duration 格式；默认 `4m`，最大 `5m`，超过上限会截断到 `5m` |
+| `MOCKLOGISTICS_AUTH_USERNAME` | 是 | MockLogistics 运营账号 |
+| `MOCKLOGISTICS_AUTH_PASSWORD` | 是 | MockLogistics 运营密码；仅以 Argon2id 哈希落库 |
+| `MOCKLOGISTICS_AUTH_SESSION_TTL` | 否 | Session 有效期，默认 `24h` |
 
 无法解析或非正数的配送时长会回退到默认值。
 
-启动前执行 `backend/migrations/20261124140000_create_mock_logistics.sql` 迁移。
+数据库创建、迁移和隔离校验见 [mock-databases.md](mock-databases.md)。
 
 ## 状态机
 
@@ -64,22 +68,30 @@ delivered
 
 ## HTTP API
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| `POST` | `/mocklogistics/api/v1/shipments` | 创建物流单，`merchant_order_no` 幂等 |
-| `GET` | `/mocklogistics/api/v1/shipments/:shipmentNo` | 查询物流单、当前状态和完整轨迹 |
-| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/outbound` | 商家确认出库 |
-| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/advance` | 手动推进到下一物流节点，可加速自动流程 |
-| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/complete` | 手动提前签收；自动流程会按时签收 |
-| `GET` | `/mocklogistics/api/v1/shipments/:shipmentNo/notifications` | 查询回调投递记录 |
-| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/notifications/:notificationID/retry` | 重置已耗尽的通知并立即重试 |
-| `POST` | `/mocklogistics/webhook` | 内置回调接收器 |
+| 方法 | 路径 | 鉴权 | 说明 |
+| --- | --- | --- | --- |
+| `POST` | `/mocklogistics/api/v1/auth/login` | 公开 | 用户名和密码换取 Session token |
+| `POST` | `/mocklogistics/api/v1/auth/logout` | Bearer Session | 撤销当前 Session |
+| `POST` | `/mocklogistics/api/v1/shipments` | Bearer Session | 创建物流单，`merchant_order_no` 幂等 |
+| `GET` | `/mocklogistics/api/v1/shipments/:shipmentNo` | Bearer Session | 查询物流单、当前状态和完整轨迹 |
+| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/outbound` | Bearer Session | 商家确认出库 |
+| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/advance` | Bearer Session | 手动推进到下一物流节点，可加速自动流程 |
+| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/complete` | Bearer Session | 手动提前签收；自动流程会按时签收 |
+| `GET` | `/mocklogistics/api/v1/shipments/:shipmentNo/notifications` | Bearer Session | 查询回调投递记录 |
+| `POST` | `/mocklogistics/api/v1/shipments/:shipmentNo/notifications/:notificationID/retry` | Bearer Session | 重置已耗尽的通知并立即重试 |
+| `POST` | `/mocklogistics/webhook` | 公开空接收端 | 内置回调接收器 |
 
 创建物流单：
 
 ```bash
+curl -X POST http://localhost:8080/mocklogistics/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"<MOCKLOGISTICS_AUTH_USERNAME>","password":"<MOCKLOGISTICS_AUTH_PASSWORD>"}'
+
+export TOKEN='<token returned by login>'
 curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
     "merchant_order_no": "order-20261124-001",
     "item_summary": "Wireless keyboard",
@@ -93,22 +105,25 @@ curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments \
 手动推进完整流程（可选，自动流程无需调用）：
 
 ```bash
-curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/outbound
-curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/advance
-curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/advance
-curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/advance
-curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/advance
-curl -X POST http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/complete
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/outbound
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/advance
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/advance
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/advance
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/advance
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8080/mocklogistics/api/v1/shipments/{shipmentNo}/complete
 ```
 
 ## 前端控制台
 
 | 路径 | 说明 |
 | --- | --- |
-| `/mocklogistics` | 创建物流单、按物流单号查询 |
-| `/mocklogistics/shipments/:shipmentNo` | 状态、商家出库、自动/手动推进、完成、轨迹和回调记录 |
+| `/mocklogistics/signin` | MockLogistics 运营登录 |
+| `/mocklogistics` | 创建物流单、按物流单号查询；需要运营 Session |
+| `/mocklogistics/shipments/:shipmentNo` | 状态、商家出库、自动/手动推进、完成、轨迹和回调记录；需要运营 Session |
 
 `/mocklogistics/api` 由 Vite 代理到 `http://localhost:8080`。前端路由本身不代理。
+
+MockLogistics 前端 Session 使用独立于 MockPay、买家 Session 和商户 Session 的 `sessionStorage` 键。业务物流 Gateway 复用同一运营账号登录，并在收到 `401` 后刷新 Session、重试一次请求。
 
 ## 回调协议
 
@@ -162,8 +177,10 @@ v1=hex(HMAC-SHA256(MOCKLOGISTICS_WEBHOOK_SECRET, timestamp + "." + raw_request_b
 - `mock_shipments`：物流单、商家订单号、运单号、承运商、收寄件人、城市、状态和时间戳。
 - `mock_logistics_events`：物流轨迹，按物流单和 sequence 唯一。
 - `mock_logistics_notifications`：回调 outbox、目标地址、原始 payload、投递次数、锁定租约、下次重试时间和错误。
+- `mock_auth_accounts`：环境变量引导的运营账号及 Argon2id 密码哈希。
+- `mock_auth_sessions`：32 字节 Session token 的 SHA-256 哈希、账号关联、创建时间和过期时间。
 
-三张表与业务订单表没有外键关系。
+这些表与业务表没有外键关系，也不存在跨数据库查询。MockLogistics 使用独立的 `pinshaoshao_mocklogistics` 逻辑数据库。
 
 ## 边界
 
@@ -176,7 +193,7 @@ v1=hex(HMAC-SHA256(MOCKLOGISTICS_WEBHOOK_SECRET, timestamp + "." + raw_request_b
 ## 测试
 
 ```bash
-go test ./internal/mock/... ./internal/router ./internal/architecture
+go test ./internal/mock/... ./internal/http/sessionclient ./internal/router ./internal/architecture
 go test -tags integration ./internal/mock/logistics -run TestMockLogistics
 
 cd frontend

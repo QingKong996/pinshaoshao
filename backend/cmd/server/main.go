@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -62,19 +63,30 @@ func main() {
 	}
 	r.Use(middleware.CORS(corsOrigins))
 
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		fatal("DATABASE_URL is not set")
-	}
-
-	pool, err := pgxpool.New(ctx, dsn)
+	pool, err := openDatabasePool(ctx, "DATABASE_URL")
 	if err != nil {
-		fatal("create database pool", "error", err)
+		fatal("open main database", "error", err)
 	}
 	defer pool.Close()
 
-	if err := pool.Ping(ctx); err != nil {
-		fatal("connect database", "error", err)
+	mockPayPool, err := openDatabasePool(ctx, "MOCKPAY_DATABASE_URL")
+	if err != nil {
+		fatal("open mock payment database", "error", err)
+	}
+	defer mockPayPool.Close()
+
+	mockLogisticsPool, err := openDatabasePool(ctx, "MOCKLOGISTICS_DATABASE_URL")
+	if err != nil {
+		fatal("open mock logistics database", "error", err)
+	}
+	defer mockLogisticsPool.Close()
+
+	if err := validateDatabaseIsolation(ctx, map[string]*pgxpool.Pool{
+		"DATABASE_URL":               pool,
+		"MOCKPAY_DATABASE_URL":       mockPayPool,
+		"MOCKLOGISTICS_DATABASE_URL": mockLogisticsPool,
+	}); err != nil {
+		fatal("validate database isolation", "error", err)
 	}
 
 	userModule := usermodule.NewModule(pool)
@@ -100,13 +112,25 @@ func main() {
 	if err != nil {
 		fatal("create payment module", "error", err)
 	}
-	mockPaymentModule, err := mockpaymentmodule.NewModule(pool, mockpaymentmodule.ConfigFromEnv())
+	mockPaymentModule, err := mockpaymentmodule.NewModule(
+		mockPayPool,
+		mockpaymentmodule.ConfigFromEnv(),
+	)
 	if err != nil {
 		fatal("create mock payment module", "error", err)
 	}
-	mockLogisticsModule, err := mocklogisticsmodule.NewModule(pool, mocklogisticsmodule.ConfigFromEnv())
+	if err := mockPaymentModule.BootstrapAuth(ctx); err != nil {
+		fatal("bootstrap mock payment auth", "error", err)
+	}
+	mockLogisticsModule, err := mocklogisticsmodule.NewModule(
+		mockLogisticsPool,
+		mocklogisticsmodule.ConfigFromEnv(),
+	)
 	if err != nil {
 		fatal("create mock logistics module", "error", err)
+	}
+	if err := mockLogisticsModule.BootstrapAuth(ctx); err != nil {
+		fatal("bootstrap mock logistics auth", "error", err)
 	}
 	mockPaymentModule.Start(context.Background())
 	defer mockPaymentModule.Stop()
@@ -114,24 +138,65 @@ func main() {
 	defer mockLogisticsModule.Stop()
 
 	router.Register(r, router.Modules{
-		User:          userModule,
-		Shop:          shopModule,
-		Product:       productModule,
-		Inventory:     inventoryModule,
-		Cart:          cartModule,
-		Feed:          feedModule,
-		Order:         orderModule,
-		Payment:       paymentModule,
-		Logistics:     logisticsModule,
-		MockPayment:   mockPaymentModule,
-		MockLogistics: mockLogisticsModule,
-		UserAuth:      userModule.AuthMiddleware(),
-		ShopAuth:      shopModule.AuthMiddleware(),
+		User:              userModule,
+		Shop:              shopModule,
+		Product:           productModule,
+		Inventory:         inventoryModule,
+		Cart:              cartModule,
+		Feed:              feedModule,
+		Order:             orderModule,
+		Payment:           paymentModule,
+		Logistics:         logisticsModule,
+		MockPayment:       mockPaymentModule,
+		MockLogistics:     mockLogisticsModule,
+		UserAuth:          userModule.AuthMiddleware(),
+		ShopAuth:          shopModule.AuthMiddleware(),
+		MockPaymentAuth:   mockPaymentModule.AuthMiddleware(),
+		MockLogisticsAuth: mockLogisticsModule.AuthMiddleware(),
 	})
 
 	if err := r.Run(":" + port); err != nil {
 		fatal("run server", "error", err)
 	}
+}
+
+func openDatabasePool(ctx context.Context, environment string) (*pgxpool.Pool, error) {
+	dsn := os.Getenv(environment)
+	if dsn == "" {
+		return nil, fmt.Errorf("%s is not set", environment)
+	}
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("create pool: %w", err)
+	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("ping database: %w", err)
+	}
+	return pool, nil
+}
+
+func validateDatabaseIsolation(
+	ctx context.Context,
+	pools map[string]*pgxpool.Pool,
+) error {
+	environmentByDatabase := make(map[string]string, len(pools))
+	for environment, pool := range pools {
+		var databaseName string
+		if err := pool.QueryRow(ctx, "SELECT current_database()").Scan(&databaseName); err != nil {
+			return fmt.Errorf("read current database for %s: %w", environment, err)
+		}
+		if previous, exists := environmentByDatabase[databaseName]; exists {
+			return fmt.Errorf(
+				"%s and %s use the same database %q",
+				previous,
+				environment,
+				databaseName,
+			)
+		}
+		environmentByDatabase[databaseName] = environment
+	}
+	return nil
 }
 
 func fatal(msg string, args ...any) {

@@ -35,6 +35,8 @@ type Config struct {
 	NotifyURL        string
 	WebhookTolerance time.Duration
 	HTTPClient       *http.Client
+	GatewayUsername  string
+	GatewayPassword  string
 }
 
 func ConfigFromEnv() Config {
@@ -58,9 +60,11 @@ func ConfigFromEnv() Config {
 		notifyURL = strings.TrimRight(publicBaseURL, "/") + "/api/v1/logistics/webhook"
 	}
 	return Config{
-		GatewayBaseURL: gatewayBaseURL,
-		WebhookSecret:  strings.TrimSpace(os.Getenv("MOCKLOGISTICS_WEBHOOK_SECRET")),
-		NotifyURL:      notifyURL,
+		GatewayBaseURL:  gatewayBaseURL,
+		WebhookSecret:   strings.TrimSpace(os.Getenv("MOCKLOGISTICS_WEBHOOK_SECRET")),
+		NotifyURL:       notifyURL,
+		GatewayUsername: strings.TrimSpace(os.Getenv("MOCKLOGISTICS_AUTH_USERNAME")),
+		GatewayPassword: os.Getenv("MOCKLOGISTICS_AUTH_PASSWORD"),
 	}
 }
 
@@ -85,7 +89,12 @@ func NewModule(
 		return nil, errInvalidNotifyURL
 	}
 
-	gateway, err := mocklogistics.NewClient(config.GatewayBaseURL, config.HTTPClient)
+	gateway, err := mocklogistics.NewClient(
+		config.GatewayBaseURL,
+		config.GatewayUsername,
+		config.GatewayPassword,
+		config.HTTPClient,
+	)
 	if err != nil {
 		return nil, err
 	}

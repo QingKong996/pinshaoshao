@@ -1,12 +1,11 @@
-import { apiClient } from "@/shared/api/client"
 import type {
   CreateMockShipmentInput,
   MockShipment,
   MockShipmentNotification,
   MockShipmentNotificationList,
 } from "../dto/shipment"
+import { mockLogisticsApiClient } from "./client"
 
-const MOCK_LOGISTICS_API_BASE_URL = "/mocklogistics/api/v1"
 const SHIPMENTS_PATH = "/shipments"
 
 function shipmentPath(shipmentNo: string) {
@@ -14,51 +13,47 @@ function shipmentPath(shipmentNo: string) {
 }
 
 export async function createMockShipment(input: CreateMockShipmentInput) {
-  const { data } = await apiClient.post<MockShipment>(SHIPMENTS_PATH, input, {
-    baseURL: MOCK_LOGISTICS_API_BASE_URL,
-  })
+  const { data } = await mockLogisticsApiClient.post<MockShipment>(
+    SHIPMENTS_PATH,
+    input,
+  )
   return data
 }
 
 export async function getMockShipment(shipmentNo: string) {
-  const { data } = await apiClient.get<MockShipment>(
+  const { data } = await mockLogisticsApiClient.get<MockShipment>(
     shipmentPath(shipmentNo),
-    { baseURL: MOCK_LOGISTICS_API_BASE_URL },
   )
   return data
 }
 
 export async function outboundMockShipment(shipmentNo: string) {
-  const { data } = await apiClient.post<MockShipment>(
+  const { data } = await mockLogisticsApiClient.post<MockShipment>(
     `${shipmentPath(shipmentNo)}/outbound`,
     undefined,
-    { baseURL: MOCK_LOGISTICS_API_BASE_URL },
   )
   return data
 }
 
 export async function advanceMockShipment(shipmentNo: string) {
-  const { data } = await apiClient.post<MockShipment>(
+  const { data } = await mockLogisticsApiClient.post<MockShipment>(
     `${shipmentPath(shipmentNo)}/advance`,
     undefined,
-    { baseURL: MOCK_LOGISTICS_API_BASE_URL },
   )
   return data
 }
 
 export async function completeMockShipment(shipmentNo: string) {
-  const { data } = await apiClient.post<MockShipment>(
+  const { data } = await mockLogisticsApiClient.post<MockShipment>(
     `${shipmentPath(shipmentNo)}/complete`,
     undefined,
-    { baseURL: MOCK_LOGISTICS_API_BASE_URL },
   )
   return data
 }
 
 export async function listMockShipmentNotifications(shipmentNo: string) {
-  const { data } = await apiClient.get<MockShipmentNotificationList>(
+  const { data } = await mockLogisticsApiClient.get<MockShipmentNotificationList>(
     `${shipmentPath(shipmentNo)}/notifications`,
-    { baseURL: MOCK_LOGISTICS_API_BASE_URL },
   )
   return data
 }
@@ -67,10 +62,9 @@ export async function retryMockShipmentNotification(
   shipmentNo: string,
   notificationID: number,
 ) {
-  const { data } = await apiClient.post<MockShipmentNotification>(
+  const { data } = await mockLogisticsApiClient.post<MockShipmentNotification>(
     `${shipmentPath(shipmentNo)}/notifications/${notificationID}/retry`,
     undefined,
-    { baseURL: MOCK_LOGISTICS_API_BASE_URL },
   )
   return data
 }

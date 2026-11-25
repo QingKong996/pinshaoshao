@@ -13,34 +13,43 @@ import (
 
 	"pinshaoshao/internal/feature/logistics/apperr"
 	"pinshaoshao/internal/feature/logistics/model"
+	"pinshaoshao/internal/http/sessionclient"
 )
 
 const (
+	loginPath          = "/mocklogistics/api/v1/auth/login"
 	createShipmentPath = "/mocklogistics/api/v1/shipments"
 	maxResponseBytes   = 64 << 10
 )
 
 type Client struct {
-	baseURL    *url.URL
-	httpClient *http.Client
+	baseURL *url.URL
+	session *sessionclient.Client
 }
 
-func NewClient(baseURL string, httpClient *http.Client) (*Client, error) {
+func NewClient(
+	baseURL string,
+	username string,
+	password string,
+	httpClient *http.Client,
+) (*Client, error) {
 	parsed, err := url.Parse(strings.TrimRight(strings.TrimSpace(baseURL), "/"))
 	if err != nil ||
 		(parsed.Scheme != "http" && parsed.Scheme != "https") ||
 		parsed.Host == "" {
 		return nil, fmt.Errorf("invalid mock logistics gateway URL")
 	}
-	if httpClient == nil {
-		httpClient = &http.Client{
-			Timeout: 5 * time.Second,
-			CheckRedirect: func(*http.Request, []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		}
+	session, err := sessionclient.New(
+		parsed.String(),
+		loginPath,
+		username,
+		password,
+		httpClient,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create mock logistics session: %w", err)
 	}
-	return &Client{baseURL: parsed, httpClient: httpClient}, nil
+	return &Client{baseURL: parsed, session: session}, nil
 }
 
 type createShipmentRequest struct {
@@ -122,20 +131,21 @@ func (c *Client) post(
 	endpoint *url.URL,
 	payload []byte,
 ) (*shipmentResponse, error) {
-	var body io.Reader
-	if payload != nil {
-		body = bytes.NewReader(payload)
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), body)
-	if err != nil {
-		return nil, fmt.Errorf("create mock logistics request: %w", err)
-	}
-	request.Header.Set("Accept", "application/json")
-	if payload != nil {
-		request.Header.Set("Content-Type", "application/json")
-	}
-
-	response, err := c.httpClient.Do(request)
+	response, err := c.session.Do(ctx, func() (*http.Request, error) {
+		var body io.Reader
+		if payload != nil {
+			body = bytes.NewReader(payload)
+		}
+		request, err := http.NewRequest(http.MethodPost, endpoint.String(), body)
+		if err != nil {
+			return nil, fmt.Errorf("create mock logistics request: %w", err)
+		}
+		request.Header.Set("Accept", "application/json")
+		if payload != nil {
+			request.Header.Set("Content-Type", "application/json")
+		}
+		return request, nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", apperr.ErrProviderUnavailable, err)
 	}

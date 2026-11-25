@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	mockauth "pinshaoshao/internal/mock/auth"
 	logisticshandler "pinshaoshao/internal/mock/logistics/handler"
 	"pinshaoshao/internal/mock/logistics/model"
 	logisticsrepository "pinshaoshao/internal/mock/logistics/repository"
@@ -40,6 +41,7 @@ type Config struct {
 	NotificationRetryDelays   []time.Duration
 	NotificationDeliveryLease time.Duration
 	HTTPClient                *http.Client
+	Auth                      mockauth.Config
 }
 
 func ConfigFromEnv() Config {
@@ -47,7 +49,10 @@ func ConfigFromEnv() Config {
 	if secret == "" {
 		secret = strings.TrimSpace(os.Getenv("MOCKPAY_WEBHOOK_SECRET"))
 	}
-	config := Config{WebhookSecret: secret}
+	config := Config{
+		WebhookSecret: secret,
+		Auth:          mockauth.ConfigFromEnv("MOCKLOGISTICS"),
+	}
 
 	value := strings.TrimSpace(os.Getenv("MOCKLOGISTICS_DELIVERY_DURATION"))
 	if value == "" {
@@ -114,8 +119,10 @@ func (c Config) withDefaults() Config {
 type Module struct {
 	shipments     *logisticshandler.ShipmentHandler
 	notifications *logisticshandler.NotificationHandler
+	authHandler   *mockauth.Handler
 	delivery      *logisticsservice.NotificationService
 	progress      *logisticsservice.ShipmentService
+	authService   *mockauth.Service
 	config        Config
 
 	mu      sync.Mutex
@@ -128,6 +135,10 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 	config = config.withDefaults()
 	if strings.TrimSpace(config.WebhookSecret) == "" {
 		return nil, errors.New("MOCKLOGISTICS_WEBHOOK_SECRET is required")
+	}
+	authService, err := mockauth.NewService(pool, config.Auth)
+	if err != nil {
+		return nil, err
 	}
 
 	notificationRepository := logisticsrepository.NewNotificationRepository(pool)
@@ -151,14 +162,28 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 	return &Module{
 		shipments:     logisticshandler.NewShipmentHandler(shipmentService),
 		notifications: logisticshandler.NewNotificationHandler(shipmentService, notificationService),
+		authHandler:   mockauth.NewHandler(authService),
 		delivery:      notificationService,
 		progress:      shipmentService,
+		authService:   authService,
 		config:        config,
 	}, nil
 }
 
-func (m *Module) Register(r *gin.Engine, _ gin.HandlerFunc) {
+func (m *Module) BootstrapAuth(ctx context.Context) error {
+	return m.authService.Bootstrap(ctx)
+}
+
+func (m *Module) AuthMiddleware() gin.HandlerFunc {
+	return m.authHandler.Middleware()
+}
+
+func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
+	r.POST("/mocklogistics/api/v1/auth/login", m.authHandler.Login)
+	r.POST("/mocklogistics/api/v1/auth/logout", authMiddleware, m.authHandler.Logout)
+
 	api := r.Group("/mocklogistics/api/v1/shipments")
+	api.Use(authMiddleware)
 	api.POST("", m.shipments.Create)
 	api.GET("/:shipmentNo", m.shipments.Get)
 	api.POST("/:shipmentNo/outbound", m.shipments.Outbound)

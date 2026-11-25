@@ -6,8 +6,20 @@
     "footer": "仅用于本地联调，模拟商家出库、转运、派送和签收，不依赖商城业务模块。"
   },
   "documentTitle": {
+    "signIn": "登录模拟物流 · {{brand}}",
     "console": "模拟物流 · {{brand}}",
     "detail": "物流单 {{shipmentNo}} · {{brand}}"
+  },
+  "auth": {
+    "title": "MockLogistics 运营登录",
+    "description": "使用环境变量中配置的 MockLogistics 运营账号进入沙箱。",
+    "username": "用户名",
+    "password": "密码",
+    "submit": "登录",
+    "submitting": "登录中",
+    "invalidCredentials": "用户名或密码错误。",
+    "unavailable": "MockLogistics 暂时不可用，请稍后重试。",
+    "signOut": "退出登录"
   },
   "actions": {
     "refresh": "刷新",

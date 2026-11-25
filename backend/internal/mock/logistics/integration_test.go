@@ -80,7 +80,11 @@ func migrate(ctx context.Context, dsn string) error {
 		return err
 	}
 	goose.SetLogger(goose.NopLogger())
-	return goose.UpContext(ctx, db, filepath.Join("..", "..", "..", "migrations"))
+	return goose.UpContext(
+		ctx,
+		db,
+		filepath.Join("..", "..", "..", "migrations", "mocklogistics"),
+	)
 }
 
 func resetTables(t *testing.T) {

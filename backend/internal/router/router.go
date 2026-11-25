@@ -23,19 +23,21 @@ type LogisticsModule interface {
 
 // Modules contains the registered modules and their authentication middleware.
 type Modules struct {
-	User          Module
-	Shop          Module
-	Product       Module
-	Inventory     Module
-	Cart          Module
-	Feed          Module
-	Order         OrderModule
-	Payment       Module
-	Logistics     LogisticsModule
-	MockPayment   Module
-	MockLogistics Module
-	UserAuth      gin.HandlerFunc
-	ShopAuth      gin.HandlerFunc
+	User              Module
+	Shop              Module
+	Product           Module
+	Inventory         Module
+	Cart              Module
+	Feed              Module
+	Order             OrderModule
+	Payment           Module
+	Logistics         LogisticsModule
+	MockPayment       Module
+	MockLogistics     Module
+	UserAuth          gin.HandlerFunc
+	ShopAuth          gin.HandlerFunc
+	MockPaymentAuth   gin.HandlerFunc
+	MockLogisticsAuth gin.HandlerFunc
 }
 
 // Register mounts every module.
@@ -51,6 +53,6 @@ func Register(r *gin.Engine, modules Modules) {
 	modules.Payment.Register(r, modules.UserAuth)
 	modules.Logistics.Register(r, modules.UserAuth)
 	modules.Logistics.RegisterMerchant(r, modules.ShopAuth)
-	modules.MockPayment.Register(r, nil)
-	modules.MockLogistics.Register(r, nil)
+	modules.MockPayment.Register(r, modules.MockPaymentAuth)
+	modules.MockLogistics.Register(r, modules.MockLogisticsAuth)
 }

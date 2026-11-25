@@ -6,8 +6,20 @@
     "footer": "For local integration only. No real funds are processed, and no storefront business module is used."
   },
   "documentTitle": {
+    "signIn": "Sign in to MockPay · {{brand}}",
     "console": "Mock payments · {{brand}}",
     "detail": "Payment {{paymentNo}} · {{brand}}"
+  },
+  "auth": {
+    "title": "MockPay operator sign-in",
+    "description": "Use the configured MockPay operator credentials for this sandbox.",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in",
+    "invalidCredentials": "The username or password is incorrect.",
+    "unavailable": "MockPay is unavailable. Try again.",
+    "signOut": "Sign out"
   },
   "actions": {
     "copy": "Copy",

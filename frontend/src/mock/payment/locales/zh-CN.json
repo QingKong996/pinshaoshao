@@ -6,8 +6,20 @@
     "footer": "仅用于本地联调，不处理真实资金，也不依赖商城业务模块。"
   },
   "documentTitle": {
+    "signIn": "登录模拟支付 · {{brand}}",
     "console": "模拟支付 · {{brand}}",
     "detail": "支付单 {{paymentNo}} · {{brand}}"
+  },
+  "auth": {
+    "title": "MockPay 运营登录",
+    "description": "使用环境变量中配置的 MockPay 运营账号进入沙箱。",
+    "username": "用户名",
+    "password": "密码",
+    "submit": "登录",
+    "submitting": "登录中",
+    "invalidCredentials": "用户名或密码错误。",
+    "unavailable": "MockPay 暂时不可用，请稍后重试。",
+    "signOut": "退出登录"
   },
   "actions": {
     "copy": "复制",
