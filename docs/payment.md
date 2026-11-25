@@ -21,6 +21,7 @@
 | `PAYMENT_GATEWAY_BASE_URL` | 否 | MockPay 服务 origin，不包含 `/mockpay/api/v1`；默认同 `PAYMENT_PUBLIC_BASE_URL` |
 | `PAYMENT_NOTIFY_URL` | 否 | 回调地址，默认 `$PAYMENT_PUBLIC_BASE_URL/api/v1/payment/webhook` |
 | `PAYMENT_RETURN_URL_BASE` | 否 | 渠道支付完成后的前端地址，默认 `http://localhost:5173` |
+| `MOCKPAY_NOTIFY_ALLOWED_ORIGINS` | 是 | MockPay 允许投递的回调 origin；必须包含 `PAYMENT_NOTIFY_URL` 的 origin |
 | `MOCKPAY_AUTH_USERNAME` | 是 | MockPay 运营账号；业务 Gateway 使用同一账号登录 |
 | `MOCKPAY_AUTH_PASSWORD` | 是 | MockPay 运营密码 |
 

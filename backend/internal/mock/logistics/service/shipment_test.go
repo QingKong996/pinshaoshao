@@ -8,7 +8,14 @@ import (
 	"time"
 
 	"pinshaoshao/internal/mock/logistics/model"
+	"pinshaoshao/internal/mock/webhookpolicy"
 )
+
+type allowAllNotifyURLs struct{}
+
+func (allowAllNotifyURLs) Allows(string) bool {
+	return true
+}
 
 type fakeShipmentRepository struct {
 	shipment        *model.Shipment
@@ -78,7 +85,7 @@ func (r *fakeShipmentRepository) Transition(
 
 func TestCreateShipmentGeneratesMockData(t *testing.T) {
 	repository := &fakeShipmentRepository{}
-	service := NewShipmentService(repository)
+	service := NewShipmentService(repository, allowAllNotifyURLs{})
 	input := CreateShipmentInput{
 		MerchantOrderNo: "order-1",
 		NotifyURL:       "http://localhost:8080/mocklogistics/webhook",
@@ -132,7 +139,7 @@ func TestShipmentActionsRespectMerchantOutbound(t *testing.T) {
 			UpdatedAt:       now,
 		},
 	}
-	service := NewShipmentService(repository)
+	service := NewShipmentService(repository, allowAllNotifyURLs{})
 	service.now = func() time.Time { return now }
 
 	if _, err := service.Advance(context.Background(), repository.shipment.ShipmentNo); !errors.Is(err, model.ErrInvalidShipmentTransition) {
@@ -159,10 +166,26 @@ func TestShipmentActionsRespectMerchantOutbound(t *testing.T) {
 }
 
 func TestCreateShipmentRejectsInvalidURL(t *testing.T) {
-	service := NewShipmentService(&fakeShipmentRepository{})
+	service := NewShipmentService(&fakeShipmentRepository{}, allowAllNotifyURLs{})
 	_, _, err := service.Create(context.Background(), CreateShipmentInput{
 		MerchantOrderNo: "order-1",
 		NotifyURL:       "ftp://localhost/webhook",
+	})
+	if !errors.Is(err, model.ErrInvalidShipmentInput) {
+		t.Fatalf("error = %v, want invalid shipment input", err)
+	}
+}
+
+func TestCreateShipmentRejectsDisallowedNotifyOrigin(t *testing.T) {
+	policy, err := webhookpolicy.NewAllowlist("https://allowed.example")
+	if err != nil {
+		t.Fatalf("create allowlist: %v", err)
+	}
+	service := NewShipmentService(&fakeShipmentRepository{}, policy)
+
+	_, _, err = service.Create(context.Background(), CreateShipmentInput{
+		MerchantOrderNo: "order-1",
+		NotifyURL:       "https://blocked.example/webhook",
 	})
 	if !errors.Is(err, model.ErrInvalidShipmentInput) {
 		t.Fatalf("error = %v, want invalid shipment input", err)
@@ -180,7 +203,7 @@ func TestAdvanceDueFollowsDeliverySchedule(t *testing.T) {
 			UpdatedAt:    dispatchedAt,
 		},
 	}
-	service := NewShipmentService(repository)
+	service := NewShipmentService(repository, allowAllNotifyURLs{})
 	deliveryDuration := 5 * time.Minute
 	now := dispatchedAt
 	service.now = func() time.Time { return now }

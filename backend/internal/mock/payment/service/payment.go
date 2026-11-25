@@ -47,14 +47,23 @@ type CreatePaymentInput struct {
 	ExpiresIn       time.Duration
 }
 
+type NotifyURLPolicy interface {
+	Allows(string) bool
+}
+
 type PaymentService struct {
 	repository PaymentRepository
+	policy     NotifyURLPolicy
 	now        func() time.Time
 }
 
-func NewPaymentService(repository PaymentRepository) *PaymentService {
+func NewPaymentService(repository PaymentRepository, policy NotifyURLPolicy) *PaymentService {
+	if policy == nil {
+		policy = denyAllNotifyURLs{}
+	}
 	return &PaymentService{
 		repository: repository,
+		policy:     policy,
 		now:        time.Now,
 	}
 }
@@ -63,6 +72,9 @@ func (s *PaymentService) Create(ctx context.Context, input CreatePaymentInput) (
 	normalized, requestHash, err := normalizeCreateInput(input)
 	if err != nil {
 		return nil, false, err
+	}
+	if !s.policy.Allows(normalized.NotifyURL) {
+		return nil, false, model.ErrInvalidPaymentInput
 	}
 
 	now := s.now().UTC()
@@ -86,6 +98,12 @@ func (s *PaymentService) Create(ctx context.Context, input CreatePaymentInput) (
 		return nil, false, fmt.Errorf("service.CreatePayment: %w", err)
 	}
 	return created, isNew, nil
+}
+
+type denyAllNotifyURLs struct{}
+
+func (denyAllNotifyURLs) Allows(string) bool {
+	return false
 }
 
 func (s *PaymentService) Get(ctx context.Context, paymentNo string) (*model.Payment, error) {

@@ -85,14 +85,23 @@ type CreateShipmentInput struct {
 	NotifyURL       string
 }
 
+type NotifyURLPolicy interface {
+	Allows(string) bool
+}
+
 type ShipmentService struct {
 	repository ShipmentRepository
+	policy     NotifyURLPolicy
 	now        func() time.Time
 }
 
-func NewShipmentService(repository ShipmentRepository) *ShipmentService {
+func NewShipmentService(repository ShipmentRepository, policy NotifyURLPolicy) *ShipmentService {
+	if policy == nil {
+		policy = denyAllNotifyURLs{}
+	}
 	return &ShipmentService{
 		repository: repository,
+		policy:     policy,
 		now:        time.Now,
 	}
 }
@@ -104,6 +113,9 @@ func (s *ShipmentService) Create(
 	normalized, requestHash, err := normalizeCreateInput(input)
 	if err != nil {
 		return nil, false, err
+	}
+	if !s.policy.Allows(normalized.NotifyURL) {
+		return nil, false, model.ErrInvalidShipmentInput
 	}
 
 	now := s.now().UTC()
@@ -147,6 +159,12 @@ func (s *ShipmentService) Create(
 		return nil, false, fmt.Errorf("service.CreateShipment: %w", err)
 	}
 	return created, isNew, nil
+}
+
+type denyAllNotifyURLs struct{}
+
+func (denyAllNotifyURLs) Allows(string) bool {
+	return false
 }
 
 func (s *ShipmentService) Get(ctx context.Context, shipmentNo string) (*model.Shipment, error) {

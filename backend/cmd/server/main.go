@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net/http"
 	"os"
 	cartmodule "pinshaoshao/internal/feature/cart"
 	feedmodule "pinshaoshao/internal/feature/feed"
@@ -20,11 +21,19 @@ import (
 	mocklogisticsmodule "pinshaoshao/internal/mock/logistics"
 	mockpaymentmodule "pinshaoshao/internal/mock/payment"
 	"pinshaoshao/internal/router"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+)
+
+const (
+	serverReadHeaderTimeout = 5 * time.Second
+	serverReadTimeout       = 15 * time.Second
+	serverWriteTimeout      = 30 * time.Second
+	serverIdleTimeout       = 60 * time.Second
 )
 
 // @title                      pinshaoshao API
@@ -47,6 +56,7 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+	r.Use(middleware.SecurityHeaders())
 
 	if err := godotenv.Load(); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		fatal("load .env file", "error", err)
@@ -57,9 +67,12 @@ func main() {
 		port = "8080"
 	}
 
-	corsOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	corsOrigins := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
 	if corsOrigins == "" {
-		corsOrigins = "*"
+		fatal("CORS_ALLOWED_ORIGINS is required")
+	}
+	if strings.Contains(corsOrigins, "*") {
+		fatal("CORS_ALLOWED_ORIGINS must contain explicit origins")
 	}
 	r.Use(middleware.CORS(corsOrigins))
 
@@ -155,7 +168,15 @@ func main() {
 		MockLogisticsAuth: mockLogisticsModule.AuthMiddleware(),
 	})
 
-	if err := r.Run(":" + port); err != nil {
+	server := &http.Server{
+		Addr:              ":" + port,
+		Handler:           r,
+		ReadHeaderTimeout: serverReadHeaderTimeout,
+		ReadTimeout:       serverReadTimeout,
+		WriteTimeout:      serverWriteTimeout,
+		IdleTimeout:       serverIdleTimeout,
+	}
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fatal("run server", "error", err)
 	}
 }

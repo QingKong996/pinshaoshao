@@ -136,6 +136,12 @@ func TestShopRegister(t *testing.T) {
 
 		requireStatus(t, rec, http.StatusCreated)
 		requireToken(t, rec)
+		if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+			t.Fatalf("Cache-Control = %q, want no-store", got)
+		}
+		if got := rec.Header().Get("Pragma"); got != "no-cache" {
+			t.Fatalf("Pragma = %q, want no-cache", got)
+		}
 	})
 
 	t.Run("rejects a taken username", func(t *testing.T) {

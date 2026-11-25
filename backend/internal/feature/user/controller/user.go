@@ -65,6 +65,9 @@ func (c *UserController) Login(ctx *gin.Context) {
 // @Failure     500 {object} httpx.ErrorResponse
 // @Router      /register [post]
 func (c *UserController) Register(ctx *gin.Context) {
+	ctx.Header("Cache-Control", "no-store")
+	ctx.Header("Pragma", "no-cache")
+
 	var req dto.RegisterRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{

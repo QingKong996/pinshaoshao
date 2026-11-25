@@ -69,6 +69,9 @@ func (c *ShopController) Login(ctx *gin.Context) {
 // @Failure     500 {object} httpx.ErrorResponse
 // @Router      /merchant/register [post]
 func (c *ShopController) Register(ctx *gin.Context) {
+	ctx.Header("Cache-Control", "no-store")
+	ctx.Header("Pragma", "no-cache")
+
 	var req dto.ShopRegisterRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
