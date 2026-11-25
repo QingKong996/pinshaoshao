@@ -5,6 +5,7 @@
   "nav": {
     "dashboard": "Overview",
     "orders": "Orders",
+    "orderDetail": "Order detail",
     "logistics": "Shipments",
     "shipmentDetail": "Shipment detail",
     "products": "Products",
@@ -16,6 +17,7 @@
   "documentTitle": {
     "dashboard": "Overview · Merchant center · {{brand}}",
     "orders": "Orders · Merchant center · {{brand}}",
+    "orderDetail": "Sub-order #{{id}} · Merchant center · {{brand}}",
     "products": "Product info · Merchant center · {{brand}}",
     "categories": "Categories · Merchant center · {{brand}}",
     "inventory": "Inventory · Merchant center · {{brand}}",
@@ -85,6 +87,37 @@
   "orders": {
     "title": "Orders",
     "description": "Review orders for your shop and track their fulfillment status.",
+    "detail": {
+      "back": "Back to orders",
+      "title": "Sub-order #{{id}}",
+      "description": "Order #{{orderID}} · Placed {{date}}",
+      "notPaid": "Not paid",
+      "summary": {
+        "title": "Order summary",
+        "total": "Sub-order total",
+        "items": "Items",
+        "paidAt": "Paid at",
+        "createdAt": "Placed"
+      },
+      "items": {
+        "title": "Order items",
+        "empty": "No items in this sub-order.",
+        "quantity": "{{price}} × {{quantity}}",
+        "noSpecs": "No options"
+      },
+      "receiver": {
+        "title": "Delivery details",
+        "name": "Recipient",
+        "phone": "Phone",
+        "address": "Address"
+      },
+      "meta": {
+        "title": "Order info",
+        "order": "Order",
+        "subOrder": "Sub-order",
+        "updatedAt": "Updated"
+      }
+    },
     "filters": {
       "description": "Filter orders by their current status.",
       "allStatuses": "All statuses"

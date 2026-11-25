@@ -21,6 +21,18 @@ func (s *OrderService) ListMerchant(ctx context.Context, shopID int, filter mode
 	return orders, nil
 }
 
+func (s *OrderService) GetMerchant(ctx context.Context, shopID int, subOrderID int) (*model.MerchantOrderDetail, error) {
+	if subOrderID <= 0 {
+		return nil, fmt.Errorf("service.GetMerchantOrder: %w", apperr.ErrInvalidOrderID)
+	}
+
+	order, err := s.orderRepository.GetMerchant(ctx, shopID, subOrderID)
+	if err != nil {
+		return nil, fmt.Errorf("service.GetMerchantOrder: %w", err)
+	}
+	return order, nil
+}
+
 func normalizeMerchantOrderListFilter(filter model.MerchantOrderListFilter) (model.MerchantOrderListFilter, error) {
 	normalized, err := normalizeOrderListFilter(model.OrderListFilter{
 		Page:     filter.Page,

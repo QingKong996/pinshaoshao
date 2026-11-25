@@ -18,6 +18,22 @@ export type MerchantOrder = {
   created_at: string
 }
 
+export type MerchantOrderItem = {
+  id: number
+  product_id: number
+  sku_id: number
+  product_name: string
+  sku_specs: Record<string, string>
+  unit_price_cents: number
+  quantity: number
+  line_amount_cents: number
+}
+
+export type MerchantOrderDetail = MerchantOrder & {
+  updated_at: string
+  items: MerchantOrderItem[]
+}
+
 export type MerchantOrderListQuery = {
   page: number
   page_size: number

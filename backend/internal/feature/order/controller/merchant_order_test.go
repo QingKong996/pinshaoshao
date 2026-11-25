@@ -35,6 +35,7 @@ func newMerchantOrderRouter(t *testing.T, orderController *controller.OrderContr
 	protected := r.Group("/merchant")
 	protected.Use(shopmodule.AuthMiddleware(stubShopAuthenticator{shop: shop}))
 	protected.GET("/orders", orderController.ListMerchant)
+	protected.GET("/orders/:subOrderID", orderController.GetMerchant)
 	return r
 }
 
@@ -103,5 +104,93 @@ func TestMerchantOrderList(t *testing.T) {
 		)
 		requireOrderStatus(t, rec, http.StatusBadRequest)
 		requireOrderError(t, rec, apperr.ErrInvalidOrderList)
+	})
+}
+
+func TestMerchantOrderDetail(t *testing.T) {
+	shop := &shopmodel.Shop{ID: 9, Username: "shop01", Status: shopmodel.ShopStatusActive}
+	paidAt := time.Date(2026, time.November, 20, 12, 5, 0, 0, time.UTC)
+
+	t.Run("returns an owned sub-order", func(t *testing.T) {
+		orderController, orderService := newTestOrderController(t)
+		orderService.EXPECT().
+			GetMerchant(gomock.Any(), shop.ID, 4).
+			Return(&model.MerchantOrderDetail{
+				ID:               4,
+				OrderID:          12,
+				Status:           model.SubOrderStatusAwaitingShipment,
+				TotalAmountCents: 3998,
+				ItemCount:        2,
+				ReceiverName:     "Alice",
+				ReceiverPhone:    "1234567890",
+				ShippingAddress:  "Shanghai",
+				PaidAt:           &paidAt,
+				CreatedAt:        paidAt.Add(-time.Minute),
+				UpdatedAt:        paidAt,
+				Items: []model.OrderItem{
+					{
+						ID:              8,
+						ProductID:       10,
+						SKUID:           5,
+						ProductName:     "T-shirt",
+						Specs:           map[string]string{"color": "black"},
+						UnitPriceCents:  1999,
+						Quantity:        2,
+						LineAmountCents: 3998,
+					},
+				},
+			}, nil)
+
+		rec := doRequest(
+			newMerchantOrderRouter(t, orderController, shop),
+			http.MethodGet,
+			"/merchant/orders/4",
+			"Bearer session-token",
+			"",
+		)
+		requireOrderStatus(t, rec, http.StatusOK)
+
+		var body dto.MerchantOrderDetailResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode merchant order detail: %v", err)
+		}
+		if body.ID != 4 ||
+			body.OrderID != 12 ||
+			body.ItemCount != 2 ||
+			body.Status != "awaiting_shipment" ||
+			len(body.Items) != 1 ||
+			body.Items[0].ProductName != "T-shirt" {
+			t.Fatalf("merchant order detail = %+v", body)
+		}
+	})
+
+	t.Run("rejects an invalid id", func(t *testing.T) {
+		orderController, _ := newTestOrderController(t)
+		rec := doRequest(
+			newMerchantOrderRouter(t, orderController, shop),
+			http.MethodGet,
+			"/merchant/orders/0",
+			"Bearer session-token",
+			"",
+		)
+		requireOrderStatus(t, rec, http.StatusBadRequest)
+		requireOrderError(t, rec, apperr.ErrInvalidOrderID)
+	})
+
+	t.Run("returns not found for another shop's order", func(t *testing.T) {
+		orderController, orderService := newTestOrderController(t)
+		orderService.EXPECT().
+			GetMerchant(gomock.Any(), shop.ID, 4).
+			Return(nil, apperr.ErrOrderNotFound)
+
+		rec := doRequest(
+			newMerchantOrderRouter(t, orderController, shop),
+			http.MethodGet,
+			"/merchant/orders/4",
+			"Bearer session-token",
+			"",
+		)
+		requireOrderStatus(t, rec, http.StatusNotFound)
+		requireOrderError(t, rec, apperr.ErrOrderNotFound)
 	})
 }

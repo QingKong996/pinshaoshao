@@ -73,3 +73,34 @@ func TestOrderServiceListMerchantRejectsInvalidFilter(t *testing.T) {
 		t.Fatalf("error = %v, want %v", err, apperr.ErrInvalidOrderList)
 	}
 }
+
+func TestOrderServiceGetMerchant(t *testing.T) {
+	orderService, repository := newTestService(t)
+	detail := &model.MerchantOrderDetail{
+		ID:      4,
+		OrderID: 12,
+		Status:  model.SubOrderStatusAwaitingShipment,
+		Items:   []model.OrderItem{{ID: 8, ProductName: "T-shirt", Quantity: 2}},
+	}
+
+	repository.EXPECT().
+		GetMerchant(gomock.Any(), 9, 4).
+		Return(detail, nil)
+
+	got, err := orderService.GetMerchant(context.Background(), 9, 4)
+	if err != nil {
+		t.Fatalf("get merchant order: %v", err)
+	}
+	if got != detail {
+		t.Fatalf("merchant order = %+v, want %+v", got, detail)
+	}
+}
+
+func TestOrderServiceGetMerchantRejectsInvalidID(t *testing.T) {
+	orderService, _ := newTestService(t)
+
+	_, err := orderService.GetMerchant(context.Background(), 9, 0)
+	if !errors.Is(err, apperr.ErrInvalidOrderID) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrInvalidOrderID)
+	}
+}

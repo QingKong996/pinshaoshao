@@ -55,4 +55,5 @@ func (m *Module) RegisterMerchant(r *gin.Engine, authMiddleware gin.HandlerFunc)
 	protected := r.Group("/api/v1/merchant")
 	protected.Use(authMiddleware)
 	protected.GET("/orders", m.controller.ListMerchant)
+	protected.GET("/orders/:subOrderID", m.controller.GetMerchant)
 }

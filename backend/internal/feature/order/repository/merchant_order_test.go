@@ -4,8 +4,10 @@ package repository_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/model"
 	productmodel "pinshaoshao/internal/feature/product/model"
 )
@@ -95,5 +97,43 @@ func TestOrderRepositoryListMerchantFiltersByShopAndStatus(t *testing.T) {
 	}
 	if otherShopOrders.Total != 1 || len(otherShopOrders.Orders) != 1 || otherShopOrders.Orders[0].OrderID != other.ID {
 		t.Fatalf("other shop orders = %+v, want order %d", otherShopOrders, other.ID)
+	}
+}
+
+func TestOrderRepositoryGetMerchantIsScopedToShop(t *testing.T) {
+	ctx := context.Background()
+	resetDatabase(t)
+	user := insertBuyer(t, "buyer01")
+	firstShop, _, firstSKU := insertCatalogSKU(t, "shop01", "First shop", productmodel.ProductStatusOnShelf, true, 1999, 10)
+	secondShop, _, _ := insertCatalogSKU(t, "shop02", "Second shop", productmodel.ProductStatusOnShelf, true, 2999, 10)
+	repository := newTestOrderRepository()
+
+	input := testDirectOrderInput(firstSKU.ID, 2, testRequestHash("a"))
+	created, err := repository.CreateDirect(ctx, user.ID, input)
+	if err != nil {
+		t.Fatalf("create order: %v", err)
+	}
+	subOrderID := created.SubOrders[0].ID
+
+	detail, err := repository.GetMerchant(ctx, firstShop.ID, subOrderID)
+	if err != nil {
+		t.Fatalf("get merchant order: %v", err)
+	}
+	if detail.ID != subOrderID ||
+		detail.OrderID != created.ID ||
+		detail.TotalAmountCents != 3998 ||
+		detail.ItemCount != 2 {
+		t.Fatalf("merchant order = %+v", detail)
+	}
+	if len(detail.Items) != 1 ||
+		detail.Items[0].ProductID != firstSKU.ProductID ||
+		detail.Items[0].SKUID != firstSKU.ID ||
+		detail.Items[0].Quantity != 2 ||
+		detail.Items[0].LineAmountCents != 3998 {
+		t.Fatalf("merchant order items = %+v", detail.Items)
+	}
+
+	if _, err := repository.GetMerchant(ctx, secondShop.ID, subOrderID); !errors.Is(err, apperr.ErrOrderNotFound) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrOrderNotFound)
 	}
 }
