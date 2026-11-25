@@ -32,6 +32,12 @@ const testSigningKey = "logistics-integration-test-signing-key"
 
 var testPool *pgxpool.Pool
 
+type integrationAllowAllNotifyURLs struct{}
+
+func (integrationAllowAllNotifyURLs) Allows(string) bool {
+	return true
+}
+
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
@@ -108,11 +114,15 @@ func newTestServices() (
 		notificationRepository,
 		3,
 	)
-	shipmentService := logisticsservice.NewShipmentService(shipmentRepository)
+	shipmentService := logisticsservice.NewShipmentService(
+		shipmentRepository,
+		integrationAllowAllNotifyURLs{},
+	)
 	notificationService := logisticsservice.NewNotificationService(
 		notificationRepository,
 		logisticsservice.NotificationConfig{
 			Signer:      webhooksig.NewSigner(testSigningKey),
+			Policy:      integrationAllowAllNotifyURLs{},
 			RetryDelays: []time.Duration{time.Second},
 			BatchSize:   10,
 		},

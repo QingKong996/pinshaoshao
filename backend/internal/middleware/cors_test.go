@@ -37,10 +37,9 @@ func TestCORS(t *testing.T) {
 		wantOrigin     string
 	}{
 		{
-			name:           "all origins",
+			name:           "wildcard is not allowed",
 			allowedOrigins: "*",
 			origin:         "https://docs.example.com",
-			wantOrigin:     "*",
 		},
 		{
 			name:           "listed origin",

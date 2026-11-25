@@ -102,6 +102,7 @@ func TestNotificationDeliveryIsSigned(t *testing.T) {
 	}
 	notifier := NewNotificationService(repository, NotificationConfig{
 		Signer: webhooksig.NewSigner(signingKey),
+		Policy: allowAllNotifyURLs{},
 	})
 	notifier.now = func() time.Time { return now }
 
@@ -136,6 +137,7 @@ func TestNotificationFailureSchedulesRetry(t *testing.T) {
 	}
 	notifier := NewNotificationService(repository, NotificationConfig{
 		Signer:      webhooksig.NewSigner("test-signing-key"),
+		Policy:      allowAllNotifyURLs{},
 		RetryDelays: []time.Duration{time.Second, 5 * time.Second},
 	})
 	notifier.now = func() time.Time { return now }

@@ -53,6 +53,7 @@ type WebhookSigner interface {
 type NotificationConfig struct {
 	Client      *http.Client
 	Signer      WebhookSigner
+	Policy      NotifyURLPolicy
 	RetryDelays []time.Duration
 	Lease       time.Duration
 	BatchSize   int
@@ -62,6 +63,7 @@ type NotificationService struct {
 	repository  NotificationRepository
 	client      *http.Client
 	signer      WebhookSigner
+	policy      NotifyURLPolicy
 	retryDelays []time.Duration
 	lease       time.Duration
 	batchSize   int
@@ -83,6 +85,9 @@ func NewNotificationService(
 	if len(config.RetryDelays) == 0 {
 		config.RetryDelays = defaultRetryDelays
 	}
+	if config.Policy == nil {
+		config.Policy = denyAllNotifyURLs{}
+	}
 	if config.Lease <= 0 {
 		config.Lease = defaultDeliveryLease
 	}
@@ -93,6 +98,7 @@ func NewNotificationService(
 		repository:  repository,
 		client:      config.Client,
 		signer:      config.Signer,
+		policy:      config.Policy,
 		retryDelays: config.RetryDelays,
 		lease:       config.Lease,
 		batchSize:   config.BatchSize,
@@ -134,6 +140,14 @@ func (s *NotificationService) Retry(
 
 func (s *NotificationService) deliver(ctx context.Context, notification *model.Notification) error {
 	now := s.now().UTC()
+	if !s.policy.Allows(notification.TargetURL) {
+		return s.finishFailure(
+			ctx,
+			notification,
+			now,
+			errors.New("notification target origin is not allowed"),
+		)
+	}
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,

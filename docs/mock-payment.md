@@ -15,11 +15,14 @@
 | `MOCKPAY_DATABASE_URL` | 是 | `pinshaoshao_mockpay` 逻辑数据库 DSN，不回退到 `DATABASE_URL` |
 | `MOCKPAY_WEBHOOK_SECRET` | 是 | 回调 HMAC-SHA256 密钥 |
 | `MOCKPAY_PUBLIC_BASE_URL` | 否 | 服务 origin，例如 `http://localhost:8080`，不包含 `/mockpay`；为空时返回相对路径 |
+| `MOCKPAY_NOTIFY_ALLOWED_ORIGINS` | 是 | 逗号分隔的回调 origin 白名单，仅包含 scheme、host 和 port，例如 `http://localhost:8080` |
 | `MOCKPAY_AUTH_USERNAME` | 是 | MockPay 运营账号 |
 | `MOCKPAY_AUTH_PASSWORD` | 是 | MockPay 运营密码；仅以 Argon2id 哈希落库 |
 | `MOCKPAY_AUTH_SESSION_TTL` | 否 | Session 有效期，默认 `24h` |
 
 数据库创建、迁移和隔离校验见 [mock-databases.md](mock-databases.md)。
+
+`notify_url` 的 origin 必须与 `MOCKPAY_NOTIFY_ALLOWED_ORIGINS` 中的一项完全匹配。创建支付单和后台实际投递时都会校验，白名单外或配置无效时启动失败。
 
 ## 状态机
 

@@ -14,20 +14,15 @@ const (
 )
 
 // CORS allows browser clients from the configured origins to call the API.
-// Origins are comma-separated; a single "*" allows every origin.
+// Origins are comma-separated exact matches.
 func CORS(allowedOrigins string) gin.HandlerFunc {
-	allowAll := false
 	allowed := make(map[string]struct{})
 	for _, origin := range strings.Split(allowedOrigins, ",") {
 		origin = strings.TrimSpace(origin)
-		switch origin {
-		case "":
+		if origin == "" {
 			continue
-		case "*":
-			allowAll = true
-		default:
-			allowed[origin] = struct{}{}
 		}
+		allowed[origin] = struct{}{}
 	}
 
 	return func(c *gin.Context) {
@@ -37,15 +32,12 @@ func CORS(allowedOrigins string) gin.HandlerFunc {
 			return
 		}
 
-		if allowAll {
-			c.Header("Access-Control-Allow-Origin", "*")
-		} else if _, ok := allowed[origin]; ok {
-			c.Header("Vary", "Origin")
-			c.Header("Access-Control-Allow-Origin", origin)
-		} else {
+		c.Header("Vary", "Origin")
+		if _, ok := allowed[origin]; !ok {
 			c.Next()
 			return
 		}
+		c.Header("Access-Control-Allow-Origin", origin)
 
 		if c.Request.Method == http.MethodOptions {
 			c.Header("Access-Control-Allow-Methods", corsAllowMethods)

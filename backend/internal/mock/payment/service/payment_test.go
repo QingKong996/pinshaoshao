@@ -8,7 +8,14 @@ import (
 	"time"
 
 	"pinshaoshao/internal/mock/payment/model"
+	"pinshaoshao/internal/mock/webhookpolicy"
 )
+
+type allowAllNotifyURLs struct{}
+
+func (allowAllNotifyURLs) Allows(string) bool {
+	return true
+}
 
 func TestNormalizeCreateInput(t *testing.T) {
 	input, hash, err := normalizeCreateInput(CreatePaymentInput{
@@ -144,6 +151,24 @@ func TestNormalizeCreateInputAcceptsBoundaries(t *testing.T) {
 	}
 }
 
+func TestCreatePaymentRejectsDisallowedNotifyOrigin(t *testing.T) {
+	policy, err := webhookpolicy.NewAllowlist("https://allowed.example")
+	if err != nil {
+		t.Fatalf("create allowlist: %v", err)
+	}
+	service := NewPaymentService(&expiredPaymentRepository{}, policy)
+
+	_, _, err = service.Create(context.Background(), CreatePaymentInput{
+		MerchantOrderNo: "order-1",
+		AmountCents:     100,
+		Subject:         "Order",
+		NotifyURL:       "https://blocked.example/webhook",
+	})
+	if !errors.Is(err, model.ErrInvalidPaymentInput) {
+		t.Fatalf("error = %v, want invalid payment input", err)
+	}
+}
+
 type expiredPaymentRepository struct {
 	payment     *model.Payment
 	closedCalls int
@@ -182,7 +207,7 @@ func TestGetClosesExpiredPayment(t *testing.T) {
 			ExpiresAt: now.Add(-time.Second),
 		},
 	}
-	paymentService := NewPaymentService(repository)
+	paymentService := NewPaymentService(repository, allowAllNotifyURLs{})
 	paymentService.now = func() time.Time { return now }
 
 	payment, err := paymentService.Get(context.Background(), repository.payment.PaymentNo)

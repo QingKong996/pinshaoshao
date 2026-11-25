@@ -32,6 +32,12 @@ const testSigningKey = "integration-test-signing-key"
 
 var testPool *pgxpool.Pool
 
+type integrationAllowAllNotifyURLs struct{}
+
+func (integrationAllowAllNotifyURLs) Allows(string) bool {
+	return true
+}
+
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
@@ -100,11 +106,15 @@ func resetMockPaymentTables(t *testing.T) {
 func newTestServices() (*mockpayservice.PaymentService, *mockpayservice.NotificationService, *mockpayrepository.NotificationRepository) {
 	notificationRepository := mockpayrepository.NewNotificationRepository(testPool)
 	paymentRepository := mockpayrepository.NewPaymentRepository(testPool, notificationRepository, 3)
-	paymentService := mockpayservice.NewPaymentService(paymentRepository)
+	paymentService := mockpayservice.NewPaymentService(
+		paymentRepository,
+		integrationAllowAllNotifyURLs{},
+	)
 	notificationService := mockpayservice.NewNotificationService(
 		notificationRepository,
 		mockpayservice.NotificationConfig{
 			Signer:      webhooksig.NewSigner(testSigningKey),
+			Policy:      integrationAllowAllNotifyURLs{},
 			RetryDelays: []time.Duration{time.Second},
 			BatchSize:   10,
 		},

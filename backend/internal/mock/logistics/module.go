@@ -3,6 +3,7 @@ package logistics
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"pinshaoshao/internal/mock/logistics/model"
 	logisticsrepository "pinshaoshao/internal/mock/logistics/repository"
 	logisticsservice "pinshaoshao/internal/mock/logistics/service"
+	"pinshaoshao/internal/mock/webhookpolicy"
 	"pinshaoshao/internal/webhooksig"
 
 	"github.com/gin-gonic/gin"
@@ -32,6 +34,7 @@ const (
 
 type Config struct {
 	WebhookSecret             string
+	NotifyAllowedOrigins      string
 	DeliveryDuration          time.Duration
 	ShipmentPollInterval      time.Duration
 	ShipmentBatchSize         int
@@ -50,8 +53,9 @@ func ConfigFromEnv() Config {
 		secret = strings.TrimSpace(os.Getenv("MOCKPAY_WEBHOOK_SECRET"))
 	}
 	config := Config{
-		WebhookSecret: secret,
-		Auth:          mockauth.ConfigFromEnv("MOCKLOGISTICS"),
+		WebhookSecret:        secret,
+		NotifyAllowedOrigins: strings.TrimSpace(os.Getenv("MOCKLOGISTICS_NOTIFY_ALLOWED_ORIGINS")),
+		Auth:                 mockauth.ConfigFromEnv("MOCKLOGISTICS"),
 	}
 
 	value := strings.TrimSpace(os.Getenv("MOCKLOGISTICS_DELIVERY_DURATION"))
@@ -136,6 +140,10 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 	if strings.TrimSpace(config.WebhookSecret) == "" {
 		return nil, errors.New("MOCKLOGISTICS_WEBHOOK_SECRET is required")
 	}
+	notifyPolicy, err := webhookpolicy.NewAllowlist(config.NotifyAllowedOrigins)
+	if err != nil {
+		return nil, fmt.Errorf("MOCKLOGISTICS_NOTIFY_ALLOWED_ORIGINS: %w", err)
+	}
 	authService, err := mockauth.NewService(pool, config.Auth)
 	if err != nil {
 		return nil, err
@@ -147,7 +155,7 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 		notificationRepository,
 		config.NotificationMaxAttempts,
 	)
-	shipmentService := logisticsservice.NewShipmentService(shipmentRepository)
+	shipmentService := logisticsservice.NewShipmentService(shipmentRepository, notifyPolicy)
 	notificationService := logisticsservice.NewNotificationService(
 		notificationRepository,
 		logisticsservice.NotificationConfig{
@@ -156,6 +164,7 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 			RetryDelays: config.NotificationRetryDelays,
 			Lease:       config.NotificationDeliveryLease,
 			BatchSize:   config.NotificationBatchSize,
+			Policy:      notifyPolicy,
 		},
 	)
 

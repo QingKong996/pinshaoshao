@@ -3,6 +3,7 @@ package payment
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"pinshaoshao/internal/mock/payment/model"
 	mockpayrepository "pinshaoshao/internal/mock/payment/repository"
 	mockpayservice "pinshaoshao/internal/mock/payment/service"
+	"pinshaoshao/internal/mock/webhookpolicy"
 	"pinshaoshao/internal/webhooksig"
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +33,7 @@ const (
 type Config struct {
 	WebhookSecret             string
 	PublicBaseURL             string
+	NotifyAllowedOrigins      string
 	NotificationPollInterval  time.Duration
 	ExpiryPollInterval        time.Duration
 	NotificationBatchSize     int
@@ -46,7 +49,10 @@ func ConfigFromEnv() Config {
 	return Config{
 		WebhookSecret: strings.TrimSpace(os.Getenv("MOCKPAY_WEBHOOK_SECRET")),
 		PublicBaseURL: strings.TrimSpace(os.Getenv("MOCKPAY_PUBLIC_BASE_URL")),
-		Auth:          mockauth.ConfigFromEnv("MOCKPAY"),
+		NotifyAllowedOrigins: strings.TrimSpace(
+			os.Getenv("MOCKPAY_NOTIFY_ALLOWED_ORIGINS"),
+		),
+		Auth: mockauth.ConfigFromEnv("MOCKPAY"),
 	}
 }
 
@@ -90,6 +96,10 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 	if strings.TrimSpace(config.WebhookSecret) == "" {
 		return nil, errors.New("MOCKPAY_WEBHOOK_SECRET is required")
 	}
+	notifyPolicy, err := webhookpolicy.NewAllowlist(config.NotifyAllowedOrigins)
+	if err != nil {
+		return nil, fmt.Errorf("MOCKPAY_NOTIFY_ALLOWED_ORIGINS: %w", err)
+	}
 	authService, err := mockauth.NewService(pool, config.Auth)
 	if err != nil {
 		return nil, err
@@ -100,7 +110,7 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 		notificationRepository,
 		config.NotificationMaxAttempts,
 	)
-	paymentService := mockpayservice.NewPaymentService(paymentRepository)
+	paymentService := mockpayservice.NewPaymentService(paymentRepository, notifyPolicy)
 	notificationService := mockpayservice.NewNotificationService(
 		notificationRepository,
 		mockpayservice.NotificationConfig{
@@ -109,6 +119,7 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 			RetryDelays: config.NotificationRetryDelays,
 			Lease:       config.NotificationDeliveryLease,
 			BatchSize:   config.NotificationBatchSize,
+			Policy:      notifyPolicy,
 		},
 	)
 
