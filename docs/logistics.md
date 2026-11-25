@@ -69,7 +69,7 @@ awaiting_shipment --ship--> shipped --deliver--> completed
 | `LOGISTICS_PUBLIC_BASE_URL` | 否 | 本服务公开地址；默认回退到 `PAYMENT_PUBLIC_BASE_URL` 或 `http://localhost:$PORT` |
 | `LOGISTICS_GATEWAY_BASE_URL` | 否 | MockLogistics origin；默认同公开地址 |
 | `LOGISTICS_NOTIFY_URL` | 否 | 回调地址；默认 `$LOGISTICS_PUBLIC_BASE_URL/api/v1/logistics/webhook` |
-| `MOCKLOGISTICS_NOTIFY_ALLOWED_ORIGINS` | 是 | MockLogistics 允许投递的回调 origin；必须包含 `LOGISTICS_NOTIFY_URL` 的 origin |
+| `MOCKLOGISTICS_NOTIFY_ALLOWED_URLS` | 是 | MockLogistics 允许投递的回调 URL；必须包含完整的 `LOGISTICS_NOTIFY_URL` |
 
 启动前执行 `backend/migrations/20261124150000_create_shipments.sql`。
 

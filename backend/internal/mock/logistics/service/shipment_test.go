@@ -176,19 +176,28 @@ func TestCreateShipmentRejectsInvalidURL(t *testing.T) {
 	}
 }
 
-func TestCreateShipmentRejectsDisallowedNotifyOrigin(t *testing.T) {
-	policy, err := webhookpolicy.NewAllowlist("https://allowed.example")
+func TestCreateShipmentRejectsDisallowedNotifyURL(t *testing.T) {
+	policy, err := webhookpolicy.NewAllowlist(
+		"https://allowed.example/api/v1/logistics/webhook",
+	)
 	if err != nil {
 		t.Fatalf("create allowlist: %v", err)
 	}
 	service := NewShipmentService(&fakeShipmentRepository{}, policy)
 
-	_, _, err = service.Create(context.Background(), CreateShipmentInput{
-		MerchantOrderNo: "order-1",
-		NotifyURL:       "https://blocked.example/webhook",
-	})
-	if !errors.Is(err, model.ErrInvalidShipmentInput) {
-		t.Fatalf("error = %v, want invalid shipment input", err)
+	for _, notifyURL := range []string{
+		"https://blocked.example/api/v1/logistics/webhook",
+		"https://allowed.example/api/v1/feed",
+		"https://allowed.example/api/v1/logistics/webhook/extra",
+		"https://allowed.example/api/v1/logistics/webhook?token=1",
+	} {
+		_, _, err = service.Create(context.Background(), CreateShipmentInput{
+			MerchantOrderNo: "order-1",
+			NotifyURL:       notifyURL,
+		})
+		if !errors.Is(err, model.ErrInvalidShipmentInput) {
+			t.Fatalf("notify URL %q error = %v, want invalid shipment input", notifyURL, err)
+		}
 	}
 }
 

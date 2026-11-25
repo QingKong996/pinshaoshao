@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,12 @@ import (
 	"pinshaoshao/internal/mock/payment/model"
 	"pinshaoshao/internal/webhooksig"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
 
 type notificationTestRepository struct {
 	due           []*model.Notification
@@ -118,9 +125,10 @@ func TestNotificationDeliveryIsSigned(t *testing.T) {
 }
 
 func TestNotificationFailureSchedulesRetry(t *testing.T) {
+	const responseBody = "sensitive callback response"
 	now := time.Date(2026, 11, 24, 12, 0, 0, 0, time.UTC)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "temporarily unavailable", http.StatusServiceUnavailable)
+		http.Error(w, responseBody, http.StatusServiceUnavailable)
 	}))
 	defer server.Close()
 
@@ -154,10 +162,48 @@ func TestNotificationFailureSchedulesRetry(t *testing.T) {
 	if !strings.Contains(repository.failedMessage, "503") {
 		t.Fatalf("failure message = %q, want status code", repository.failedMessage)
 	}
+	if strings.Contains(repository.failedMessage, responseBody) {
+		t.Fatalf("failure message leaked response body: %q", repository.failedMessage)
+	}
+}
+
+func TestNotificationFailureDoesNotPersistRequestError(t *testing.T) {
+	now := time.Date(2026, 11, 24, 12, 0, 0, 0, time.UTC)
+	repository := &notificationTestRepository{
+		due: []*model.Notification{{
+			ID:           11,
+			EventID:      "event-3",
+			EventType:    model.EventTypePaymentPaid,
+			TargetURL:    "https://allowed.example/webhook?token=sensitive",
+			Payload:      []byte(`{"id":"event-3"}`),
+			AttemptCount: 1,
+			MaxAttempts:  3,
+		}},
+	}
+	notifier := NewNotificationService(repository, NotificationConfig{
+		Client: &http.Client{
+			Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+				return nil, fmt.Errorf("request to %s failed", request.URL)
+			}),
+		},
+		Signer: webhooksig.NewSigner("test-signing-key"),
+		Policy: allowAllNotifyURLs{},
+	})
+	notifier.now = func() time.Time { return now }
+
+	if err := notifier.DeliverDue(context.Background(), 10); err != nil {
+		t.Fatalf("deliver notification: %v", err)
+	}
+	if repository.failedMessage != "webhook request failed" {
+		t.Fatalf("failure message = %q, want sanitized summary", repository.failedMessage)
+	}
+	if strings.Contains(repository.failedMessage, "token") {
+		t.Fatalf("failure message leaked request URL: %q", repository.failedMessage)
+	}
 }
 
 func TestTruncateErrorKeepsValidUTF8(t *testing.T) {
-	value := strings.Repeat("a", maxErrorBodyLength-1) +
+	value := strings.Repeat("a", maxErrorMessageLength-1) +
 		"汉" +
 		strings.Repeat("b", 10)
 
@@ -166,7 +212,7 @@ func TestTruncateErrorKeepsValidUTF8(t *testing.T) {
 	if !utf8.ValidString(truncated) {
 		t.Fatalf("truncated error is not valid UTF-8: %q", truncated)
 	}
-	if len(truncated) > maxErrorBodyLength {
-		t.Fatalf("truncated length = %d, want <= %d", len(truncated), maxErrorBodyLength)
+	if len(truncated) > maxErrorMessageLength {
+		t.Fatalf("truncated length = %d, want <= %d", len(truncated), maxErrorMessageLength)
 	}
 }

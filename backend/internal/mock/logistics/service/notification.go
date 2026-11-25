@@ -20,7 +20,8 @@ const (
 	defaultNotificationBatchSize = 20
 	defaultDeliveryLease         = 30 * time.Second
 	defaultHTTPTimeout           = 5 * time.Second
-	maxErrorBodyLength           = 1000
+	maxResponseDrainLength       = 1000
+	maxErrorMessageLength        = 1000
 )
 
 var defaultRetryDelays = []time.Duration{
@@ -145,7 +146,7 @@ func (s *NotificationService) deliver(ctx context.Context, notification *model.N
 			ctx,
 			notification,
 			now,
-			errors.New("notification target origin is not allowed"),
+			errors.New("notification target URL is not allowed"),
 		)
 	}
 	request, err := http.NewRequestWithContext(
@@ -155,7 +156,7 @@ func (s *NotificationService) deliver(ctx context.Context, notification *model.N
 		bytes.NewReader(notification.Payload),
 	)
 	if err != nil {
-		return s.finishFailure(ctx, notification, now, err)
+		return s.finishFailure(ctx, notification, now, errors.New("webhook request is invalid"))
 	}
 
 	timestamp := strconv.FormatInt(now.Unix(), 10)
@@ -169,12 +170,12 @@ func (s *NotificationService) deliver(ctx context.Context, notification *model.N
 
 	response, err := s.client.Do(request)
 	if err != nil {
-		return s.finishFailure(ctx, notification, now, err)
+		return s.finishFailure(ctx, notification, now, errors.New("webhook request failed"))
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
-		if _, err := io.Copy(io.Discard, io.LimitReader(response.Body, maxErrorBodyLength)); err != nil {
+		if _, err := io.Copy(io.Discard, io.LimitReader(response.Body, maxResponseDrainLength)); err != nil {
 			return fmt.Errorf("drain notification response: %w", err)
 		}
 		if err := s.repository.MarkSucceeded(ctx, notification.ID, now); err != nil {
@@ -183,9 +184,13 @@ func (s *NotificationService) deliver(ctx context.Context, notification *model.N
 		return nil
 	}
 
-	body, _ := io.ReadAll(io.LimitReader(response.Body, maxErrorBodyLength))
-	message := fmt.Sprintf("webhook returned %d: %s", response.StatusCode, strings.TrimSpace(string(body)))
-	return s.finishFailure(ctx, notification, now, errors.New(message))
+	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxResponseDrainLength))
+	return s.finishFailure(
+		ctx,
+		notification,
+		now,
+		fmt.Errorf("webhook returned %d", response.StatusCode),
+	)
 }
 
 func (s *NotificationService) finishFailure(
@@ -233,10 +238,10 @@ func (s *NotificationService) retryDelay(attempt int) time.Duration {
 
 func truncateError(value string) string {
 	value = strings.TrimSpace(value)
-	if len(value) <= maxErrorBodyLength {
+	if len(value) <= maxErrorMessageLength {
 		return value
 	}
-	value = value[:maxErrorBodyLength]
+	value = value[:maxErrorMessageLength]
 	for !utf8.ValidString(value) {
 		value = value[:len(value)-1]
 	}

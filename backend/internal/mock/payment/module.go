@@ -33,7 +33,7 @@ const (
 type Config struct {
 	WebhookSecret             string
 	PublicBaseURL             string
-	NotifyAllowedOrigins      string
+	NotifyAllowedURLs         string
 	NotificationPollInterval  time.Duration
 	ExpiryPollInterval        time.Duration
 	NotificationBatchSize     int
@@ -49,8 +49,8 @@ func ConfigFromEnv() Config {
 	return Config{
 		WebhookSecret: strings.TrimSpace(os.Getenv("MOCKPAY_WEBHOOK_SECRET")),
 		PublicBaseURL: strings.TrimSpace(os.Getenv("MOCKPAY_PUBLIC_BASE_URL")),
-		NotifyAllowedOrigins: strings.TrimSpace(
-			os.Getenv("MOCKPAY_NOTIFY_ALLOWED_ORIGINS"),
+		NotifyAllowedURLs: strings.TrimSpace(
+			os.Getenv("MOCKPAY_NOTIFY_ALLOWED_URLS"),
 		),
 		Auth: mockauth.ConfigFromEnv("MOCKPAY"),
 	}
@@ -96,9 +96,9 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 	if strings.TrimSpace(config.WebhookSecret) == "" {
 		return nil, errors.New("MOCKPAY_WEBHOOK_SECRET is required")
 	}
-	notifyPolicy, err := webhookpolicy.NewAllowlist(config.NotifyAllowedOrigins)
+	notifyPolicy, err := webhookpolicy.NewAllowlist(config.NotifyAllowedURLs)
 	if err != nil {
-		return nil, fmt.Errorf("MOCKPAY_NOTIFY_ALLOWED_ORIGINS: %w", err)
+		return nil, fmt.Errorf("MOCKPAY_NOTIFY_ALLOWED_URLS: %w", err)
 	}
 	authService, err := mockauth.NewService(pool, config.Auth)
 	if err != nil {

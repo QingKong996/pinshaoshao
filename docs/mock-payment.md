@@ -15,14 +15,14 @@
 | `MOCKPAY_DATABASE_URL` | 是 | `pinshaoshao_mockpay` 逻辑数据库 DSN，不回退到 `DATABASE_URL` |
 | `MOCKPAY_WEBHOOK_SECRET` | 是 | 回调 HMAC-SHA256 密钥 |
 | `MOCKPAY_PUBLIC_BASE_URL` | 否 | 服务 origin，例如 `http://localhost:8080`，不包含 `/mockpay`；为空时返回相对路径 |
-| `MOCKPAY_NOTIFY_ALLOWED_ORIGINS` | 是 | 逗号分隔的回调 origin 白名单，仅包含 scheme、host 和 port，例如 `http://localhost:8080` |
+| `MOCKPAY_NOTIFY_ALLOWED_URLS` | 是 | 逗号分隔的回调 URL 白名单，必须包含完整路径，例如 `http://localhost:8080/api/v1/payment/webhook` |
 | `MOCKPAY_AUTH_USERNAME` | 是 | MockPay 运营账号 |
 | `MOCKPAY_AUTH_PASSWORD` | 是 | MockPay 运营密码；仅以 Argon2id 哈希落库 |
 | `MOCKPAY_AUTH_SESSION_TTL` | 否 | Session 有效期，默认 `24h` |
 
 数据库创建、迁移和隔离校验见 [mock-databases.md](mock-databases.md)。
 
-`notify_url` 的 origin 必须与 `MOCKPAY_NOTIFY_ALLOWED_ORIGINS` 中的一项完全匹配。创建支付单和后台实际投递时都会校验，白名单外或配置无效时启动失败。
+`notify_url` 必须与 `MOCKPAY_NOTIFY_ALLOWED_URLS` 中的一项完全匹配，包括 scheme、host、port 和 path；不接受 query、fragment、userinfo、点段或编码路径分隔符。创建支付单和后台实际投递时都会校验，白名单外或配置无效时启动失败。
 
 ## 状态机
 
@@ -129,7 +129,7 @@ timestamp + "." + raw_request_body
 v1=hex(HMAC-SHA256(MOCKPAY_WEBHOOK_SECRET, timestamp + "." + raw_request_body))
 ```
 
-商户必须使用原始请求体验签，并校验时间戳窗口。验签算法由中立的 `internal/webhooksig` 提供；mockpayment 与业务支付模块不互相 import，只通过 HTTP 通信。商户返回任意 `2xx` 视为成功，其他状态码或网络错误会进入重试。商户应按 `X-MockPay-Event-Id` 幂等处理回调。
+商户必须使用原始请求体验签，并校验时间戳窗口。验签算法由中立的 `internal/webhooksig` 提供；mockpayment 与业务支付模块不互相 import，只通过 HTTP 通信。商户返回任意 `2xx` 视为成功，其他状态码或网络错误会进入重试。投递失败时 `last_error` 只记录状态码或固定摘要，不保存目标响应体或请求 URL。商户应按 `X-MockPay-Event-Id` 幂等处理回调。
 
 默认最多投递 7 次，重试间隔依次为 1 秒、5 秒、30 秒、2 分钟、10 分钟、30 分钟。达到上限后通知进入 `exhausted`，可通过人工重试接口重新投递。
 

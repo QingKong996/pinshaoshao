@@ -151,21 +151,30 @@ func TestNormalizeCreateInputAcceptsBoundaries(t *testing.T) {
 	}
 }
 
-func TestCreatePaymentRejectsDisallowedNotifyOrigin(t *testing.T) {
-	policy, err := webhookpolicy.NewAllowlist("https://allowed.example")
+func TestCreatePaymentRejectsDisallowedNotifyURL(t *testing.T) {
+	policy, err := webhookpolicy.NewAllowlist(
+		"https://allowed.example/api/v1/payment/webhook",
+	)
 	if err != nil {
 		t.Fatalf("create allowlist: %v", err)
 	}
 	service := NewPaymentService(&expiredPaymentRepository{}, policy)
 
-	_, _, err = service.Create(context.Background(), CreatePaymentInput{
-		MerchantOrderNo: "order-1",
-		AmountCents:     100,
-		Subject:         "Order",
-		NotifyURL:       "https://blocked.example/webhook",
-	})
-	if !errors.Is(err, model.ErrInvalidPaymentInput) {
-		t.Fatalf("error = %v, want invalid payment input", err)
+	for _, notifyURL := range []string{
+		"https://blocked.example/api/v1/payment/webhook",
+		"https://allowed.example/api/v1/feed",
+		"https://allowed.example/api/v1/payment/webhook/extra",
+		"https://allowed.example/api/v1/payment/webhook?token=1",
+	} {
+		_, _, err = service.Create(context.Background(), CreatePaymentInput{
+			MerchantOrderNo: "order-1",
+			AmountCents:     100,
+			Subject:         "Order",
+			NotifyURL:       notifyURL,
+		})
+		if !errors.Is(err, model.ErrInvalidPaymentInput) {
+			t.Fatalf("notify URL %q error = %v, want invalid payment input", notifyURL, err)
+		}
 	}
 }
 
