@@ -1,8 +1,10 @@
 import { defineConfig, mergeConfig } from "vitest/config"
 import viteConfig from "./vite.config.ts"
 
+const baseConfig = viteConfig({ command: "serve", mode: "test" })
+
 export default mergeConfig(
-  viteConfig,
+  baseConfig,
   defineConfig({
     test: {
       environment: "jsdom",

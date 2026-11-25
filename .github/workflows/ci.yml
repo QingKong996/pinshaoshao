@@ -32,6 +32,10 @@ jobs:
         working-directory: backend
         run: go test -tags=integration ./...
 
+      - name: Scan Go vulnerabilities
+        working-directory: backend
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 ./...
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -48,6 +52,10 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
+
+      - name: Scan npm vulnerabilities
+        working-directory: frontend
+        run: npm audit --audit-level=high
 
       - name: Lint
         working-directory: frontend
