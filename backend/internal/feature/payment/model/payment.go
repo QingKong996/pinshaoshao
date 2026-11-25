@@ -57,6 +57,21 @@ func (p *Payment) MarkSucceeded(providerTransactionID string, paidAt time.Time) 
 	}
 }
 
+func (p *Payment) MarkClosed(closedAt time.Time) error {
+	switch p.Status {
+	case PaymentStatusClosed:
+		return nil
+	case PaymentStatusSucceeded:
+		return apperr.ErrPaymentConflict
+	case PaymentStatusPending:
+		p.Status = PaymentStatusClosed
+		p.UpdatedAt = closedAt.UTC()
+		return nil
+	default:
+		return apperr.ErrPaymentConflict
+	}
+}
+
 type PaidCallback struct {
 	EventID               string
 	EventType             string

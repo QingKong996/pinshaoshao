@@ -3,11 +3,13 @@ package mockpay
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"pinshaoshao/internal/feature/payment/apperr"
 	"pinshaoshao/internal/feature/payment/model"
 )
 
@@ -63,5 +65,47 @@ func TestClientCreatePayment(t *testing.T) {
 		result.MerchantNo != merchantNo ||
 		result.CheckoutURL != server.URL+"/mockpay/checkout/"+providerNo {
 		t.Fatalf("result = %+v", result)
+	}
+}
+
+func TestClientClosePayment(t *testing.T) {
+	const providerNo = "8ad23f19-24f5-48b8-bbc7-243e1f1e0a98"
+
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.Method != http.MethodPost ||
+			r.URL.Path != closePaymentPathPrefix+providerNo+"/close" {
+			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, nil)
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	if err := client.ClosePayment(context.Background(), providerNo); err != nil {
+		t.Fatalf("close payment: %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("calls = %d, want 1", calls)
+	}
+}
+
+func TestClientClosePaymentMapsConflict(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "payment is paid", http.StatusConflict)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, nil)
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	err = client.ClosePayment(context.Background(), "8ad23f19-24f5-48b8-bbc7-243e1f1e0a98")
+	if !errors.Is(err, apperr.ErrPaymentConflict) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrPaymentConflict)
 	}
 }

@@ -4,27 +4,40 @@
     "amountDue": "Amount due",
     "payBefore": "Pay before {{date}}",
     "payNow": "Pay now",
+    "closeAction": "Close payment and cancel order",
     "preparing": "Preparing checkout…",
     "redirectHint": "You will be redirected to MockPay secure checkout. After payment, you will return to this order.",
     "paidTitle": "Payment completed",
     "paidDescription": "This order has been paid successfully.",
-    "paidAt": "Paid {{date}}"
+    "paidAt": "Paid {{date}}",
+    "closedTitle": "Order cancelled",
+    "closedDescription": "The payment was closed and the order was cancelled.",
+    "closeDialog": {
+      "title": "Close this payment?",
+      "description": "Closing payment for order #{{id}} will cancel the order and release reserved inventory. This cannot be undone.",
+      "keep": "Keep payment",
+      "confirm": "Close and cancel order",
+      "closing": "Closing…"
+    }
   },
   "status": {
     "pending": "Awaiting payment",
-    "paid": "Paid"
+    "paid": "Paid",
+    "cancelled": "Cancelled"
   },
   "actions": {
     "dismiss": "Dismiss"
   },
   "errors": {
     "title": "Could not start payment",
+    "closeTitle": "Could not close payment",
     "unknown": "Something went wrong. Try again.",
     "network": "Cannot reach the server. Check your connection and retry.",
     "invalidRequest": "The payment request is invalid.",
     "unauthorized": "Your session has expired. Sign in again.",
     "notFound": "The order or payment could not be found.",
     "notPayable": "This order is no longer payable. Refresh for the latest status.",
+    "cannotClose": "This payment can no longer be closed. Refresh for the latest status.",
     "closed": "This payment session is closed.",
     "gateway": "The payment service is temporarily unavailable. Try again later.",
     "checkoutUnavailable": "The checkout session is unavailable. Try again.",

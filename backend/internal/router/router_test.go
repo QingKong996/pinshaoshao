@@ -69,6 +69,7 @@ var routeCases = []routeCase{
 	{method: http.MethodPost, pattern: "/api/v1/payments", requestPath: "/api/v1/payments", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/payments/:paymentNo", requestPath: "/api/v1/payments/1", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/payments/:paymentNo/pay", requestPath: "/api/v1/payments/1/pay", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/api/v1/payments/:paymentNo/close", requestPath: "/api/v1/payments/1/close", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/payment/webhook", requestPath: "/api/v1/payment/webhook", public: true, publicCode: http.StatusUnauthorized},
 	{method: http.MethodGet, pattern: "/api/v1/shipments", requestPath: "/api/v1/shipments", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/shipments/:shipmentNo", requestPath: "/api/v1/shipments/1", authError: userapperr.ErrInvalidSession.Error()},

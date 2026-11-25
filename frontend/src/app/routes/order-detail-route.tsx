@@ -47,6 +47,17 @@ export function OrderDetailRoute() {
                       ),
                     })
                   }}
+                  onOrderCancelled={() => {
+                    void queryClient.invalidateQueries({
+                      queryKey: orderQueryKeys.order(
+                        session.token,
+                        order.id,
+                      ),
+                    })
+                    void queryClient.invalidateQueries({
+                      queryKey: orderQueryKeys.orders(session.token),
+                    })
+                  }}
                 />
               )
             }}

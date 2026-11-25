@@ -1,9 +1,10 @@
 import { useMutation } from "@tanstack/react-query"
 import {
+  closeOrderPayment,
   createOrderPayment,
   payOrderPayment,
 } from "../api/payments"
-import type { StartPaymentResult } from "../types"
+import type { OrderPayment, StartPaymentResult } from "../types"
 
 export function useStartPayment(token: string) {
   return useMutation({
@@ -18,6 +19,18 @@ export function useStartPayment(token: string) {
         payment: session,
         checkoutURL: session.checkout_url?.trim() ?? "",
       }
+    },
+  })
+}
+
+export function useClosePayment(token: string) {
+  return useMutation({
+    mutationFn: async (orderID: number): Promise<OrderPayment> => {
+      const payment = await createOrderPayment(token, orderID)
+      if (payment.status !== "pending") {
+        return payment
+      }
+      return closeOrderPayment(token, payment.payment_no)
     },
   })
 }

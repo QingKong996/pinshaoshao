@@ -49,3 +49,32 @@ export function describeStartPaymentError(
       return t("errors.unknown")
   }
 }
+
+export function describeClosePaymentError(
+  error: unknown,
+  t: TFunction<"payment">,
+) {
+  if (!(error instanceof ApiError)) {
+    return t("errors.unknown")
+  }
+  if (error.status === 0) {
+    return t("errors.network")
+  }
+
+  switch (error.status) {
+    case 400:
+      return t("errors.invalidRequest")
+    case 401:
+      return t("errors.unauthorized")
+    case 404:
+      return t("errors.notFound")
+    case 409:
+      return t("errors.cannotClose")
+    case 502:
+      return t("errors.gateway")
+    case 500:
+      return t("errors.server")
+    default:
+      return t("errors.unknown")
+  }
+}

@@ -201,6 +201,96 @@ func TestPaymentRepositoryRecordsLatePaymentWithoutRestoringCancelledOrder(t *te
 	requireOrderStatus(t, orderID, "cancelled", "cancelled")
 }
 
+func TestPaymentRepositoryCloseCancelsOrderAndReleasesStock(t *testing.T) {
+	resetPaymentDatabase(t)
+	ctx := context.Background()
+	userID := insertUser(t, "buyer01")
+	orderID := insertOrder(t, userID, 3998)
+	skuID := insertOrderItem(t, orderID)
+	repository := newPaymentRepository()
+
+	payment, _, err := repository.CreateForOrder(ctx, userID, orderID, uuid.NewString())
+	if err != nil {
+		t.Fatalf("create payment: %v", err)
+	}
+	closed, err := repository.CloseForUser(ctx, userID, payment.PaymentNo)
+	if err != nil {
+		t.Fatalf("close payment: %v", err)
+	}
+	if closed.Status != model.PaymentStatusClosed {
+		t.Fatalf("payment status = %q, want closed", closed.Status)
+	}
+	requireOrderStatus(t, orderID, "cancelled", "cancelled")
+	requirePaymentFrozenStock(t, skuID, 0)
+
+	again, err := repository.CloseForUser(ctx, userID, payment.PaymentNo)
+	if err != nil {
+		t.Fatalf("close payment again: %v", err)
+	}
+	if again.Status != model.PaymentStatusClosed {
+		t.Fatalf("payment status = %q, want closed", again.Status)
+	}
+	requirePaymentFrozenStock(t, skuID, 0)
+}
+
+func TestPaymentRepositoryRejectsClosingPaidPayment(t *testing.T) {
+	resetPaymentDatabase(t)
+	ctx := context.Background()
+	userID := insertUser(t, "buyer01")
+	orderID := insertOrder(t, userID, 3998)
+	repository := newPaymentRepository()
+
+	payment, _, err := repository.CreateForOrder(ctx, userID, orderID, uuid.NewString())
+	if err != nil {
+		t.Fatalf("create payment: %v", err)
+	}
+	_, err = repository.ApplyPaidCallback(ctx, model.PaidCallback{
+		EventID:               uuid.NewString(),
+		EventType:             "payment.paid",
+		ProviderTransactionID: uuid.NewString(),
+		PaymentNo:             payment.PaymentNo,
+		AmountCents:           3998,
+		Currency:              model.CurrencyCNY,
+		PaidAt:                time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("apply callback: %v", err)
+	}
+
+	_, err = repository.CloseForUser(ctx, userID, payment.PaymentNo)
+	if !errors.Is(err, apperr.ErrPaymentConflict) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrPaymentConflict)
+	}
+	requireOrderStatus(t, orderID, "paid", "awaiting_shipment")
+}
+
+func TestPaymentRepositoryCloseRejectsOtherUser(t *testing.T) {
+	resetPaymentDatabase(t)
+	ctx := context.Background()
+	ownerID := insertUser(t, "buyer01")
+	otherID := insertUser(t, "buyer02")
+	orderID := insertOrder(t, ownerID, 3998)
+	repository := newPaymentRepository()
+
+	payment, _, err := repository.CreateForOrder(ctx, ownerID, orderID, uuid.NewString())
+	if err != nil {
+		t.Fatalf("create payment: %v", err)
+	}
+	_, err = repository.CloseForUser(ctx, otherID, payment.PaymentNo)
+	if !errors.Is(err, apperr.ErrOrderNotFound) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrOrderNotFound)
+	}
+
+	stored, err := repository.GetForUser(ctx, ownerID, payment.PaymentNo)
+	if err != nil {
+		t.Fatalf("get payment: %v", err)
+	}
+	if stored.Status != model.PaymentStatusPending {
+		t.Fatalf("payment status = %q, want pending", stored.Status)
+	}
+	requireOrderStatus(t, orderID, "pending_payment", "pending_payment")
+}
+
 func TestPaymentRepositoryRejectsOtherUser(t *testing.T) {
 	resetPaymentDatabase(t)
 	ctx := context.Background()
@@ -272,6 +362,51 @@ VALUES ($1, $2, 'Shop', $3)`, orderID, shopID, amountCents); err != nil {
 	return orderID
 }
 
+func insertOrderItem(t *testing.T, orderID int) int {
+	t.Helper()
+	ctx := context.Background()
+
+	var shopID int
+	var subOrderID int
+	if err := testPool.QueryRow(
+		ctx,
+		`SELECT id, shop_id FROM sub_orders WHERE order_id = $1`,
+		orderID,
+	).Scan(&subOrderID, &shopID); err != nil {
+		t.Fatalf("read sub-order: %v", err)
+	}
+
+	var productID int
+	if err := testPool.QueryRow(ctx, `
+INSERT INTO products (shop_id, name, status)
+VALUES ($1, 'T-shirt', 'on_shelf')
+RETURNING id`, shopID).Scan(&productID); err != nil {
+		t.Fatalf("insert product: %v", err)
+	}
+
+	var skuID int
+	if err := testPool.QueryRow(ctx, `
+INSERT INTO product_skus (product_id, specs, price_cents, is_enabled)
+VALUES ($1, '{"color":"black"}'::jsonb, 1999, true)
+RETURNING id`, productID).Scan(&skuID); err != nil {
+		t.Fatalf("insert SKU: %v", err)
+	}
+	if _, err := testPool.Exec(ctx, `
+INSERT INTO inventory_items (sku_id, total_stock, frozen_stock)
+VALUES ($1, 4, 2)`, skuID); err != nil {
+		t.Fatalf("insert inventory: %v", err)
+	}
+	if _, err := testPool.Exec(ctx, `
+INSERT INTO order_item_snapshots
+    (sub_order_id, product_id, sku_id, product_name, sku_specs, unit_price_cents, quantity)
+VALUES ($1, $2, $3, 'T-shirt', '{"color":"black"}'::jsonb, 1999, 2)`,
+		subOrderID, productID, skuID,
+	); err != nil {
+		t.Fatalf("insert order item: %v", err)
+	}
+	return skuID
+}
+
 func requireOrderStatus(t *testing.T, orderID int, wantOrder string, wantSubOrder string) {
 	t.Helper()
 
@@ -300,11 +435,27 @@ func requireOrderStatus(t *testing.T, orderID int, wantOrder string, wantSubOrde
 	}
 }
 
+func requirePaymentFrozenStock(t *testing.T, skuID int, want int) {
+	t.Helper()
+
+	var frozen int
+	if err := testPool.QueryRow(
+		context.Background(),
+		`SELECT frozen_stock FROM inventory_items WHERE sku_id = $1`,
+		skuID,
+	).Scan(&frozen); err != nil {
+		t.Fatalf("read frozen stock: %v", err)
+	}
+	if frozen != want {
+		t.Fatalf("frozen stock = %d, want %d", frozen, want)
+	}
+}
+
 func resetPaymentDatabase(t *testing.T) {
 	t.Helper()
 
-	const query = `TRUNCATE users, sessions, shops, shop_sessions, orders, sub_orders,
-order_item_snapshots, payments RESTART IDENTITY CASCADE`
+	const query = `TRUNCATE users, sessions, shops, shop_sessions, products, product_skus,
+inventory_items, orders, sub_orders, order_item_snapshots, payments RESTART IDENTITY CASCADE`
 	if _, err := testPool.Exec(context.Background(), query); err != nil {
 		t.Fatalf("reset payment database: %v", err)
 	}

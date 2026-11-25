@@ -25,10 +25,12 @@ type PaymentRepository interface {
 	GetForPayment(ctx context.Context, userID int, paymentNo string) (*model.Payment, error)
 	SetProviderTransaction(ctx context.Context, paymentNo string, providerTransactionID string) error
 	ApplyPaidCallback(ctx context.Context, callback model.PaidCallback) (*model.Payment, error)
+	CloseForUser(ctx context.Context, userID int, paymentNo string) (*model.Payment, error)
 }
 
 type PaymentGateway interface {
 	CreatePayment(ctx context.Context, input model.ProviderPaymentRequest) (*model.ProviderPaymentResult, error)
+	ClosePayment(ctx context.Context, providerPaymentNo string) error
 }
 
 type Config struct {
@@ -140,6 +142,41 @@ func (s *PaymentService) Pay(
 		Payment:     updated,
 		CheckoutURL: result.CheckoutURL,
 	}, nil
+}
+
+func (s *PaymentService) Close(
+	ctx context.Context,
+	userID int,
+	paymentNo string,
+) (*model.Payment, error) {
+	normalized, err := parsePaymentNo(paymentNo)
+	if err != nil {
+		return nil, err
+	}
+
+	payment, err := s.repository.GetForUser(ctx, userID, normalized)
+	if err != nil {
+		return nil, fmt.Errorf("service.ClosePayment: %w", err)
+	}
+	switch payment.Status {
+	case model.PaymentStatusClosed:
+		return payment, nil
+	case model.PaymentStatusSucceeded:
+		return nil, fmt.Errorf("service.ClosePayment: %w", apperr.ErrPaymentConflict)
+	}
+
+	if payment.ProviderTransactionID != nil &&
+		strings.TrimSpace(*payment.ProviderTransactionID) != "" {
+		if err := s.gateway.ClosePayment(ctx, *payment.ProviderTransactionID); err != nil {
+			return nil, fmt.Errorf("service.ClosePayment: %w", err)
+		}
+	}
+
+	closed, err := s.repository.CloseForUser(ctx, userID, normalized)
+	if err != nil {
+		return nil, fmt.Errorf("service.ClosePayment: %w", err)
+	}
+	return closed, nil
 }
 
 func (s *PaymentService) HandlePaidCallback(

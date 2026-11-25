@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	createPaymentPath = "/mockpay/api/v1/payments"
-	maxResponseBytes  = 64 << 10
+	createPaymentPath      = "/mockpay/api/v1/payments"
+	closePaymentPathPrefix = "/mockpay/api/v1/payments/"
+	maxResponseBytes       = 64 << 10
 )
 
 type Client struct {
@@ -128,6 +129,50 @@ func (c *Client) CreatePayment(
 		CheckoutURL: checkoutURL,
 		ExpiresAt:   result.ExpiresAt,
 	}, nil
+}
+
+func (c *Client) ClosePayment(ctx context.Context, providerPaymentNo string) error {
+	providerPaymentNo = strings.TrimSpace(providerPaymentNo)
+	if providerPaymentNo == "" {
+		return apperr.ErrPaymentProviderInvalid
+	}
+
+	endpoint := c.baseURL.ResolveReference(&url.URL{
+		Path: closePaymentPathPrefix + url.PathEscape(providerPaymentNo) + "/close",
+	})
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), nil)
+	if err != nil {
+		return fmt.Errorf("create mock payment close request: %w", err)
+	}
+	request.Header.Set("Accept", "application/json")
+
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return fmt.Errorf("%w: %v", apperr.ErrPaymentProviderUnavailable, err)
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
+	if err != nil {
+		return fmt.Errorf("%w: read response: %v", apperr.ErrPaymentProviderUnavailable, err)
+	}
+	if response.StatusCode == http.StatusConflict {
+		return fmt.Errorf(
+			"%w: status %d: %s",
+			apperr.ErrPaymentConflict,
+			response.StatusCode,
+			strings.TrimSpace(string(body)),
+		)
+	}
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf(
+			"%w: status %d: %s",
+			apperr.ErrPaymentProviderUnavailable,
+			response.StatusCode,
+			strings.TrimSpace(string(body)),
+		)
+	}
+	return nil
 }
 
 func (c *Client) resolveCheckoutURL(value string) (string, error) {
