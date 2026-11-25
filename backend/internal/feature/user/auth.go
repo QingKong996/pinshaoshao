@@ -11,16 +11,32 @@ import (
 
 // AuthMiddleware validates a user session token and stores the user on the context.
 func AuthMiddleware(authenticator SessionAuthenticator) gin.HandlerFunc {
+	return AuthMiddlewareWithGuard(authenticator, nil)
+}
+
+// AuthMiddlewareWithGuard validates a user session before running the route guard.
+func AuthMiddlewareWithGuard(authenticator SessionAuthenticator, guard gin.HandlerFunc) gin.HandlerFunc {
+	return AuthMiddlewareWithGuards(authenticator, guard, nil)
+}
+
+// AuthMiddlewareWithGuards validates a user session before running the configured guards.
+func AuthMiddlewareWithGuards(
+	authenticator SessionAuthenticator,
+	guard gin.HandlerFunc,
+	unauthenticatedGuard gin.HandlerFunc,
+) gin.HandlerFunc {
 	return middleware.SessionAuth(authenticator, middleware.SessionAuthConfig[model.User]{
-		Name:            "UserAuth",
-		ContextKey:      authctx.UserSubjectKey,
-		ContextTokenKey: authctx.UserTokenKey,
-		InvalidSession:  apperr.ErrInvalidSession,
-		Banned:          apperr.ErrUserBanned,
-		Unauthorized:    apperr.ErrUnauthorized,
-		InternalServer:  apperr.ErrInternalServer,
-		SubjectIDKey:    authctx.UserIDKey,
-		SubjectID:       func(user *model.User) int { return user.ID },
+		Name:                 "UserAuth",
+		ContextKey:           authctx.UserSubjectKey,
+		ContextTokenKey:      authctx.UserTokenKey,
+		InvalidSession:       apperr.ErrInvalidSession,
+		Banned:               apperr.ErrUserBanned,
+		Unauthorized:         apperr.ErrUnauthorized,
+		InternalServer:       apperr.ErrInternalServer,
+		SubjectIDKey:         authctx.UserIDKey,
+		SubjectID:            func(user *model.User) int { return user.ID },
+		Guard:                guard,
+		UnauthenticatedGuard: unauthenticatedGuard,
 	})
 }
 

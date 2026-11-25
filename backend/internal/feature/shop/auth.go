@@ -11,16 +11,32 @@ import (
 
 // AuthMiddleware validates a shop session token and stores the shop on the context.
 func AuthMiddleware(authenticator SessionAuthenticator) gin.HandlerFunc {
+	return AuthMiddlewareWithGuard(authenticator, nil)
+}
+
+// AuthMiddlewareWithGuard validates a shop session before running the route guard.
+func AuthMiddlewareWithGuard(authenticator SessionAuthenticator, guard gin.HandlerFunc) gin.HandlerFunc {
+	return AuthMiddlewareWithGuards(authenticator, guard, nil)
+}
+
+// AuthMiddlewareWithGuards validates a shop session before running the configured guards.
+func AuthMiddlewareWithGuards(
+	authenticator SessionAuthenticator,
+	guard gin.HandlerFunc,
+	unauthenticatedGuard gin.HandlerFunc,
+) gin.HandlerFunc {
 	return middleware.SessionAuth(authenticator, middleware.SessionAuthConfig[model.Shop]{
-		Name:            "ShopAuth",
-		ContextKey:      authctx.ShopSubjectKey,
-		ContextTokenKey: authctx.ShopTokenKey,
-		InvalidSession:  apperr.ErrInvalidShopSession,
-		Banned:          apperr.ErrShopBanned,
-		Unauthorized:    apperr.ErrUnauthorized,
-		InternalServer:  apperr.ErrInternalServer,
-		SubjectIDKey:    authctx.ShopIDKey,
-		SubjectID:       func(shop *model.Shop) int { return shop.ID },
+		Name:                 "ShopAuth",
+		ContextKey:           authctx.ShopSubjectKey,
+		ContextTokenKey:      authctx.ShopTokenKey,
+		InvalidSession:       apperr.ErrInvalidShopSession,
+		Banned:               apperr.ErrShopBanned,
+		Unauthorized:         apperr.ErrUnauthorized,
+		InternalServer:       apperr.ErrInternalServer,
+		SubjectIDKey:         authctx.ShopIDKey,
+		SubjectID:            func(shop *model.Shop) int { return shop.ID },
+		Guard:                guard,
+		UnauthenticatedGuard: unauthenticatedGuard,
 	})
 }
 

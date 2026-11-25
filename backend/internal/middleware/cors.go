@@ -15,7 +15,7 @@ const (
 
 // CORS allows browser clients from the configured origins to call the API.
 // Origins are comma-separated exact matches.
-func CORS(allowedOrigins string) gin.HandlerFunc {
+func CORS(allowedOrigins string, preflightHandlers ...gin.HandlerFunc) gin.HandlerFunc {
 	allowed := make(map[string]struct{})
 	for _, origin := range strings.Split(allowedOrigins, ",") {
 		origin = strings.TrimSpace(origin)
@@ -43,6 +43,12 @@ func CORS(allowedOrigins string) gin.HandlerFunc {
 			c.Header("Access-Control-Allow-Methods", corsAllowMethods)
 			c.Header("Access-Control-Allow-Headers", corsAllowHeaders)
 			c.Header("Access-Control-Max-Age", corsMaxAge)
+			for _, handler := range preflightHandlers {
+				handler(c)
+				if c.IsAborted() {
+					return
+				}
+			}
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}

@@ -27,6 +27,10 @@ type SessionAuthConfig[T any] struct {
 	InternalServer  error
 	SubjectIDKey    string
 	SubjectID       func(*T) int
+	// Guard runs after authentication and must not advance the Gin handler chain.
+	Guard gin.HandlerFunc
+	// UnauthenticatedGuard runs before an unauthorized response.
+	UnauthenticatedGuard gin.HandlerFunc
 }
 
 // SessionAuth validates the Bearer session token and exposes the authenticated
@@ -35,6 +39,9 @@ func SessionAuth[T any](authenticator SessionAuthenticator[T], config SessionAut
 	return func(c *gin.Context) {
 		token, ok := bearerToken(c.GetHeader("Authorization"))
 		if !ok {
+			if applyUnauthenticatedGuard(c, config.UnauthenticatedGuard) {
+				return
+			}
 			abortWithError(c, http.StatusUnauthorized, config.Unauthorized)
 			return
 		}
@@ -43,8 +50,14 @@ func SessionAuth[T any](authenticator SessionAuthenticator[T], config SessionAut
 		if err != nil {
 			switch {
 			case errors.Is(err, config.Unauthorized):
+				if applyUnauthenticatedGuard(c, config.UnauthenticatedGuard) {
+					return
+				}
 				abortWithError(c, http.StatusUnauthorized, config.Unauthorized)
 			case errors.Is(err, config.InvalidSession):
+				if applyUnauthenticatedGuard(c, config.UnauthenticatedGuard) {
+					return
+				}
 				abortWithError(c, http.StatusUnauthorized, config.InvalidSession)
 			case errors.Is(err, config.Banned):
 				abortWithError(c, http.StatusForbidden, config.Banned)
@@ -60,8 +73,22 @@ func SessionAuth[T any](authenticator SessionAuthenticator[T], config SessionAut
 		if config.SubjectIDKey != "" {
 			c.Set(config.SubjectIDKey, config.SubjectID(subject))
 		}
+		if config.Guard != nil {
+			config.Guard(c)
+			if c.IsAborted() {
+				return
+			}
+		}
 		c.Next()
 	}
+}
+
+func applyUnauthenticatedGuard(c *gin.Context, guard gin.HandlerFunc) bool {
+	if guard == nil {
+		return false
+	}
+	guard(c)
+	return c.IsAborted()
 }
 
 // bearerToken parses an "Authorization: Bearer <token>" header.

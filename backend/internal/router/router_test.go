@@ -228,6 +228,23 @@ func TestRegisteredRoutes(t *testing.T) {
 	}
 }
 
+func TestPublicAPIRouteSet(t *testing.T) {
+	for _, route := range routeCases {
+		if !strings.HasPrefix(route.pattern, "/api/") {
+			continue
+		}
+		if got := router.IsPublicAPI(route.method, route.pattern); got != route.public {
+			t.Errorf(
+				"IsPublicAPI(%s, %s) = %v, want %v",
+				route.method,
+				route.pattern,
+				got,
+				route.public,
+			)
+		}
+	}
+}
+
 func TestAuthenticationRoutesArePublic(t *testing.T) {
 	r := newTestRouter(t)
 

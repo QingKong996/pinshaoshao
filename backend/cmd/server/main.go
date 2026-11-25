@@ -20,6 +20,7 @@ import (
 	"pinshaoshao/internal/middleware"
 	mocklogisticsmodule "pinshaoshao/internal/mock/logistics"
 	mockpaymentmodule "pinshaoshao/internal/mock/payment"
+	"pinshaoshao/internal/ratelimit"
 	"pinshaoshao/internal/router"
 	"strings"
 	"time"
@@ -53,13 +54,25 @@ func main() {
 	)
 	defer cancel()
 
-	r := gin.New()
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
-	r.Use(middleware.SecurityHeaders())
-
 	if err := godotenv.Load(); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		fatal("load .env file", "error", err)
+	}
+
+	accessLogger := middleware.NewAccessLogger(slog.Default())
+	defer func() {
+		closeContext, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer closeCancel()
+		if err := accessLogger.Close(closeContext); err != nil {
+			slog.Error("close access logger", "error", err)
+		}
+	}()
+
+	r := gin.New()
+	r.Use(accessLogger.Middleware())
+	r.Use(gin.Recovery())
+	r.Use(middleware.SecurityHeaders())
+	if err := configureTrustedProxies(r); err != nil {
+		fatal("configure trusted proxies", "error", err)
 	}
 
 	port := os.Getenv("PORT")
@@ -74,7 +87,6 @@ func main() {
 	if strings.Contains(corsOrigins, "*") {
 		fatal("CORS_ALLOWED_ORIGINS must contain explicit origins")
 	}
-	r.Use(middleware.CORS(corsOrigins))
 
 	pool, err := openDatabasePool(ctx, "DATABASE_URL")
 	if err != nil {
@@ -101,6 +113,22 @@ func main() {
 	}); err != nil {
 		fatal("validate database isolation", "error", err)
 	}
+
+	rateLimitConfig, err := ratelimit.ConfigFromEnv()
+	if err != nil {
+		fatal("load rate limit config", "error", err)
+	}
+	rateLimiter, err := ratelimit.NewRedisLimiter(ctx, os.Getenv("REDIS_URL"), rateLimitConfig)
+	if err != nil {
+		fatal("open redis rate limiter", "error", err)
+	}
+	defer func() {
+		if err := rateLimiter.Close(); err != nil {
+			slog.Error("close redis rate limiter", "error", err)
+		}
+	}()
+	r.Use(middleware.CORS(corsOrigins, ratelimit.PreflightMiddleware(rateLimiter)))
+	r.Use(ratelimit.APIEntryMiddleware(rateLimiter, router.IsPublicAPI))
 
 	userModule := usermodule.NewModule(pool)
 	shopModule := shopmodule.NewModule(pool)
@@ -151,19 +179,25 @@ func main() {
 	defer mockLogisticsModule.Stop()
 
 	router.Register(r, router.Modules{
-		User:              userModule,
-		Shop:              shopModule,
-		Product:           productModule,
-		Inventory:         inventoryModule,
-		Cart:              cartModule,
-		Feed:              feedModule,
-		Order:             orderModule,
-		Payment:           paymentModule,
-		Logistics:         logisticsModule,
-		MockPayment:       mockPaymentModule,
-		MockLogistics:     mockLogisticsModule,
-		UserAuth:          userModule.AuthMiddleware(),
-		ShopAuth:          shopModule.AuthMiddleware(),
+		User:          userModule,
+		Shop:          shopModule,
+		Product:       productModule,
+		Inventory:     inventoryModule,
+		Cart:          cartModule,
+		Feed:          feedModule,
+		Order:         orderModule,
+		Payment:       paymentModule,
+		Logistics:     logisticsModule,
+		MockPayment:   mockPaymentModule,
+		MockLogistics: mockLogisticsModule,
+		UserAuth: userModule.AuthMiddlewareWithGuards(
+			ratelimit.UserMiddleware(rateLimiter),
+			ratelimit.UnauthenticatedGuard(rateLimiter),
+		),
+		ShopAuth: shopModule.AuthMiddlewareWithGuards(
+			ratelimit.ShopMiddleware(rateLimiter),
+			ratelimit.UnauthenticatedGuard(rateLimiter),
+		),
 		MockPaymentAuth:   mockPaymentModule.AuthMiddleware(),
 		MockLogisticsAuth: mockLogisticsModule.AuthMiddleware(),
 	})
@@ -179,6 +213,19 @@ func main() {
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fatal("run server", "error", err)
 	}
+}
+
+func configureTrustedProxies(r *gin.Engine) error {
+	value := strings.TrimSpace(os.Getenv("TRUSTED_PROXIES"))
+	if value == "" {
+		return r.SetTrustedProxies(nil)
+	}
+
+	proxies := strings.Split(value, ",")
+	for index := range proxies {
+		proxies[index] = strings.TrimSpace(proxies[index])
+	}
+	return r.SetTrustedProxies(proxies)
 }
 
 func openDatabasePool(ctx context.Context, environment string) (*pgxpool.Pool, error) {
