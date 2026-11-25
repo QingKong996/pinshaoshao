@@ -70,6 +70,12 @@ func TestShopLogin(t *testing.T) {
 
 		requireStatus(t, rec, http.StatusOK)
 		requireToken(t, rec)
+		if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+			t.Fatalf("Cache-Control = %q, want no-store", got)
+		}
+		if got := rec.Header().Get("Pragma"); got != "no-cache" {
+			t.Fatalf("Pragma = %q, want no-cache", got)
+		}
 	})
 
 	t.Run("rejects invalid credentials", func(t *testing.T) {
@@ -251,6 +257,12 @@ func TestShopLogout(t *testing.T) {
 		rec := doRequest(newShopLogoutRouter(t, shopController, activeShop), http.MethodPost, "/logout", "Bearer session-token", "")
 
 		requireStatus(t, rec, http.StatusNoContent)
+		if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+			t.Fatalf("Cache-Control = %q, want no-store", got)
+		}
+		if got := rec.Header().Get("Pragma"); got != "no-cache" {
+			t.Fatalf("Pragma = %q, want no-cache", got)
+		}
 		if rec.Body.Len() != 0 {
 			t.Fatalf("body = %q, want empty", rec.Body.String())
 		}
