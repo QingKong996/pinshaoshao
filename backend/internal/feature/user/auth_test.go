@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"pinshaoshao/internal/feature/user/apperr"
 	"pinshaoshao/internal/feature/user/model"
+	"pinshaoshao/internal/http/authctx"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -223,4 +224,75 @@ func TestMustUserSessionTokenPanicsWithoutAuth(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/unprotected", nil))
+}
+
+func TestUserAuthRunsGuardWithAuthenticatedID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	const userID = 42
+	handlerCalled := false
+	r := gin.New()
+	r.GET(
+		"/protected",
+		AuthMiddlewareWithGuard(
+			&stubUserAuthenticator{user: &model.User{ID: userID, Status: model.UserStatusActive}},
+			func(c *gin.Context) {
+				authenticatedID, ok := authctx.UserID(c)
+				if !ok || authenticatedID != userID {
+					c.AbortWithStatus(http.StatusInternalServerError)
+					return
+				}
+				c.AbortWithStatus(http.StatusTooManyRequests)
+			},
+		),
+		func(c *gin.Context) {
+			handlerCalled = true
+			c.Status(http.StatusOK)
+		},
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer good-token")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusTooManyRequests)
+	}
+	if handlerCalled {
+		t.Fatal("route handler ran after guard aborted")
+	}
+}
+
+func TestUserAuthRunsUnauthenticatedGuard(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handlerCalled := false
+	r := gin.New()
+	r.GET(
+		"/protected",
+		AuthMiddlewareWithGuards(
+			&stubUserAuthenticator{err: apperr.ErrInvalidSession},
+			nil,
+			func(c *gin.Context) {
+				c.AbortWithStatus(http.StatusTooManyRequests)
+			},
+		),
+		func(c *gin.Context) {
+			handlerCalled = true
+			c.Status(http.StatusOK)
+		},
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer invalid-token")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusTooManyRequests)
+	}
+	if handlerCalled {
+		t.Fatal("route handler ran after unauthenticated guard aborted")
+	}
 }

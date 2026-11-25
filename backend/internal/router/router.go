@@ -40,6 +40,21 @@ type Modules struct {
 	MockLogisticsAuth gin.HandlerFunc
 }
 
+var publicAPIRoutes = map[string]struct{}{
+	"POST /api/v1/login":             {},
+	"POST /api/v1/register":          {},
+	"POST /api/v1/merchant/login":    {},
+	"POST /api/v1/merchant/register": {},
+	"POST /api/v1/payment/webhook":   {},
+	"POST /api/v1/logistics/webhook": {},
+}
+
+// IsPublicAPI reports whether an API route handles unauthenticated traffic.
+func IsPublicAPI(method, route string) bool {
+	_, ok := publicAPIRoutes[method+" "+route]
+	return ok
+}
+
 // Register mounts every module.
 func Register(r *gin.Engine, modules Modules) {
 	modules.User.Register(r, modules.UserAuth)

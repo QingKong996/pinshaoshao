@@ -10,16 +10,18 @@ flowchart LR
     Frontend[React SPA<br/>frontend]
     Backend[Go + Gin<br/>backend]
     Database[(PostgreSQL)]
+    Redis[(Redis)]
     Callback[业务回调接收方<br/>notify_url]
 
     Browser -->|页面与操作| Frontend
     Browser -->|打开 checkout_url| Backend
     Frontend -->|JSON /api/v1| Backend
     Backend -->|SQL| Database
+    Backend -->|滑动窗口限流| Redis
     Backend -->|签名 Webhook| Callback
 ```
 
-- 当前部署形态是一个前端 SPA、一个 Go API 进程和一个 PostgreSQL 服务；服务内有 `pinshaoshao`、`pinshaoshao_mockpay`、`pinshaoshao_mocklogistics` 三个逻辑数据库。
+- 当前部署形态是一个前端 SPA、一个 Go API 进程、一个 PostgreSQL 服务和一个 Redis 服务；PostgreSQL 内有 `pinshaoshao`、`pinshaoshao_mockpay`、`pinshaoshao_mocklogistics` 三个逻辑数据库。
 - 用户端、商户端和模拟支付控制台共用同一套前端应用，但在代码层按模块隔离。
 - 模拟支付和模拟物流与主应用同进程、同端口部署，分别通过 `/mockpay`、`/mocklogistics` 路由命名空间隔离；业务 API 保持 `/api/v1`。二者各自使用独立连接池、逻辑数据库和 Bearer Session，不依赖主项目用户库或 Session 实现。
 
@@ -48,10 +50,12 @@ flowchart TB
     subgraph Shared[共享基础设施]
         DatabaseLayer[database<br/>连接、事务、约束]
         Security[security + middleware<br/>会话、鉴权、CORS]
+        RateLimit[ratelimit<br/>Redis 多层滑动窗口]
         HTTPLayer[http<br/>通用请求响应]
     end
 
     PostgreSQL[(PostgreSQL)]
+    Redis[(Redis)]
 
     Main --> Router
     Main --> User
@@ -65,6 +69,7 @@ flowchart TB
     Main --> Logistics
     Main --> MockPayment
     Main --> MockLogistics
+    Main --> RateLimit
 
     Router --> User
     Router --> Shop
@@ -94,6 +99,7 @@ flowchart TB
     mainDB --> PostgreSQL
     mockPayDB --> PostgreSQL
     mockLogisticsDB --> PostgreSQL
+    RateLimit --> Redis
 ```
 
 - 后端采用 DDD + Clean Architecture 风格的模块化单体。
@@ -169,6 +175,8 @@ flowchart LR
 ## 数据与边界约束
 
 - 主业务、MockPay 和 MockLogistics 各有一个 PostgreSQL 连接池，启动时校验三个 `current_database()` 互不相同。
+- Redis 只保存短生命周期限流窗口，不作为业务数据或 Session 的事实来源。
+- HTTP 访问日志通过有界队列异步写入 `slog`；输出阻塞时不占用请求 goroutine，队列溢出会产生丢弃计数。
 - 主业务迁移位于 `backend/migrations`，Mock 迁移分别位于 `backend/migrations/mockpay` 与 `backend/migrations/mocklogistics`。
 - 业务 feature 与模拟平台之间没有共享领域模型或业务代码，只通过 HTTP API 和签名回调交互。业务支付状态保存在 `payments`，业务物流状态保存在 `shipments`、`shipment_events`，不复制渠道内部状态。
 - 后端架构测试禁止 `internal/feature` 与 `internal/mock` 互相导入，也禁止模拟支付与模拟物流互相导入。
@@ -201,3 +209,5 @@ flowchart LR
 - 业务发货单保存在 `shipments`、`shipment_events`，与模拟平台表没有外键关系。
 
 具体支付接口、状态机和回调协议见 [docs/mock-payment.md](docs/mock-payment.md)，业务支付见 [docs/payment.md](docs/payment.md)，业务物流见 [docs/logistics.md](docs/logistics.md)，模拟物流接口见 [docs/mock-logistics.md](docs/mock-logistics.md)。
+
+`/api/` 请求通过 Redis 执行全站总量、未认证 IP、单路由和用户/商户主体滑动窗口限流，配置与故障策略见 [docs/rate-limiting.md](docs/rate-limiting.md)。

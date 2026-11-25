@@ -42,6 +42,19 @@ func (m *Module) AuthMiddleware() gin.HandlerFunc {
 	return AuthMiddleware(m.service)
 }
 
+// AuthMiddlewareWithGuard protects shop routes with authentication and a guard.
+func (m *Module) AuthMiddlewareWithGuard(guard gin.HandlerFunc) gin.HandlerFunc {
+	return AuthMiddlewareWithGuard(m.service, guard)
+}
+
+// AuthMiddlewareWithGuards protects shop routes with authentication and guards.
+func (m *Module) AuthMiddlewareWithGuards(
+	guard gin.HandlerFunc,
+	unauthenticatedGuard gin.HandlerFunc,
+) gin.HandlerFunc {
+	return AuthMiddlewareWithGuards(m.service, guard, unauthenticatedGuard)
+}
+
 // Register mounts the shop routes on the engine.
 func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
 	merchant := r.Group("/api/v1/merchant")
