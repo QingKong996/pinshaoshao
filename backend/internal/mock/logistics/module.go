@@ -34,7 +34,7 @@ const (
 
 type Config struct {
 	WebhookSecret             string
-	NotifyAllowedOrigins      string
+	NotifyAllowedURLs         string
 	DeliveryDuration          time.Duration
 	ShipmentPollInterval      time.Duration
 	ShipmentBatchSize         int
@@ -53,9 +53,9 @@ func ConfigFromEnv() Config {
 		secret = strings.TrimSpace(os.Getenv("MOCKPAY_WEBHOOK_SECRET"))
 	}
 	config := Config{
-		WebhookSecret:        secret,
-		NotifyAllowedOrigins: strings.TrimSpace(os.Getenv("MOCKLOGISTICS_NOTIFY_ALLOWED_ORIGINS")),
-		Auth:                 mockauth.ConfigFromEnv("MOCKLOGISTICS"),
+		WebhookSecret:     secret,
+		NotifyAllowedURLs: strings.TrimSpace(os.Getenv("MOCKLOGISTICS_NOTIFY_ALLOWED_URLS")),
+		Auth:              mockauth.ConfigFromEnv("MOCKLOGISTICS"),
 	}
 
 	value := strings.TrimSpace(os.Getenv("MOCKLOGISTICS_DELIVERY_DURATION"))
@@ -140,9 +140,9 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 	if strings.TrimSpace(config.WebhookSecret) == "" {
 		return nil, errors.New("MOCKLOGISTICS_WEBHOOK_SECRET is required")
 	}
-	notifyPolicy, err := webhookpolicy.NewAllowlist(config.NotifyAllowedOrigins)
+	notifyPolicy, err := webhookpolicy.NewAllowlist(config.NotifyAllowedURLs)
 	if err != nil {
-		return nil, fmt.Errorf("MOCKLOGISTICS_NOTIFY_ALLOWED_ORIGINS: %w", err)
+		return nil, fmt.Errorf("MOCKLOGISTICS_NOTIFY_ALLOWED_URLS: %w", err)
 	}
 	authService, err := mockauth.NewService(pool, config.Auth)
 	if err != nil {

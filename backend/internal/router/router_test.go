@@ -158,8 +158,8 @@ func newTestRouter(t *testing.T) *gin.Engine {
 		t.Fatalf("create logistics module: %v", err)
 	}
 	mockPaymentModule, err := mockpaymentmodule.NewModule(nil, mockpaymentmodule.Config{
-		WebhookSecret:        "test-signing-key",
-		NotifyAllowedOrigins: "http://localhost:8080",
+		WebhookSecret:     "test-signing-key",
+		NotifyAllowedURLs: "http://localhost:8080/api/v1/payment/webhook",
 		Auth: mockauth.Config{
 			Username: "mockpay-test",
 			Password: "mockpay-test-password",
@@ -169,8 +169,8 @@ func newTestRouter(t *testing.T) *gin.Engine {
 		t.Fatalf("create mock payment module: %v", err)
 	}
 	mockLogisticsModule, err := mocklogisticsmodule.NewModule(nil, mocklogisticsmodule.Config{
-		WebhookSecret:        "test-signing-key",
-		NotifyAllowedOrigins: "http://localhost:8080",
+		WebhookSecret:     "test-signing-key",
+		NotifyAllowedURLs: "http://localhost:8080/api/v1/logistics/webhook",
 		Auth: mockauth.Config{
 			Username: "mocklogistics-test",
 			Password: "mocklogistics-test-password",

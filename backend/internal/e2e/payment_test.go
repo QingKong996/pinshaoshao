@@ -353,7 +353,7 @@ func startTestApp(t *testing.T, userID int) *testApp {
 	mockPaymentModule, err := mockpaymentmodule.NewModule(testMockPayPool, mockpaymentmodule.Config{
 		WebhookSecret:            testWebhookSecret,
 		PublicBaseURL:            baseURL,
-		NotifyAllowedOrigins:     baseURL,
+		NotifyAllowedURLs:        baseURL + "/api/v1/payment/webhook",
 		NotificationPollInterval: 25 * time.Millisecond,
 		ExpiryPollInterval:       time.Hour,
 		NotificationRetryDelays:  []time.Duration{50 * time.Millisecond},
@@ -367,7 +367,7 @@ func startTestApp(t *testing.T, userID int) *testApp {
 	}
 	mockLogisticsModule, err := mocklogisticsmodule.NewModule(testMockLogisticsPool, mocklogisticsmodule.Config{
 		WebhookSecret:            testWebhookSecret,
-		NotifyAllowedOrigins:     baseURL,
+		NotifyAllowedURLs:        baseURL + "/api/v1/logistics/webhook",
 		NotificationPollInterval: 25 * time.Millisecond,
 		NotificationRetryDelays:  []time.Duration{50 * time.Millisecond},
 		HTTPClient:               &http.Client{Timeout: 5 * time.Second},

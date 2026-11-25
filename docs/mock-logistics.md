@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | `MOCKLOGISTICS_DATABASE_URL` | 是 | `pinshaoshao_mocklogistics` 逻辑数据库 DSN，不回退到 `DATABASE_URL` |
 | `MOCKLOGISTICS_WEBHOOK_SECRET` | 是 | 物流回调 HMAC-SHA256 密钥；为空时回退到 `MOCKPAY_WEBHOOK_SECRET` 以便本地联调 |
-| `MOCKLOGISTICS_NOTIFY_ALLOWED_ORIGINS` | 是 | 逗号分隔的回调 origin 白名单，仅包含 scheme、host 和 port，例如 `http://localhost:8080` |
+| `MOCKLOGISTICS_NOTIFY_ALLOWED_URLS` | 是 | 逗号分隔的回调 URL 白名单，必须包含完整路径，例如 `http://localhost:8080/api/v1/logistics/webhook` |
 | `MOCKLOGISTICS_DELIVERY_DURATION` | 否 | 商家出库到签收的总时长，Go duration 格式；默认 `4m`，最大 `5m`，超过上限会截断到 `5m` |
 | `MOCKLOGISTICS_AUTH_USERNAME` | 是 | MockLogistics 运营账号 |
 | `MOCKLOGISTICS_AUTH_PASSWORD` | 是 | MockLogistics 运营密码；仅以 Argon2id 哈希落库 |
@@ -20,7 +20,7 @@
 
 无法解析或非正数的配送时长会回退到默认值。
 
-`notify_url` 的 origin 必须与 `MOCKLOGISTICS_NOTIFY_ALLOWED_ORIGINS` 中的一项完全匹配。创建物流单和后台实际投递时都会校验，白名单外或配置无效时启动失败。
+`notify_url` 必须与 `MOCKLOGISTICS_NOTIFY_ALLOWED_URLS` 中的一项完全匹配，包括 scheme、host、port 和 path；不接受 query、fragment、userinfo、点段或编码路径分隔符。创建物流单和后台实际投递时都会校验，白名单外或配置无效时启动失败。
 
 数据库创建、迁移和隔离校验见 [mock-databases.md](mock-databases.md)。
 
@@ -67,7 +67,7 @@ delivered
 
 商家订单号、回调地址和调用方显式提供的字段不会被随机覆盖。相同商户订单号和请求参数重放时返回原物流单。
 
-内置本地回调接收器：`POST http://localhost:8080/mocklogistics/webhook`，返回 `204`，便于在控制台直接看到回调投递成功。接入真实服务时替换 `notify_url`，并把对应 origin 加入 `MOCKLOGISTICS_NOTIFY_ALLOWED_ORIGINS`。
+内置本地回调接收器：`POST http://localhost:8080/mocklogistics/webhook`，返回 `204`，便于在控制台直接看到回调投递成功。接入真实服务时替换 `notify_url`，并把完整回调 URL 加入 `MOCKLOGISTICS_NOTIFY_ALLOWED_URLS`。
 
 ## HTTP API
 
@@ -152,7 +152,7 @@ timestamp + "." + raw_request_body
 v1=hex(HMAC-SHA256(MOCKLOGISTICS_WEBHOOK_SECRET, timestamp + "." + raw_request_body))
 ```
 
-验签算法复用中立的 `internal/webhooksig`。商户返回任意 `2xx` 视为成功，其他状态码或网络错误进入重试。默认最多投递 7 次，退避间隔为 1 秒、5 秒、30 秒、2 分钟、10 分钟、30 分钟；耗尽后可人工重试。
+验签算法复用中立的 `internal/webhooksig`。商户返回任意 `2xx` 视为成功，其他状态码或网络错误进入重试。投递失败时 `last_error` 只记录状态码或固定摘要，不保存目标响应体或请求 URL。默认最多投递 7 次，退避间隔为 1 秒、5 秒、30 秒、2 分钟、10 分钟、30 分钟；耗尽后可人工重试。
 
 事件示例：
 

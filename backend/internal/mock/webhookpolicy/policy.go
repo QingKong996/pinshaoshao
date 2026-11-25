@@ -8,62 +8,81 @@ import (
 	"strings"
 )
 
-// Allowlist accepts callback URLs whose scheme, host, and port match a configured origin.
+// Allowlist accepts exact callback URLs after normalizing scheme, host, port, and path.
 type Allowlist struct {
-	origins map[string]struct{}
+	urls map[string]struct{}
 }
 
 func NewAllowlist(value string) (Allowlist, error) {
-	origins := make(map[string]struct{})
+	urls := make(map[string]struct{})
 	for _, value := range strings.Split(value, ",") {
 		value = strings.TrimSpace(value)
 		if value == "" {
 			continue
 		}
-		if strings.Contains(value, "#") {
-			return Allowlist{}, fmt.Errorf("callback origin %q must not contain a fragment", value)
-		}
-
-		parsed, err := url.ParseRequestURI(value)
+		normalized, err := normalizeCallbackURL(value)
 		if err != nil {
-			return Allowlist{}, fmt.Errorf("parse callback origin %q: %w", value, err)
+			return Allowlist{}, fmt.Errorf("parse callback URL %q: %w", value, err)
 		}
-		if parsed.Scheme != "http" && parsed.Scheme != "https" {
-			return Allowlist{}, fmt.Errorf("callback origin %q must use http or https", value)
-		}
-		if parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" ||
-			parsed.RawQuery != "" || parsed.ForceQuery ||
-			(parsed.Path != "" && parsed.Path != "/") {
-			return Allowlist{}, fmt.Errorf("callback origin %q must contain only scheme, host, and port", value)
-		}
-
-		origin, err := normalizeOrigin(parsed)
-		if err != nil {
-			return Allowlist{}, fmt.Errorf("parse callback origin %q: %w", value, err)
-		}
-		origins[origin] = struct{}{}
+		urls[normalized] = struct{}{}
 	}
-	if len(origins) == 0 {
-		return Allowlist{}, errors.New("callback origin allowlist is empty")
+	if len(urls) == 0 {
+		return Allowlist{}, errors.New("callback URL allowlist is empty")
 	}
-	return Allowlist{origins: origins}, nil
+	return Allowlist{urls: urls}, nil
 }
 
-// Allows reports whether value is an HTTP(S) URL with an allowed origin.
+// Allows reports whether value exactly matches an allowed callback URL.
 func (a Allowlist) Allows(value string) bool {
-	if strings.Contains(value, "#") {
-		return false
-	}
-	parsed, err := url.ParseRequestURI(strings.TrimSpace(value))
-	if err != nil || parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" {
-		return false
-	}
-	origin, err := normalizeOrigin(parsed)
+	normalized, err := normalizeCallbackURL(strings.TrimSpace(value))
 	if err != nil {
 		return false
 	}
-	_, ok := a.origins[origin]
+	_, ok := a.urls[normalized]
 	return ok
+}
+
+func normalizeCallbackURL(value string) (string, error) {
+	if strings.Contains(value, "#") {
+		return "", errors.New("fragment is not allowed")
+	}
+	parsed, err := url.ParseRequestURI(value)
+	if err != nil {
+		return "", err
+	}
+	if parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" ||
+		parsed.RawQuery != "" || parsed.ForceQuery {
+		return "", errors.New("URL must contain only scheme, host, port, and path")
+	}
+	if err := validateCallbackPath(parsed); err != nil {
+		return "", err
+	}
+
+	origin, err := normalizeOrigin(parsed)
+	if err != nil {
+		return "", err
+	}
+	return origin + parsed.EscapedPath(), nil
+}
+
+func validateCallbackPath(parsed *url.URL) error {
+	if parsed.Path == "" {
+		return errors.New("path is required")
+	}
+	if strings.Contains(parsed.Path, "\\") || strings.Contains(parsed.Path, "//") {
+		return errors.New("path must not contain empty segments or backslashes")
+	}
+	for _, segment := range strings.Split(parsed.Path, "/") {
+		if segment == "." || segment == ".." {
+			return errors.New("path must not contain dot segments")
+		}
+	}
+
+	escapedPath := strings.ToLower(parsed.EscapedPath())
+	if strings.Contains(escapedPath, "%2f") || strings.Contains(escapedPath, "%5c") {
+		return errors.New("path must not contain encoded separators")
+	}
+	return nil
 }
 
 func normalizeOrigin(parsed *url.URL) (string, error) {
