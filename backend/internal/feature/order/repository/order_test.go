@@ -132,7 +132,7 @@ func TestOrderRepositoryCreateZeroAmountOrderIsPaidImmediately(t *testing.T) {
 	order, err := newTestOrderRepository().Create(ctx, user.ID, testOrderInput(
 		[]int{item.ID},
 		[]int{2},
-		testRequestHash("z"),
+		testRequestHash("a"),
 	))
 	if err != nil {
 		t.Fatalf("create zero-amount order: %v", err)
