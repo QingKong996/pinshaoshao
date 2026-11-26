@@ -5,10 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"pinshaoshao/internal/database"
 	"pinshaoshao/internal/feature/inventory"
+	inventoryapperr "pinshaoshao/internal/feature/inventory/apperr"
 	inventorymodel "pinshaoshao/internal/feature/inventory/model"
 	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/model"
@@ -238,6 +240,10 @@ func (s *OrderService) cancelTarget(ctx context.Context, db database.DBTX, targe
 			})
 		}
 		if err := s.reservation.Release(ctx, db, items); err != nil {
+			if errors.Is(err, inventoryapperr.ErrReservationInvalid) ||
+				errors.Is(err, inventoryapperr.ErrInventoryItemNotFound) {
+				return apperr.ErrOrderStateInvalid
+			}
 			return err
 		}
 	}
