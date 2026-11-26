@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"pinshaoshao/internal/database"
 	"pinshaoshao/internal/feature/logistics/apperr"
 	"pinshaoshao/internal/feature/logistics/model"
 	"pinshaoshao/internal/feature/order/shippingport"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 func TestShipmentServiceShipPersistsProviderCarrier(t *testing.T) {
@@ -57,6 +57,37 @@ func TestShipmentServiceShipPersistsProviderCarrier(t *testing.T) {
 	}
 }
 
+func TestShipmentServiceRejectsNonPendingPickupProviderStatus(t *testing.T) {
+	orders := &fakeOrderLifecycle{
+		target: &shippingport.Target{
+			SubOrderID:  12,
+			OrderID:     8,
+			UserID:      3,
+			ShopID:      4,
+			Status:      "awaiting_shipment",
+			ItemSummary: "Keyboard x1",
+		},
+	}
+	repository := &fakeShipmentRepository{}
+	service := NewShipmentService(repository, orders, Config{
+		Gateway: &fakeShippingGateway{
+			result: &model.ProviderShipmentResult{
+				TrackingNo: "SF123456789",
+				Carrier:    "顺丰速运",
+				Status:     model.StatusInTransit,
+			},
+		},
+	})
+
+	_, _, err := service.Ship(context.Background(), 4, 12, "顺丰速运")
+	if !errors.Is(err, apperr.ErrProviderInvalid) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrProviderInvalid)
+	}
+	if repository.createdCarrier != "" {
+		t.Fatalf("created shipment carrier = %q, want none", repository.createdCarrier)
+	}
+}
+
 func TestShipmentServiceRejectsMismatchedEventAndStatus(t *testing.T) {
 	repository := &fakeShipmentRepository{}
 	service := NewShipmentService(
@@ -86,6 +117,7 @@ func TestShipmentServiceRejectsMismatchedEventAndStatus(t *testing.T) {
 
 type fakeShippingGateway struct {
 	request model.ProviderShipmentRequest
+	result  *model.ProviderShipmentResult
 }
 
 func (g *fakeShippingGateway) Dispatch(
@@ -93,6 +125,12 @@ func (g *fakeShippingGateway) Dispatch(
 	input model.ProviderShipmentRequest,
 ) (*model.ProviderShipmentResult, error) {
 	g.request = input
+	if g.result != nil {
+		result := *g.result
+		result.MerchantNo = input.MerchantOrderNo
+		result.ShipmentNo = uuid.NewString()
+		return &result, nil
+	}
 	return &model.ProviderShipmentResult{
 		ShipmentNo:      uuid.NewString(),
 		MerchantNo:      input.MerchantOrderNo,
@@ -119,7 +157,7 @@ func (o *fakeOrderLifecycle) GetShipmentTarget(
 
 func (o *fakeOrderLifecycle) LockOrder(
 	_ context.Context,
-	_ pgx.Tx,
+	_ database.DBTX,
 	_ int,
 ) error {
 	return nil
@@ -127,7 +165,7 @@ func (o *fakeOrderLifecycle) LockOrder(
 
 func (o *fakeOrderLifecycle) ShipSubOrder(
 	_ context.Context,
-	_ pgx.Tx,
+	_ database.DBTX,
 	_ int,
 	_ int,
 	_ time.Time,
@@ -137,7 +175,7 @@ func (o *fakeOrderLifecycle) ShipSubOrder(
 
 func (o *fakeOrderLifecycle) CompleteSubOrder(
 	_ context.Context,
-	_ pgx.Tx,
+	_ database.DBTX,
 	_ int,
 	_ time.Time,
 ) error {

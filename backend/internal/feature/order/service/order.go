@@ -7,8 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"pinshaoshao/internal/database"
+	"pinshaoshao/internal/feature/inventory"
+	inventorymodel "pinshaoshao/internal/feature/inventory/model"
 	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/model"
+	"pinshaoshao/internal/feature/order/paymentport"
+	"pinshaoshao/internal/outbox"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -34,7 +39,23 @@ type OrderRepository interface {
 	ListMerchant(ctx context.Context, shopID int, filter model.MerchantOrderListFilter) (*model.MerchantOrderListResult, error)
 	GetMerchant(ctx context.Context, shopID int, subOrderID int) (*model.MerchantOrderDetail, error)
 	Get(ctx context.Context, userID int, orderID int) (*model.Order, error)
-	Cancel(ctx context.Context, userID int, orderID int) (*model.Order, error)
+	LockForCancel(ctx context.Context, db database.DBTX, userID int, orderID int) (*model.CancelTarget, error)
+	LockDueForCancel(ctx context.Context, db database.DBTX, orderID int) (*model.CancelTarget, error)
+	MarkCancelled(ctx context.Context, db database.DBTX, orderID int) error
+	Load(ctx context.Context, db database.DBTX, userID int, orderID int) (*model.Order, error)
+	ListDueOrderIDs(ctx context.Context, limit int) ([]int, error)
+}
+
+type PaymentCloser interface {
+	CloseForOrder(ctx context.Context, db database.DBTX, orderID int) (*paymentport.CloseResult, error)
+}
+
+type OutboxWriter interface {
+	Enqueue(ctx context.Context, db database.DBTX, event outbox.Event) error
+}
+
+type Transactor interface {
+	WithinTx(ctx context.Context, fn func(context.Context, database.DBTX) error) error
 }
 
 type CreateOrderInput struct {
@@ -56,11 +77,31 @@ type CreateDirectOrderInput struct {
 
 type OrderService struct {
 	orderRepository OrderRepository
+	reservation     inventory.Reservation
+	paymentCloser   PaymentCloser
+	outboxWriter    OutboxWriter
+	transactor      Transactor
 }
 
 // NewOrderService builds the order service from its repository.
-func NewOrderService(orderRepository OrderRepository) *OrderService {
-	return &OrderService{orderRepository: orderRepository}
+func NewOrderService(
+	orderRepository OrderRepository,
+	reservation inventory.Reservation,
+	paymentCloser PaymentCloser,
+	outboxWriter OutboxWriter,
+	transactor Transactor,
+) *OrderService {
+	return &OrderService{
+		orderRepository: orderRepository,
+		reservation:     reservation,
+		paymentCloser:   paymentCloser,
+		outboxWriter:    outboxWriter,
+		transactor:      transactor,
+	}
+}
+
+func (s *OrderService) SetPaymentCloser(paymentCloser PaymentCloser) {
+	s.paymentCloser = paymentCloser
 }
 
 func (s *OrderService) Create(ctx context.Context, userID int, input CreateOrderInput) (*model.Order, error) {
@@ -134,11 +175,124 @@ func (s *OrderService) Cancel(ctx context.Context, userID int, orderID int) (*mo
 		return nil, fmt.Errorf("service.CancelOrder: %w", apperr.ErrInvalidOrderID)
 	}
 
-	order, err := s.orderRepository.Cancel(ctx, userID, orderID)
+	var result *model.Order
+	err := s.transactor.WithinTx(ctx, func(ctx context.Context, db database.DBTX) error {
+		target, err := s.orderRepository.LockForCancel(ctx, db, userID, orderID)
+		if err != nil {
+			return err
+		}
+		if target.Status == model.OrderStatusCancelled {
+			if err := s.closePayment(ctx, db, target); err != nil {
+				return err
+			}
+			result, err = s.orderRepository.Load(ctx, db, userID, orderID)
+			return err
+		}
+		if target.Status != model.OrderStatusPendingPayment {
+			return apperr.ErrOrderCannotCancel
+		}
+		if err := s.cancelTarget(ctx, db, target); err != nil {
+			return err
+		}
+		result, err = s.orderRepository.Load(ctx, db, userID, orderID)
+		return err
+	})
 	if err != nil {
 		return nil, fmt.Errorf("service.CancelOrder: %w", err)
 	}
-	return order, nil
+	return result, nil
+}
+
+func (s *OrderService) CancelForPayment(ctx context.Context, userID int, orderID int) error {
+	_, err := s.Cancel(ctx, userID, orderID)
+	return err
+}
+
+func (s *OrderService) Expire(ctx context.Context, orderID int) error {
+	if orderID <= 0 {
+		return apperr.ErrInvalidOrderID
+	}
+	return s.transactor.WithinTx(ctx, func(ctx context.Context, db database.DBTX) error {
+		target, err := s.orderRepository.LockDueForCancel(ctx, db, orderID)
+		if err != nil {
+			return err
+		}
+		if target == nil {
+			return nil
+		}
+		return s.cancelTarget(ctx, db, target)
+	})
+}
+
+func (s *OrderService) DueOrderIDs(ctx context.Context, limit int) ([]int, error) {
+	return s.orderRepository.ListDueOrderIDs(ctx, limit)
+}
+
+func (s *OrderService) cancelTarget(ctx context.Context, db database.DBTX, target *model.CancelTarget) error {
+	if len(target.Items) > 0 {
+		items := make([]inventorymodel.ReservationItem, 0, len(target.Items))
+		for _, item := range target.Items {
+			items = append(items, inventorymodel.ReservationItem{
+				SKUID:    item.SKUID,
+				Quantity: item.Quantity,
+			})
+		}
+		if err := s.reservation.Release(ctx, db, items); err != nil {
+			return err
+		}
+	}
+	if err := s.closePayment(ctx, db, target); err != nil {
+		return err
+	}
+	return s.orderRepository.MarkCancelled(ctx, db, target.OrderID)
+}
+
+func (s *OrderService) closePayment(ctx context.Context, db database.DBTX, target *model.CancelTarget) error {
+	if s.paymentCloser == nil {
+		return nil
+	}
+	result, err := s.paymentCloser.CloseForOrder(ctx, db, target.OrderID)
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		return nil
+	}
+	if result.AlreadySettled {
+		if target.Status == model.OrderStatusCancelled {
+			return nil
+		}
+		return apperr.ErrOrderCannotCancel
+	}
+	if !result.Closed || result.ProviderTransactionID == nil {
+		return nil
+	}
+	if s.outboxWriter == nil {
+		return apperr.ErrInternalServer
+	}
+	if result.PaymentID <= 0 {
+		return apperr.ErrOrderStateInvalid
+	}
+	payload, err := json.Marshal(struct {
+		PaymentNo             string `json:"payment_no"`
+		ProviderTransactionID string `json:"provider_transaction_id"`
+	}{
+		PaymentNo:             result.PaymentNo,
+		ProviderTransactionID: *result.ProviderTransactionID,
+	})
+	if err != nil {
+		return fmt.Errorf("encode payment close event: %w", err)
+	}
+	if err := s.outboxWriter.Enqueue(ctx, db, outbox.Event{
+		Key:           "payment.close:" + result.PaymentNo,
+		Topic:         outbox.TopicPaymentCloseProvider,
+		AggregateType: "payment",
+		AggregateID:   result.PaymentID,
+		Payload:       payload,
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func normalizeOrderListFilter(filter model.OrderListFilter) (model.OrderListFilter, error) {
@@ -198,7 +352,11 @@ func normalizeCreateOrderInput(input CreateOrderInput) (CreateOrderInput, string
 		ReceiverPhone:   delivery.receiverPhone,
 		ShippingAddress: delivery.shippingAddress,
 	}
-	return normalized, requestHash(normalized), nil
+	hash, err := requestHash(normalized)
+	if err != nil {
+		return CreateOrderInput{}, "", err
+	}
+	return normalized, hash, nil
 }
 
 func normalizeCreateDirectOrderInput(input CreateDirectOrderInput) (CreateDirectOrderInput, string, error) {
@@ -227,7 +385,11 @@ func normalizeCreateDirectOrderInput(input CreateDirectOrderInput) (CreateDirect
 		ReceiverPhone:   delivery.receiverPhone,
 		ShippingAddress: delivery.shippingAddress,
 	}
-	return normalized, directRequestHash(normalized), nil
+	hash, err := directRequestHash(normalized)
+	if err != nil {
+		return CreateDirectOrderInput{}, "", err
+	}
+	return normalized, hash, nil
 }
 
 type orderDelivery struct {
@@ -256,7 +418,7 @@ func normalizeDelivery(receiverName, receiverPhone, shippingAddress string) (ord
 	}, nil
 }
 
-func requestHash(input CreateOrderInput) string {
+func requestHash(input CreateOrderInput) (string, error) {
 	payload := struct {
 		Items           []model.CreateOrderItem
 		ReceiverName    string
@@ -268,12 +430,15 @@ func requestHash(input CreateOrderInput) string {
 		ReceiverPhone:   input.ReceiverPhone,
 		ShippingAddress: input.ShippingAddress,
 	}
-	encoded, _ := json.Marshal(payload)
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("hash checkout request: %w", err)
+	}
 	sum := sha256.Sum256(encoded)
-	return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:]), nil
 }
 
-func directRequestHash(input CreateDirectOrderInput) string {
+func directRequestHash(input CreateDirectOrderInput) (string, error) {
 	payload := struct {
 		SKUID           int
 		Quantity        int
@@ -287,7 +452,10 @@ func directRequestHash(input CreateDirectOrderInput) string {
 		ReceiverPhone:   input.ReceiverPhone,
 		ShippingAddress: input.ShippingAddress,
 	}
-	encoded, _ := json.Marshal(payload)
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("hash direct checkout request: %w", err)
+	}
 	sum := sha256.Sum256(encoded)
-	return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:]), nil
 }

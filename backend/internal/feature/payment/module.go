@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -8,11 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"pinshaoshao/internal/database"
 	"pinshaoshao/internal/feature/order/paymentport"
 	paymentcontroller "pinshaoshao/internal/feature/payment/controller"
 	"pinshaoshao/internal/feature/payment/gateway/mockpay"
 	paymentrepository "pinshaoshao/internal/feature/payment/repository"
 	paymentservice "pinshaoshao/internal/feature/payment/service"
+	"pinshaoshao/internal/outbox"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -74,11 +77,18 @@ func ConfigFromEnv() Config {
 type Module struct {
 	paymentController *paymentcontroller.PaymentController
 	webhookHandler    *paymentcontroller.WebhookHandler
+	paymentRepository *paymentrepository.PaymentRepository
+	outboxHandler     outbox.Handler
+}
+
+type PaymentCloser interface {
+	CloseForOrder(ctx context.Context, db database.DBTX, orderID int) (*paymentport.CloseResult, error)
 }
 
 func NewModule(
 	pool *pgxpool.Pool,
 	orders paymentport.Lifecycle,
+	orderService paymentservice.OrderLifecycle,
 	config Config,
 ) (*Module, error) {
 	config = config.withDefaults()
@@ -100,9 +110,11 @@ func NewModule(
 
 	paymentRepository := paymentrepository.NewPaymentRepository(pool, orders)
 	paymentService := paymentservice.NewPaymentService(paymentRepository, paymentservice.Config{
-		NotifyURL:     config.NotifyURL,
-		ReturnURLBase: config.ReturnURLBase,
-		Gateway:       gateway,
+		NotifyURL:      config.NotifyURL,
+		ReturnURLBase:  config.ReturnURLBase,
+		Gateway:        gateway,
+		OrderCanceller: orderService,
+		OrderExpirer:   orderService,
 	})
 	return &Module{
 		paymentController: paymentcontroller.NewPaymentController(paymentService),
@@ -111,7 +123,19 @@ func NewModule(
 			config.WebhookSecret,
 			config.WebhookTolerance,
 		),
+		paymentRepository: paymentRepository,
+		outboxHandler:     &providerCloseHandler{gateway: gateway},
 	}, nil
+}
+
+func (m *Module) PaymentCloser() PaymentCloser {
+	return m.paymentRepository
+}
+
+func (m *Module) OutboxHandlers() map[string]outbox.Handler {
+	return map[string]outbox.Handler{
+		outbox.TopicPaymentCloseProvider: m.outboxHandler,
+	}
 }
 
 func (c Config) withDefaults() Config {

@@ -41,7 +41,17 @@ func (p *Payment) MarkSucceeded(providerTransactionID string, paidAt time.Time) 
 		}
 		return apperr.ErrPaymentConflict
 	case PaymentStatusClosed:
-		return apperr.ErrPaymentClosed
+		// A signed provider callback remains authoritative after local close:
+		// the channel may have completed payment before processing the close.
+		if p.ProviderTransactionID != nil && *p.ProviderTransactionID != providerTransactionID {
+			return apperr.ErrPaymentConflict
+		}
+		paidAt = paidAt.UTC()
+		p.Status = PaymentStatusSucceeded
+		p.ProviderTransactionID = &providerTransactionID
+		p.PaidAt = &paidAt
+		p.UpdatedAt = paidAt
+		return nil
 	case PaymentStatusPending:
 		if p.ProviderTransactionID != nil && *p.ProviderTransactionID != providerTransactionID {
 			return apperr.ErrPaymentConflict

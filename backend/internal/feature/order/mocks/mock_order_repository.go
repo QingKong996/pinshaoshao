@@ -11,7 +11,10 @@ package mocks
 
 import (
 	context "context"
+	database "pinshaoshao/internal/database"
 	model "pinshaoshao/internal/feature/order/model"
+	paymentport "pinshaoshao/internal/feature/order/paymentport"
+	outbox "pinshaoshao/internal/outbox"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -39,21 +42,6 @@ func NewMockOrderRepository(ctrl *gomock.Controller) *MockOrderRepository {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockOrderRepository) EXPECT() *MockOrderRepositoryMockRecorder {
 	return m.recorder
-}
-
-// Cancel mocks base method.
-func (m *MockOrderRepository) Cancel(ctx context.Context, userID, orderID int) (*model.Order, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Cancel", ctx, userID, orderID)
-	ret0, _ := ret[0].(*model.Order)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Cancel indicates an expected call of Cancel.
-func (mr *MockOrderRepositoryMockRecorder) Cancel(ctx, userID, orderID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockOrderRepository)(nil).Cancel), ctx, userID, orderID)
 }
 
 // Create mocks base method.
@@ -131,6 +119,21 @@ func (mr *MockOrderRepositoryMockRecorder) List(ctx, userID, filter any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockOrderRepository)(nil).List), ctx, userID, filter)
 }
 
+// ListDueOrderIDs mocks base method.
+func (m *MockOrderRepository) ListDueOrderIDs(ctx context.Context, limit int) ([]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListDueOrderIDs", ctx, limit)
+	ret0, _ := ret[0].([]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDueOrderIDs indicates an expected call of ListDueOrderIDs.
+func (mr *MockOrderRepositoryMockRecorder) ListDueOrderIDs(ctx, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDueOrderIDs", reflect.TypeOf((*MockOrderRepository)(nil).ListDueOrderIDs), ctx, limit)
+}
+
 // ListMerchant mocks base method.
 func (m *MockOrderRepository) ListMerchant(ctx context.Context, shopID int, filter model.MerchantOrderListFilter) (*model.MerchantOrderListResult, error) {
 	m.ctrl.T.Helper()
@@ -144,4 +147,178 @@ func (m *MockOrderRepository) ListMerchant(ctx context.Context, shopID int, filt
 func (mr *MockOrderRepositoryMockRecorder) ListMerchant(ctx, shopID, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMerchant", reflect.TypeOf((*MockOrderRepository)(nil).ListMerchant), ctx, shopID, filter)
+}
+
+// Load mocks base method.
+func (m *MockOrderRepository) Load(ctx context.Context, db database.DBTX, userID, orderID int) (*model.Order, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Load", ctx, db, userID, orderID)
+	ret0, _ := ret[0].(*model.Order)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Load indicates an expected call of Load.
+func (mr *MockOrderRepositoryMockRecorder) Load(ctx, db, userID, orderID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Load", reflect.TypeOf((*MockOrderRepository)(nil).Load), ctx, db, userID, orderID)
+}
+
+// LockDueForCancel mocks base method.
+func (m *MockOrderRepository) LockDueForCancel(ctx context.Context, db database.DBTX, orderID int) (*model.CancelTarget, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockDueForCancel", ctx, db, orderID)
+	ret0, _ := ret[0].(*model.CancelTarget)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockDueForCancel indicates an expected call of LockDueForCancel.
+func (mr *MockOrderRepositoryMockRecorder) LockDueForCancel(ctx, db, orderID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockDueForCancel", reflect.TypeOf((*MockOrderRepository)(nil).LockDueForCancel), ctx, db, orderID)
+}
+
+// LockForCancel mocks base method.
+func (m *MockOrderRepository) LockForCancel(ctx context.Context, db database.DBTX, userID, orderID int) (*model.CancelTarget, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockForCancel", ctx, db, userID, orderID)
+	ret0, _ := ret[0].(*model.CancelTarget)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockForCancel indicates an expected call of LockForCancel.
+func (mr *MockOrderRepositoryMockRecorder) LockForCancel(ctx, db, userID, orderID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockForCancel", reflect.TypeOf((*MockOrderRepository)(nil).LockForCancel), ctx, db, userID, orderID)
+}
+
+// MarkCancelled mocks base method.
+func (m *MockOrderRepository) MarkCancelled(ctx context.Context, db database.DBTX, orderID int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkCancelled", ctx, db, orderID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarkCancelled indicates an expected call of MarkCancelled.
+func (mr *MockOrderRepositoryMockRecorder) MarkCancelled(ctx, db, orderID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkCancelled", reflect.TypeOf((*MockOrderRepository)(nil).MarkCancelled), ctx, db, orderID)
+}
+
+// MockPaymentCloser is a mock of PaymentCloser interface.
+type MockPaymentCloser struct {
+	ctrl     *gomock.Controller
+	recorder *MockPaymentCloserMockRecorder
+	isgomock struct{}
+}
+
+// MockPaymentCloserMockRecorder is the mock recorder for MockPaymentCloser.
+type MockPaymentCloserMockRecorder struct {
+	mock *MockPaymentCloser
+}
+
+// NewMockPaymentCloser creates a new mock instance.
+func NewMockPaymentCloser(ctrl *gomock.Controller) *MockPaymentCloser {
+	mock := &MockPaymentCloser{ctrl: ctrl}
+	mock.recorder = &MockPaymentCloserMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPaymentCloser) EXPECT() *MockPaymentCloserMockRecorder {
+	return m.recorder
+}
+
+// CloseForOrder mocks base method.
+func (m *MockPaymentCloser) CloseForOrder(ctx context.Context, db database.DBTX, orderID int) (*paymentport.CloseResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CloseForOrder", ctx, db, orderID)
+	ret0, _ := ret[0].(*paymentport.CloseResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CloseForOrder indicates an expected call of CloseForOrder.
+func (mr *MockPaymentCloserMockRecorder) CloseForOrder(ctx, db, orderID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseForOrder", reflect.TypeOf((*MockPaymentCloser)(nil).CloseForOrder), ctx, db, orderID)
+}
+
+// MockOutboxWriter is a mock of OutboxWriter interface.
+type MockOutboxWriter struct {
+	ctrl     *gomock.Controller
+	recorder *MockOutboxWriterMockRecorder
+	isgomock struct{}
+}
+
+// MockOutboxWriterMockRecorder is the mock recorder for MockOutboxWriter.
+type MockOutboxWriterMockRecorder struct {
+	mock *MockOutboxWriter
+}
+
+// NewMockOutboxWriter creates a new mock instance.
+func NewMockOutboxWriter(ctrl *gomock.Controller) *MockOutboxWriter {
+	mock := &MockOutboxWriter{ctrl: ctrl}
+	mock.recorder = &MockOutboxWriterMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockOutboxWriter) EXPECT() *MockOutboxWriterMockRecorder {
+	return m.recorder
+}
+
+// Enqueue mocks base method.
+func (m *MockOutboxWriter) Enqueue(ctx context.Context, db database.DBTX, event outbox.Event) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Enqueue", ctx, db, event)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Enqueue indicates an expected call of Enqueue.
+func (mr *MockOutboxWriterMockRecorder) Enqueue(ctx, db, event any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Enqueue", reflect.TypeOf((*MockOutboxWriter)(nil).Enqueue), ctx, db, event)
+}
+
+// MockTransactor is a mock of Transactor interface.
+type MockTransactor struct {
+	ctrl     *gomock.Controller
+	recorder *MockTransactorMockRecorder
+	isgomock struct{}
+}
+
+// MockTransactorMockRecorder is the mock recorder for MockTransactor.
+type MockTransactorMockRecorder struct {
+	mock *MockTransactor
+}
+
+// NewMockTransactor creates a new mock instance.
+func NewMockTransactor(ctrl *gomock.Controller) *MockTransactor {
+	mock := &MockTransactor{ctrl: ctrl}
+	mock.recorder = &MockTransactorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTransactor) EXPECT() *MockTransactorMockRecorder {
+	return m.recorder
+}
+
+// WithinTx mocks base method.
+func (m *MockTransactor) WithinTx(ctx context.Context, fn func(context.Context, database.DBTX) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WithinTx", ctx, fn)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WithinTx indicates an expected call of WithinTx.
+func (mr *MockTransactorMockRecorder) WithinTx(ctx, fn any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithinTx", reflect.TypeOf((*MockTransactor)(nil).WithinTx), ctx, fn)
 }

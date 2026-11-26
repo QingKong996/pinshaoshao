@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
+	"math"
 	"pinshaoshao/internal/database"
 	"pinshaoshao/internal/feature/inventory"
 	inventoryapperr "pinshaoshao/internal/feature/inventory/apperr"
@@ -12,12 +12,11 @@ import (
 	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/model"
 	"sort"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-const dueOrderCleanupLimit = 100
 
 type OrderRepository struct {
 	pool        *pgxpool.Pool
@@ -108,8 +107,6 @@ func (r *OrderRepository) create(
 }
 
 func (r *OrderRepository) List(ctx context.Context, userID int, filter model.OrderListFilter) (*model.OrderListResult, error) {
-	r.cancelDueOrdersForUser(ctx, userID)
-
 	var result *model.OrderListResult
 
 	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{
@@ -176,10 +173,6 @@ LIMIT $2 OFFSET $3`
 }
 
 func (r *OrderRepository) Get(ctx context.Context, userID int, orderID int) (*model.Order, error) {
-	if err := r.cancelDueOrder(ctx, userID, orderID); err != nil {
-		slog.ErrorContext(ctx, "cancel due order", "user_id", userID, "order_id", orderID, "error", err)
-	}
-
 	var order *model.Order
 	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{
 		IsoLevel:   pgx.RepeatableRead,
@@ -193,120 +186,6 @@ func (r *OrderRepository) Get(ctx context.Context, userID int, orderID int) (*mo
 		return nil, fmt.Errorf("repository.GetOrder: %w", err)
 	}
 	return order, nil
-}
-
-func (r *OrderRepository) Cancel(ctx context.Context, userID int, orderID int) (*model.Order, error) {
-	var result *model.Order
-
-	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
-		const lockQuery = `SELECT status::text FROM orders WHERE id = $1 AND user_id = $2 FOR UPDATE`
-
-		var status string
-		if err := tx.QueryRow(ctx, lockQuery, orderID, userID).Scan(&status); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return apperr.ErrOrderNotFound
-			}
-			return err
-		}
-		if model.OrderStatus(status) == model.OrderStatusCancelled {
-			var err error
-			result, err = loadOrder(ctx, tx, userID, orderID)
-			return err
-		}
-		if model.OrderStatus(status) != model.OrderStatusPendingPayment {
-			return apperr.ErrOrderCannotCancel
-		}
-
-		if err := r.cancelPendingOrder(ctx, tx, orderID); err != nil {
-			return err
-		}
-
-		var err error
-		result, err = loadOrder(ctx, tx, userID, orderID)
-		return err
-	})
-	if err != nil {
-		return nil, fmt.Errorf("repository.CancelOrder: %w", err)
-	}
-	return result, nil
-}
-
-func (r *OrderRepository) cancelDueOrdersForUser(ctx context.Context, userID int) {
-	const query = `SELECT id
-FROM orders
-WHERE user_id = $1
-  AND status = 'pending_payment'
-  AND created_at <= now() - make_interval(secs => $3)
-ORDER BY created_at, id
-LIMIT $2`
-
-	rows, err := r.pool.Query(ctx, query, userID, dueOrderCleanupLimit, model.PendingPaymentTTL.Seconds())
-	if err != nil {
-		slog.ErrorContext(ctx, "find due orders", "user_id", userID, "error", err)
-		return
-	}
-
-	orderIDs := make([]int, 0, dueOrderCleanupLimit)
-	for rows.Next() {
-		var orderID int
-		if err := rows.Scan(&orderID); err != nil {
-			slog.ErrorContext(ctx, "scan due order", "user_id", userID, "error", err)
-			rows.Close()
-			return
-		}
-		orderIDs = append(orderIDs, orderID)
-	}
-	if err := rows.Err(); err != nil {
-		slog.ErrorContext(ctx, "read due orders", "user_id", userID, "error", err)
-		rows.Close()
-		return
-	}
-	rows.Close()
-
-	for _, orderID := range orderIDs {
-		if err := r.cancelDueOrder(ctx, userID, orderID); err != nil {
-			slog.ErrorContext(ctx, "cancel due order", "user_id", userID, "order_id", orderID, "error", err)
-		}
-	}
-}
-
-func (r *OrderRepository) cancelDueOrder(ctx context.Context, userID int, orderID int) error {
-	return pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
-		const query = `SELECT id
-FROM orders
-WHERE id = $1
-  AND user_id = $2
-  AND status = 'pending_payment'
-  AND created_at <= now() - make_interval(secs => $3)
-FOR UPDATE`
-
-		var id int
-		if err := tx.QueryRow(ctx, query, orderID, userID, model.PendingPaymentTTL.Seconds()).Scan(&id); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil
-			}
-			return err
-		}
-		return r.cancelPendingOrder(ctx, tx, orderID)
-	})
-}
-
-func (r *OrderRepository) cancelPendingOrder(ctx context.Context, tx pgx.Tx, orderID int) error {
-	items, err := orderReservationItems(ctx, tx, orderID)
-	if err != nil {
-		return err
-	}
-	if err := r.reservation.Release(ctx, tx, items); err != nil {
-		return mapReleaseError(err)
-	}
-
-	if _, err := tx.Exec(ctx, `UPDATE sub_orders SET status = 'cancelled', updated_at = now() WHERE order_id = $1`, orderID); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx, `UPDATE orders SET status = 'cancelled', updated_at = now() WHERE id = $1`, orderID); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (r *OrderRepository) fillCartOrder(
@@ -365,8 +244,14 @@ func (r *OrderRepository) fillCartOrder(
 			}
 			groups[sku.ShopID] = group
 		}
-		lineAmount := item.UnitPriceCents * int64(item.Quantity)
-		group.totalAmountCents += lineAmount
+		lineAmount, err := safeLineAmount(item.UnitPriceCents, item.Quantity)
+		if err != nil {
+			return err
+		}
+		group.totalAmountCents, err = safeAddAmount(group.totalAmountCents, lineAmount)
+		if err != nil {
+			return err
+		}
 		group.items = append(group.items, snapshotItem{
 			productID:       item.ProductID,
 			skuID:           item.SKUID,
@@ -419,7 +304,10 @@ func (r *OrderRepository) fillDirectOrder(
 		return mapFreezeError(err)
 	}
 
-	lineAmount := sku.PriceCents * int64(quantity)
+	lineAmount, err := safeLineAmount(sku.PriceCents, quantity)
+	if err != nil {
+		return err
+	}
 	groups := map[int]*shopGroup{
 		sku.ShopID: {
 			shopID:           sku.ShopID,
@@ -475,13 +363,48 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 				return err
 			}
 		}
-		totalAmount += group.totalAmountCents
+		nextTotal, err := safeAddAmount(totalAmount, group.totalAmountCents)
+		if err != nil {
+			return err
+		}
+		totalAmount = nextTotal
 	}
 
 	if _, err := tx.Exec(ctx, `UPDATE orders SET total_amount_cents = $1, updated_at = now() WHERE id = $2`, totalAmount, orderID); err != nil {
 		return err
 	}
+	if totalAmount == 0 {
+		paidAt := time.Now().UTC()
+		if _, err := tx.Exec(ctx, `
+UPDATE orders SET status = 'paid', paid_at = $2, updated_at = now() WHERE id = $1`,
+			orderID,
+			paidAt,
+		); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+UPDATE sub_orders SET status = 'awaiting_shipment', updated_at = now()
+WHERE order_id = $1 AND status = 'pending_payment'`,
+			orderID,
+		); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func safeLineAmount(unitPriceCents int64, quantity int) (int64, error) {
+	if unitPriceCents < 0 || quantity <= 0 || unitPriceCents > math.MaxInt64/int64(quantity) {
+		return 0, apperr.ErrOrderAmountInvalid
+	}
+	return unitPriceCents * int64(quantity), nil
+}
+
+func safeAddAmount(total int64, amount int64) (int64, error) {
+	if amount < 0 || total > math.MaxInt64-amount {
+		return 0, apperr.ErrOrderAmountInvalid
+	}
+	return total + amount, nil
 }
 
 type lockedCartItem struct {
@@ -648,34 +571,6 @@ RETURNING id`
 	return existingID, false, nil
 }
 
-func orderReservationItems(ctx context.Context, db database.DBTX, orderID int) ([]inventorymodel.ReservationItem, error) {
-	const query = `SELECT ois.sku_id, SUM(ois.quantity)::int
-FROM order_item_snapshots ois
-JOIN sub_orders so ON so.id = ois.sub_order_id
-WHERE so.order_id = $1
-GROUP BY ois.sku_id
-ORDER BY ois.sku_id`
-
-	rows, err := db.Query(ctx, query, orderID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := make([]inventorymodel.ReservationItem, 0)
-	for rows.Next() {
-		var item inventorymodel.ReservationItem
-		if err := rows.Scan(&item.SKUID, &item.Quantity); err != nil {
-			return nil, err
-		}
-		items = append(items, item)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 func mapFreezeError(err error) error {
 	switch {
 	case errors.Is(err, inventoryapperr.ErrInsufficientStock):
@@ -685,13 +580,6 @@ func mapFreezeError(err error) error {
 	default:
 		return err
 	}
-}
-
-func mapReleaseError(err error) error {
-	if errors.Is(err, inventoryapperr.ErrReservationInvalid) || errors.Is(err, inventoryapperr.ErrInventoryItemNotFound) {
-		return fmt.Errorf("%w: %v", apperr.ErrOrderStateInvalid, err)
-	}
-	return err
 }
 
 func loadOrder(ctx context.Context, db database.DBTX, userID int, orderID int) (*model.Order, error) {

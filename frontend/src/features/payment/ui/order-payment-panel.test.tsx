@@ -136,6 +136,156 @@ describe("OrderPaymentPanel", () => {
     ).toBeInTheDocument()
   })
 
+  it("shows a closed session error and dismisses it", async () => {
+    const user = userEvent.setup()
+
+    server.use(
+      http.post("*/api/v1/payments", () =>
+        HttpResponse.json(
+          { ...pendingPayment, status: "closed" },
+          { status: 200 },
+        ),
+      ),
+    )
+
+    renderWithProviders(<OrderPaymentPanel {...panelProps} />)
+
+    await user.click(screen.getByRole("button", { name: "Pay now" }))
+    expect(
+      await screen.findByText("This payment session is closed."),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Dismiss" }))
+    expect(
+      screen.queryByText("This payment session is closed."),
+    ).not.toBeInTheDocument()
+  })
+
+  it("shows when the provider returns no checkout URL", async () => {
+    const user = userEvent.setup()
+
+    server.use(
+      http.post("*/api/v1/payments", () =>
+        HttpResponse.json(pendingPayment, { status: 201 }),
+      ),
+      http.post("*/api/v1/payments/:paymentNo/pay", () =>
+        HttpResponse.json({
+          ...pendingPayment,
+          provider_transaction_id:
+            "8ad23f19-24f5-48b8-bbc7-243e1f1e0a98",
+        }),
+      ),
+    )
+
+    renderWithProviders(<OrderPaymentPanel {...panelProps} />)
+
+    await user.click(screen.getByRole("button", { name: "Pay now" }))
+    expect(
+      await screen.findByText(
+        "The checkout session is unavailable. Try again.",
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it("marks payment settled when close discovers a paid payment", async () => {
+    const user = userEvent.setup()
+    const onPaymentSettled = vi.fn()
+
+    server.use(
+      http.post("*/api/v1/payments", () =>
+        HttpResponse.json(pendingPayment, { status: 201 }),
+      ),
+      http.post("*/api/v1/payments/:paymentNo/close", () =>
+        HttpResponse.json({
+          ...pendingPayment,
+          status: "succeeded",
+          provider_transaction_id:
+            "8ad23f19-24f5-48b8-bbc7-243e1f1e0a98",
+          paid_at: "2026-11-24T12:05:00Z",
+        }),
+      ),
+    )
+
+    renderWithProviders(
+      <OrderPaymentPanel
+        {...panelProps}
+        onPaymentSettled={onPaymentSettled}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Close payment and cancel order",
+      }),
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Close and cancel order" }),
+    )
+
+    expect(await screen.findByText("Payment completed")).toBeVisible()
+    expect(onPaymentSettled).toHaveBeenCalledOnce()
+  })
+
+  it("shows provider and close failures", async () => {
+    const user = userEvent.setup()
+    const handlers = [
+      http.post("*/api/v1/payments", () =>
+        HttpResponse.json({ error: "unavailable" }, { status: 502 }),
+      ),
+    ]
+    server.use(...handlers)
+
+    const { unmount } = renderWithProviders(
+      <OrderPaymentPanel {...panelProps} />,
+    )
+    await user.click(screen.getByRole("button", { name: "Pay now" }))
+    expect(
+      await screen.findByText(
+        "The payment service is temporarily unavailable. Try again later.",
+      ),
+    ).toBeVisible()
+    unmount()
+
+    server.use(
+      http.post("*/api/v1/payments", () =>
+        HttpResponse.json(pendingPayment, { status: 201 }),
+      ),
+      http.post("*/api/v1/payments/:paymentNo/close", () =>
+        HttpResponse.json({ error: "unavailable" }, { status: 500 }),
+      ),
+    )
+    renderWithProviders(<OrderPaymentPanel {...panelProps} />)
+    await user.click(
+      screen.getByRole("button", {
+        name: "Close payment and cancel order",
+      }),
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Close and cancel order" }),
+    )
+
+    expect(
+      await screen.findByText("Could not close payment"),
+    ).toBeVisible()
+    expect(
+      await screen.findByText(
+        "The server cannot start payment right now. Try again later.",
+      ),
+    ).toBeVisible()
+  })
+
+  it("renders a paid order directly", () => {
+    renderWithProviders(
+      <OrderPaymentPanel
+        {...panelProps}
+        orderStatus="paid"
+        paidAt="2026-11-24T12:05:00Z"
+      />,
+    )
+
+    expect(screen.getByText("Payment completed")).toBeVisible()
+    expect(screen.getByText(/Paid /)).toBeVisible()
+  })
+
   it("closes payment and notifies when the order is cancelled", async () => {
     const user = userEvent.setup()
     const onOrderCancelled = vi.fn()

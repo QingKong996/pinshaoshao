@@ -30,6 +30,7 @@ import (
 	mocklogisticsmodule "pinshaoshao/internal/mock/logistics"
 	mockpaymentmodule "pinshaoshao/internal/mock/payment"
 	mockpaymentdto "pinshaoshao/internal/mock/payment/dto"
+	"pinshaoshao/internal/outbox"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -303,6 +304,235 @@ func TestPaymentHTTPFlow(t *testing.T) {
 	}
 }
 
+func TestOrderCancellationClosesPaymentAndReleasesStock(t *testing.T) {
+	resetDatabase(t)
+	buyerID := insertBuyer(t)
+	skuID, _ := insertSellableSKU(t)
+	app := startTestApp(t, buyerID)
+
+	var order orderdto.OrderResponse
+	app.doJSON(t, http.MethodPost, "/api/v1/orders/direct", map[string]any{
+		"checkout_key":     uuid.NewString(),
+		"sku_id":           skuID,
+		"quantity":         2,
+		"receiver_name":    "Cancel Buyer",
+		"receiver_phone":   "1234567890",
+		"shipping_address": "Shenzhen",
+	}, http.StatusCreated, &order)
+	requireFrozenStock(t, skuID, 2)
+
+	var payment paymentdto.OrderPaymentResponse
+	app.doJSON(t, http.MethodPost, "/api/v1/payments", map[string]int{
+		"order_id": order.ID,
+	}, http.StatusCreated, &payment)
+
+	var session paymentdto.OrderPaymentResponse
+	app.doJSON(
+		t,
+		http.MethodPost,
+		"/api/v1/payments/"+payment.PaymentNo+"/pay",
+		nil,
+		http.StatusOK,
+		&session,
+	)
+	if session.ProviderTransactionID == nil {
+		t.Fatalf("payment session has no provider transaction: %+v", session)
+	}
+	providerNo := *session.ProviderTransactionID
+
+	var cancelled orderdto.OrderResponse
+	app.doJSON(
+		t,
+		http.MethodPost,
+		fmt.Sprintf("/api/v1/orders/%d/cancel", order.ID),
+		nil,
+		http.StatusOK,
+		&cancelled,
+	)
+	if cancelled.Status != "cancelled" ||
+		len(cancelled.SubOrders) != 1 ||
+		cancelled.SubOrders[0].Status != "cancelled" {
+		t.Fatalf("cancelled order = %+v", cancelled)
+	}
+	requireFrozenStock(t, skuID, 0)
+
+	var closed paymentdto.OrderPaymentResponse
+	app.doJSON(
+		t,
+		http.MethodGet,
+		"/api/v1/payments/"+payment.PaymentNo,
+		nil,
+		http.StatusOK,
+		&closed,
+	)
+	if closed.Status != "closed" {
+		t.Fatalf("closed payment = %+v", closed)
+	}
+
+	requireOutboxPublished(t, "payment.close:"+payment.PaymentNo)
+
+	var providerPayment mockpaymentdto.PaymentResponse
+	app.doJSON(
+		t,
+		http.MethodGet,
+		"/mockpay/api/v1/payments/"+providerNo,
+		nil,
+		http.StatusOK,
+		&providerPayment,
+	)
+	if providerPayment.Status != "closed" {
+		t.Fatalf("provider payment = %+v, want closed", providerPayment)
+	}
+
+	app.doJSON(
+		t,
+		http.MethodPost,
+		"/api/v1/payments",
+		map[string]int{"order_id": order.ID},
+		http.StatusConflict,
+		nil,
+	)
+
+	var replayed orderdto.OrderResponse
+	app.doJSON(
+		t,
+		http.MethodPost,
+		fmt.Sprintf("/api/v1/orders/%d/cancel", order.ID),
+		nil,
+		http.StatusOK,
+		&replayed,
+	)
+	if replayed.Status != "cancelled" {
+		t.Fatalf("replayed cancellation = %+v", replayed)
+	}
+	requireFrozenStock(t, skuID, 0)
+}
+
+func TestZeroAmountOrderSkipsThirdPartyPayment(t *testing.T) {
+	resetDatabase(t)
+	buyerID := insertBuyer(t)
+	skuID, priceCents := insertSellableSKUWithPrice(t, 0)
+	if priceCents != 0 {
+		t.Fatalf("test SKU price = %d, want 0", priceCents)
+	}
+	app := startTestApp(t, buyerID)
+
+	var order orderdto.OrderResponse
+	app.doJSON(t, http.MethodPost, "/api/v1/orders/direct", map[string]any{
+		"checkout_key":     uuid.NewString(),
+		"sku_id":           skuID,
+		"quantity":         2,
+		"receiver_name":    "Free Buyer",
+		"receiver_phone":   "1234567890",
+		"shipping_address": "Guangzhou",
+	}, http.StatusCreated, &order)
+	if order.Status != "paid" ||
+		order.TotalAmountCents != 0 ||
+		order.PaidAt == nil ||
+		len(order.SubOrders) != 1 ||
+		order.SubOrders[0].Status != "awaiting_shipment" {
+		t.Fatalf("zero-amount order = %+v", order)
+	}
+	requireFrozenStock(t, skuID, 2)
+
+	app.doJSON(
+		t,
+		http.MethodPost,
+		"/api/v1/payments",
+		map[string]int{"order_id": order.ID},
+		http.StatusConflict,
+		nil,
+	)
+
+	var paymentCount int
+	if err := testPool.QueryRow(
+		context.Background(),
+		`SELECT COUNT(*)::int FROM payments WHERE order_id = $1`,
+		order.ID,
+	).Scan(&paymentCount); err != nil {
+		t.Fatalf("count payments: %v", err)
+	}
+	if paymentCount != 0 {
+		t.Fatalf("payment count = %d, want 0", paymentCount)
+	}
+}
+
+func TestLatePaymentExpiresOrderBeforeRecordingPayment(t *testing.T) {
+	resetDatabase(t)
+	buyerID := insertBuyer(t)
+	skuID, _ := insertSellableSKU(t)
+	app := startTestApp(t, buyerID)
+
+	var order orderdto.OrderResponse
+	app.doJSON(t, http.MethodPost, "/api/v1/orders/direct", map[string]any{
+		"checkout_key":     uuid.NewString(),
+		"sku_id":           skuID,
+		"quantity":         2,
+		"receiver_name":    "Late Payment Buyer",
+		"receiver_phone":   "1234567890",
+		"shipping_address": "Shenzhen",
+	}, http.StatusCreated, &order)
+
+	var payment paymentdto.OrderPaymentResponse
+	app.doJSON(t, http.MethodPost, "/api/v1/payments", map[string]int{
+		"order_id": order.ID,
+	}, http.StatusCreated, &payment)
+
+	var session paymentdto.OrderPaymentResponse
+	app.doJSON(
+		t,
+		http.MethodPost,
+		"/api/v1/payments/"+payment.PaymentNo+"/pay",
+		nil,
+		http.StatusOK,
+		&session,
+	)
+	if session.CheckoutURL == "" {
+		t.Fatalf("payment session has no checkout URL: %+v", session)
+	}
+	if _, err := testPool.Exec(
+		context.Background(),
+		`UPDATE orders SET created_at = now() - interval '31 minutes' WHERE id = $1`,
+		order.ID,
+	); err != nil {
+		t.Fatalf("expire order: %v", err)
+	}
+
+	response, body := app.do(t, http.MethodPost, session.CheckoutURL+"/pay", nil, "")
+	if response.StatusCode != http.StatusSeeOther {
+		t.Fatalf("checkout pay status = %d, want 303, body = %s", response.StatusCode, body)
+	}
+
+	var settled paymentdto.OrderPaymentResponse
+	waitFor(t, 10*time.Second, 50*time.Millisecond, func() bool {
+		app.doJSON(
+			t,
+			http.MethodGet,
+			"/api/v1/payments/"+payment.PaymentNo,
+			nil,
+			http.StatusOK,
+			&settled,
+		)
+		return settled.Status == "succeeded"
+	})
+
+	var cancelled orderdto.OrderResponse
+	waitFor(t, 5*time.Second, 50*time.Millisecond, func() bool {
+		app.doJSON(
+			t,
+			http.MethodGet,
+			fmt.Sprintf("/api/v1/orders/%d", order.ID),
+			nil,
+			http.StatusOK,
+			&cancelled,
+		)
+		return cancelled.Status == "cancelled" &&
+			len(cancelled.SubOrders) == 1 &&
+			cancelled.SubOrders[0].Status == "cancelled"
+	})
+	requireFrozenStock(t, skuID, 0)
+}
+
 type testApp struct {
 	serverURL          string
 	mockPayToken       string
@@ -318,10 +548,15 @@ func startTestApp(t *testing.T, userID int) *testApp {
 	baseURL := "http://" + server.Listener.Addr().String()
 
 	inventoryModule := inventorymodule.NewModule(testPool)
-	orderModule := ordermodule.NewModule(testPool, inventoryModule.Reservation())
+	orderModule := ordermodule.NewModule(
+		testPool,
+		inventoryModule.Reservation(),
+		outbox.NewWriter(),
+	)
 	paymentModule, err := paymentmodule.NewModule(
 		testPool,
 		orderModule.PaymentLifecycle(),
+		orderModule.OrderService(),
 		paymentmodule.Config{
 			GatewayBaseURL:  baseURL,
 			WebhookSecret:   testWebhookSecret,
@@ -335,6 +570,7 @@ func startTestApp(t *testing.T, userID int) *testApp {
 	if err != nil {
 		t.Fatalf("create payment module: %v", err)
 	}
+	orderModule.SetPaymentCloser(paymentModule.PaymentCloser())
 	logisticsModule, err := logisticsmodule.NewModule(
 		testPool,
 		orderModule.ShippingLifecycle(),
@@ -386,10 +622,22 @@ func startTestApp(t *testing.T, userID int) *testApp {
 		t.Fatalf("bootstrap mock logistics auth: %v", err)
 	}
 	workerCtx, stopWorkers := context.WithCancel(context.Background())
+	outboxWorker := outbox.NewWorker(
+		outbox.NewRepository(testPool),
+		paymentModule.OutboxHandlers(),
+		outbox.WorkerConfig{
+			PollInterval: 25 * time.Millisecond,
+			BatchSize:    10,
+		},
+	)
+	outboxWorker.Start(workerCtx)
+	orderModule.StartBackgroundWorkers(workerCtx)
 	mockPaymentModule.Start(workerCtx)
 	mockLogisticsModule.Start(workerCtx)
 	t.Cleanup(func() {
 		stopWorkers()
+		orderModule.StopBackgroundWorkers()
+		outboxWorker.Stop()
 		mockPaymentModule.Stop()
 		mockLogisticsModule.Stop()
 	})
@@ -585,8 +833,12 @@ RETURNING id`,
 
 func insertSellableSKU(t *testing.T) (int, int64) {
 	t.Helper()
+	return insertSellableSKUWithPrice(t, 1999)
+}
+
+func insertSellableSKUWithPrice(t *testing.T, priceCents int64) (int, int64) {
+	t.Helper()
 	ctx := context.Background()
-	const priceCents = int64(1999)
 
 	var shopID int
 	if err := testPool.QueryRow(ctx, `INSERT INTO shops (username, password_hash, email, name)
@@ -619,6 +871,23 @@ RETURNING id`, productID, priceCents).Scan(&skuID); err != nil {
 	return skuID, priceCents
 }
 
+func requireOutboxPublished(t *testing.T, eventKey string) {
+	t.Helper()
+
+	var status string
+	waitFor(t, 5*time.Second, 25*time.Millisecond, func() bool {
+		err := testPool.QueryRow(
+			context.Background(),
+			`SELECT status FROM outbox_events WHERE event_key = $1`,
+			eventKey,
+		).Scan(&status)
+		return err == nil && status == "published"
+	})
+	if status != "published" {
+		t.Fatalf("outbox event %q status = %q, want published", eventKey, status)
+	}
+}
+
 func requireFrozenStock(t *testing.T, skuID int, want int) {
 	t.Helper()
 
@@ -638,7 +907,7 @@ func requireFrozenStock(t *testing.T, skuID int, want int) {
 func resetDatabase(t *testing.T) {
 	t.Helper()
 
-	const query = `TRUNCATE shipment_events, shipments, payments,
+	const query = `TRUNCATE outbox_events, shipment_events, shipments, payments,
 order_item_snapshots, sub_orders, orders, inventory_items, product_skus, products,
 product_categories, shop_sessions, shops, sessions, users RESTART IDENTITY CASCADE`
 	if _, err := testPool.Exec(context.Background(), query); err != nil {

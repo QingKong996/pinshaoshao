@@ -20,6 +20,7 @@ import (
 	"pinshaoshao/internal/middleware"
 	mocklogisticsmodule "pinshaoshao/internal/mock/logistics"
 	mockpaymentmodule "pinshaoshao/internal/mock/payment"
+	"pinshaoshao/internal/outbox"
 	"pinshaoshao/internal/ratelimit"
 	"pinshaoshao/internal/router"
 	"strings"
@@ -136,7 +137,8 @@ func main() {
 	productModule := productmodule.NewModule(pool, inventoryModule.Lifecycle())
 	cartModule := cartmodule.NewModule(pool)
 	feedModule := feedmodule.NewModule(pool)
-	orderModule := ordermodule.NewModule(pool, inventoryModule.Reservation())
+	outboxWriter := outbox.NewWriter()
+	orderModule := ordermodule.NewModule(pool, inventoryModule.Reservation(), outboxWriter)
 	logisticsModule, err := logisticsmodule.NewModule(
 		pool,
 		orderModule.ShippingLifecycle(),
@@ -148,11 +150,13 @@ func main() {
 	paymentModule, err := paymentmodule.NewModule(
 		pool,
 		orderModule.PaymentLifecycle(),
+		orderModule.OrderService(),
 		paymentmodule.ConfigFromEnv(),
 	)
 	if err != nil {
 		fatal("create payment module", "error", err)
 	}
+	orderModule.SetPaymentCloser(paymentModule.PaymentCloser())
 	mockPaymentModule, err := mockpaymentmodule.NewModule(
 		mockPayPool,
 		mockpaymentmodule.ConfigFromEnv(),
@@ -177,6 +181,16 @@ func main() {
 	defer mockPaymentModule.Stop()
 	mockLogisticsModule.Start(context.Background())
 	defer mockLogisticsModule.Stop()
+
+	outboxWorker := outbox.NewWorker(
+		outbox.NewRepository(pool),
+		paymentModule.OutboxHandlers(),
+		outbox.WorkerConfig{},
+	)
+	outboxWorker.Start(context.Background())
+	defer outboxWorker.Stop()
+	orderModule.StartBackgroundWorkers(context.Background())
+	defer orderModule.StopBackgroundWorkers()
 
 	router.Register(r, router.Modules{
 		User:          userModule,

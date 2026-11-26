@@ -34,6 +34,9 @@ export default mergeConfig(
           "src/features/merchant-orders/model/**/*.ts",
           "src/features/merchant-products/model/**/*.ts",
           "src/features/order/model/**/*.{ts,tsx}",
+          "src/features/order/ui/**/*.{ts,tsx}",
+          "src/features/payment/**/*.{ts,tsx}",
+          "src/features/logistics/**/*.{ts,tsx}",
         ],
         exclude: ["**/*.test.{ts,tsx}"],
         thresholds: {

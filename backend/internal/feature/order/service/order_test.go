@@ -2,15 +2,20 @@ package service_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math"
 	"strings"
 	"testing"
 
+	"pinshaoshao/internal/database"
+	"pinshaoshao/internal/feature/inventory/model"
 	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/mocks"
-	"pinshaoshao/internal/feature/order/model"
+	ordermodel "pinshaoshao/internal/feature/order/model"
+	"pinshaoshao/internal/feature/order/paymentport"
 	"pinshaoshao/internal/feature/order/service"
+	"pinshaoshao/internal/outbox"
 
 	"go.uber.org/mock/gomock"
 )
@@ -20,17 +25,42 @@ const testCheckoutKey = "4f2614df-f674-4b5e-a9e4-3fc5e7f62013"
 func newTestService(t *testing.T) (*service.OrderService, *mocks.MockOrderRepository) {
 	t.Helper()
 
+	orderService, repository, _, _, _ := newTestServiceWithDependencies(t)
+	return orderService, repository
+}
+
+func newTestServiceWithDependencies(
+	t *testing.T,
+) (
+	*service.OrderService,
+	*mocks.MockOrderRepository,
+	*fakeReservation,
+	*fakePaymentCloser,
+	*fakeOutboxWriter,
+) {
+	t.Helper()
+
 	repository := mocks.NewMockOrderRepository(gomock.NewController(t))
-	return service.NewOrderService(repository), repository
+	reservation := &fakeReservation{}
+	paymentCloser := &fakePaymentCloser{}
+	outboxWriter := &fakeOutboxWriter{}
+	orderService := service.NewOrderService(
+		repository,
+		reservation,
+		paymentCloser,
+		outboxWriter,
+		noopTransactor{},
+	)
+	return orderService, repository, reservation, paymentCloser, outboxWriter
 }
 
 func TestOrderServiceCreateNormalizesInput(t *testing.T) {
-	order := &model.Order{ID: 1}
+	order := &ordermodel.Order{ID: 1}
 	orderService, repository := newTestService(t)
 
 	repository.EXPECT().
 		Create(gomock.Any(), 7, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ int, input model.CreateOrderInput) (*model.Order, error) {
+		DoAndReturn(func(_ context.Context, _ int, input ordermodel.CreateOrderInput) (*ordermodel.Order, error) {
 			if input.CheckoutKey != testCheckoutKey {
 				t.Fatalf("checkout key = %q, want %q", input.CheckoutKey, testCheckoutKey)
 			}
@@ -48,7 +78,7 @@ func TestOrderServiceCreateNormalizesInput(t *testing.T) {
 
 	got, err := orderService.Create(context.Background(), 7, service.CreateOrderInput{
 		CheckoutKey: strings.ToUpper(testCheckoutKey),
-		Items: []model.CreateOrderItem{
+		Items: []ordermodel.CreateOrderItem{
 			{CartItemID: 2, Quantity: 1},
 			{CartItemID: 1, Quantity: 2},
 		},
@@ -73,7 +103,7 @@ func TestOrderServiceCreateRejectsInvalidInput(t *testing.T) {
 			name: "invalid checkout key",
 			input: service.CreateOrderInput{
 				CheckoutKey:     "not-a-uuid",
-				Items:           []model.CreateOrderItem{{CartItemID: 1, Quantity: 1}},
+				Items:           []ordermodel.CreateOrderItem{{CartItemID: 1, Quantity: 1}},
 				ReceiverName:    "Alice",
 				ReceiverPhone:   "13800138000",
 				ShippingAddress: "Shanghai",
@@ -92,7 +122,7 @@ func TestOrderServiceCreateRejectsInvalidInput(t *testing.T) {
 			name: "duplicate cart item",
 			input: service.CreateOrderInput{
 				CheckoutKey: testCheckoutKey,
-				Items: []model.CreateOrderItem{
+				Items: []ordermodel.CreateOrderItem{
 					{CartItemID: 1, Quantity: 1},
 					{CartItemID: 1, Quantity: 2},
 				},
@@ -105,7 +135,7 @@ func TestOrderServiceCreateRejectsInvalidInput(t *testing.T) {
 			name: "blank receiver",
 			input: service.CreateOrderInput{
 				CheckoutKey:     testCheckoutKey,
-				Items:           []model.CreateOrderItem{{CartItemID: 1, Quantity: 1}},
+				Items:           []ordermodel.CreateOrderItem{{CartItemID: 1, Quantity: 1}},
 				ReceiverName:    "  ",
 				ReceiverPhone:   "13800138000",
 				ShippingAddress: "Shanghai",
@@ -115,7 +145,7 @@ func TestOrderServiceCreateRejectsInvalidInput(t *testing.T) {
 			name: "receiver name too long",
 			input: service.CreateOrderInput{
 				CheckoutKey:     testCheckoutKey,
-				Items:           []model.CreateOrderItem{{CartItemID: 1, Quantity: 1}},
+				Items:           []ordermodel.CreateOrderItem{{CartItemID: 1, Quantity: 1}},
 				ReceiverName:    strings.Repeat("a", 51),
 				ReceiverPhone:   "13800138000",
 				ShippingAddress: "Shanghai",
@@ -135,12 +165,12 @@ func TestOrderServiceCreateRejectsInvalidInput(t *testing.T) {
 }
 
 func TestOrderServiceCreateDirectNormalizesInput(t *testing.T) {
-	order := &model.Order{ID: 1}
+	order := &ordermodel.Order{ID: 1}
 	orderService, repository := newTestService(t)
 
 	repository.EXPECT().
 		CreateDirect(gomock.Any(), 7, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ int, input model.CreateDirectOrderInput) (*model.Order, error) {
+		DoAndReturn(func(_ context.Context, _ int, input ordermodel.CreateDirectOrderInput) (*ordermodel.Order, error) {
 			if input.CheckoutKey != testCheckoutKey {
 				t.Fatalf("checkout key = %q, want %q", input.CheckoutKey, testCheckoutKey)
 			}
@@ -313,9 +343,9 @@ func directOrderHash(t *testing.T, input service.CreateDirectOrderInput) string 
 	var requestHash string
 	repository.EXPECT().
 		CreateDirect(gomock.Any(), 7, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ int, stored model.CreateDirectOrderInput) (*model.Order, error) {
+		DoAndReturn(func(_ context.Context, _ int, stored ordermodel.CreateDirectOrderInput) (*ordermodel.Order, error) {
 			requestHash = stored.RequestHash
-			return &model.Order{ID: 1}, nil
+			return &ordermodel.Order{ID: 1}, nil
 		})
 
 	if _, err := orderService.CreateDirect(context.Background(), 7, input); err != nil {
@@ -337,14 +367,14 @@ func TestOrderServiceListNormalizesPagination(t *testing.T) {
 	orderService, repository := newTestService(t)
 
 	repository.EXPECT().
-		List(gomock.Any(), 7, model.OrderListFilter{Page: 2, PageSize: 5}).
-		Return(&model.OrderListResult{
-			Orders:   []model.OrderSummary{{ID: 3}},
+		List(gomock.Any(), 7, ordermodel.OrderListFilter{Page: 2, PageSize: 5}).
+		Return(&ordermodel.OrderListResult{
+			Orders:   []ordermodel.OrderSummary{{ID: 3}},
 			Page:     2,
 			PageSize: 5,
 			Total:    6,
 		}, nil)
-	orders, err := orderService.List(context.Background(), 7, model.OrderListFilter{Page: 2, PageSize: 5})
+	orders, err := orderService.List(context.Background(), 7, ordermodel.OrderListFilter{Page: 2, PageSize: 5})
 	if err != nil {
 		t.Fatalf("list orders: %v", err)
 	}
@@ -357,23 +387,42 @@ func TestOrderServiceListDefaultsAndRejectsInvalidPagination(t *testing.T) {
 	orderService, repository := newTestService(t)
 
 	repository.EXPECT().
-		List(gomock.Any(), 7, model.OrderListFilter{Page: 1, PageSize: 10}).
-		Return(&model.OrderListResult{Page: 1, PageSize: 10}, nil)
-	if _, err := orderService.List(context.Background(), 7, model.OrderListFilter{}); err != nil {
+		List(gomock.Any(), 7, ordermodel.OrderListFilter{Page: 1, PageSize: 10}).
+		Return(&ordermodel.OrderListResult{Page: 1, PageSize: 10}, nil)
+	if _, err := orderService.List(context.Background(), 7, ordermodel.OrderListFilter{}); err != nil {
 		t.Fatalf("list orders with defaults: %v", err)
 	}
 
-	_, err := orderService.List(context.Background(), 7, model.OrderListFilter{PageSize: 101})
+	_, err := orderService.List(context.Background(), 7, ordermodel.OrderListFilter{PageSize: 101})
 	if !errors.Is(err, apperr.ErrInvalidOrderList) {
 		t.Fatalf("error = %v, want %v", err, apperr.ErrInvalidOrderList)
 	}
 }
 
 func TestOrderServiceCancel(t *testing.T) {
-	orderService, repository := newTestService(t)
-	order := &model.Order{ID: 3}
+	orderService, repository, reservation, paymentCloser, outboxWriter :=
+		newTestServiceWithDependencies(t)
+	order := &ordermodel.Order{ID: 3, Status: ordermodel.OrderStatusCancelled}
+	providerTransactionID := "provider-1"
+	paymentCloser.result = &paymentport.CloseResult{
+		PaymentID:             9,
+		PaymentNo:             "payment-1",
+		ProviderTransactionID: &providerTransactionID,
+		Closed:                true,
+	}
 
-	repository.EXPECT().Cancel(gomock.Any(), 7, 3).Return(order, nil)
+	repository.EXPECT().
+		LockForCancel(gomock.Any(), gomock.Any(), 7, 3).
+		Return(&ordermodel.CancelTarget{
+			OrderID: 3,
+			Status:  ordermodel.OrderStatusPendingPayment,
+			Items: []ordermodel.ReservationItem{
+				{SKUID: 5, Quantity: 2},
+			},
+		}, nil)
+	repository.EXPECT().MarkCancelled(gomock.Any(), gomock.Any(), 3).Return(nil)
+	repository.EXPECT().Load(gomock.Any(), gomock.Any(), 7, 3).Return(order, nil)
+
 	got, err := orderService.Cancel(context.Background(), 7, 3)
 	if err != nil {
 		t.Fatalf("cancel order: %v", err)
@@ -381,4 +430,252 @@ func TestOrderServiceCancel(t *testing.T) {
 	if got != order {
 		t.Fatalf("order = %p, want %p", got, order)
 	}
+	if len(reservation.released) != 1 ||
+		len(reservation.released[0]) != 1 ||
+		reservation.released[0][0].SKUID != 5 ||
+		reservation.released[0][0].Quantity != 2 {
+		t.Fatalf("released reservations = %+v", reservation.released)
+	}
+	if len(paymentCloser.orders) != 1 || paymentCloser.orders[0] != 3 {
+		t.Fatalf("payment close order IDs = %v, want [3]", paymentCloser.orders)
+	}
+	if len(outboxWriter.events) != 1 {
+		t.Fatalf("outbox events = %d, want 1", len(outboxWriter.events))
+	}
+	event := outboxWriter.events[0]
+	if event.Key != "payment.close:payment-1" ||
+		event.Topic != outbox.TopicPaymentCloseProvider ||
+		event.AggregateType != "payment" ||
+		event.AggregateID != 9 {
+		t.Fatalf("outbox event = %+v", event)
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		t.Fatalf("decode outbox payload: %v", err)
+	}
+	if payload["payment_no"] != "payment-1" ||
+		payload["provider_transaction_id"] != providerTransactionID {
+		t.Fatalf("outbox payload = %+v", payload)
+	}
+}
+
+func TestOrderServiceCancelAlreadyCancelledClosesRemainingPayment(t *testing.T) {
+	orderService, repository, reservation, paymentCloser, outboxWriter :=
+		newTestServiceWithDependencies(t)
+	providerTransactionID := "provider-1"
+	paymentCloser.result = &paymentport.CloseResult{
+		PaymentID:             9,
+		PaymentNo:             "payment-1",
+		ProviderTransactionID: &providerTransactionID,
+		Closed:                true,
+	}
+	order := &ordermodel.Order{ID: 3, Status: ordermodel.OrderStatusCancelled}
+
+	repository.EXPECT().
+		LockForCancel(gomock.Any(), gomock.Any(), 7, 3).
+		Return(&ordermodel.CancelTarget{
+			OrderID: 3,
+			Status:  ordermodel.OrderStatusCancelled,
+			Items:   []ordermodel.ReservationItem{{SKUID: 5, Quantity: 2}},
+		}, nil)
+	repository.EXPECT().Load(gomock.Any(), gomock.Any(), 7, 3).Return(order, nil)
+
+	got, err := orderService.Cancel(context.Background(), 7, 3)
+	if err != nil {
+		t.Fatalf("cancel order: %v", err)
+	}
+	if got != order {
+		t.Fatalf("order = %p, want %p", got, order)
+	}
+	if len(reservation.released) != 0 {
+		t.Fatalf("released reservations = %+v, want none", reservation.released)
+	}
+	if len(paymentCloser.orders) != 1 || len(outboxWriter.events) != 1 {
+		t.Fatalf(
+			"payment close calls/outbox events = %d/%d, want 1/1",
+			len(paymentCloser.orders),
+			len(outboxWriter.events),
+		)
+	}
+}
+
+func TestOrderServiceCancelRejectsSettledPayment(t *testing.T) {
+	orderService, repository, _, paymentCloser, outboxWriter :=
+		newTestServiceWithDependencies(t)
+	paymentCloser.result = &paymentport.CloseResult{
+		PaymentID:      9,
+		PaymentNo:      "payment-1",
+		AlreadySettled: true,
+	}
+
+	repository.EXPECT().
+		LockForCancel(gomock.Any(), gomock.Any(), 7, 3).
+		Return(&ordermodel.CancelTarget{
+			OrderID: 3,
+			Status:  ordermodel.OrderStatusPendingPayment,
+		}, nil)
+
+	_, err := orderService.Cancel(context.Background(), 7, 3)
+	if !errors.Is(err, apperr.ErrOrderCannotCancel) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrOrderCannotCancel)
+	}
+	if len(outboxWriter.events) != 0 {
+		t.Fatalf("outbox events = %d, want 0", len(outboxWriter.events))
+	}
+}
+
+func TestOrderServiceCancelStopsWhenStockReleaseFails(t *testing.T) {
+	orderService, repository, reservation, paymentCloser, outboxWriter :=
+		newTestServiceWithDependencies(t)
+	reservation.releaseErr = errors.New("release failed")
+
+	repository.EXPECT().
+		LockForCancel(gomock.Any(), gomock.Any(), 7, 3).
+		Return(&ordermodel.CancelTarget{
+			OrderID: 3,
+			Status:  ordermodel.OrderStatusPendingPayment,
+			Items:   []ordermodel.ReservationItem{{SKUID: 5, Quantity: 2}},
+		}, nil)
+
+	_, err := orderService.Cancel(context.Background(), 7, 3)
+	if err == nil || !strings.Contains(err.Error(), "release failed") {
+		t.Fatalf("error = %v, want release failure", err)
+	}
+	if len(paymentCloser.orders) != 0 || len(outboxWriter.events) != 0 {
+		t.Fatalf(
+			"payment close calls/outbox events = %d/%d, want 0/0",
+			len(paymentCloser.orders),
+			len(outboxWriter.events),
+		)
+	}
+}
+
+func TestOrderServiceCancelStopsWhenOutboxWriteFails(t *testing.T) {
+	orderService, repository, _, paymentCloser, outboxWriter :=
+		newTestServiceWithDependencies(t)
+	providerTransactionID := "provider-1"
+	paymentCloser.result = &paymentport.CloseResult{
+		PaymentID:             9,
+		PaymentNo:             "payment-1",
+		ProviderTransactionID: &providerTransactionID,
+		Closed:                true,
+	}
+	outboxWriter.err = errors.New("outbox unavailable")
+
+	repository.EXPECT().
+		LockForCancel(gomock.Any(), gomock.Any(), 7, 3).
+		Return(&ordermodel.CancelTarget{
+			OrderID: 3,
+			Status:  ordermodel.OrderStatusPendingPayment,
+			Items:   []ordermodel.ReservationItem{{SKUID: 5, Quantity: 2}},
+		}, nil)
+
+	_, err := orderService.Cancel(context.Background(), 7, 3)
+	if err == nil || !strings.Contains(err.Error(), "outbox unavailable") {
+		t.Fatalf("error = %v, want outbox failure", err)
+	}
+}
+
+func TestOrderServiceExpireUsesDueOrderGuard(t *testing.T) {
+	orderService, repository, _, _, _ := newTestServiceWithDependencies(t)
+
+	repository.EXPECT().
+		LockDueForCancel(gomock.Any(), gomock.Any(), 3).
+		Return(nil, nil)
+	if err := orderService.Expire(context.Background(), 3); err != nil {
+		t.Fatalf("expire already settled order: %v", err)
+	}
+
+	repository.EXPECT().
+		LockDueForCancel(gomock.Any(), gomock.Any(), 4).
+		Return(&ordermodel.CancelTarget{
+			OrderID: 4,
+			Status:  ordermodel.OrderStatusPendingPayment,
+			Items:   []ordermodel.ReservationItem{{SKUID: 5, Quantity: 1}},
+		}, nil)
+	repository.EXPECT().MarkCancelled(gomock.Any(), gomock.Any(), 4).Return(nil)
+	if err := orderService.Expire(context.Background(), 4); err != nil {
+		t.Fatalf("expire order: %v", err)
+	}
+}
+
+func TestOrderServiceCancelForPaymentDelegates(t *testing.T) {
+	orderService, repository, _, _, _ := newTestServiceWithDependencies(t)
+	repository.EXPECT().
+		LockForCancel(gomock.Any(), gomock.Any(), 7, 3).
+		Return(&ordermodel.CancelTarget{
+			OrderID: 3,
+			Status:  ordermodel.OrderStatusCancelled,
+		}, nil)
+	repository.EXPECT().Load(gomock.Any(), gomock.Any(), 7, 3).
+		Return(&ordermodel.Order{ID: 3, Status: ordermodel.OrderStatusCancelled}, nil)
+
+	if err := orderService.CancelForPayment(context.Background(), 7, 3); err != nil {
+		t.Fatalf("cancel for payment: %v", err)
+	}
+}
+
+func TestOrderServiceCancelRejectsInvalidOrderID(t *testing.T) {
+	orderService, _ := newTestService(t)
+
+	_, err := orderService.Cancel(context.Background(), 7, 0)
+	if !errors.Is(err, apperr.ErrInvalidOrderID) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrInvalidOrderID)
+	}
+}
+
+type noopTransactor struct{}
+
+func (noopTransactor) WithinTx(ctx context.Context, fn func(context.Context, database.DBTX) error) error {
+	return fn(ctx, nil)
+}
+
+type fakeReservation struct {
+	releaseErr error
+	released   [][]model.ReservationItem
+}
+
+func (f *fakeReservation) Freeze(context.Context, database.DBTX, []model.ReservationItem) error {
+	return nil
+}
+
+func (f *fakeReservation) Release(
+	_ context.Context,
+	_ database.DBTX,
+	items []model.ReservationItem,
+) error {
+	f.released = append(f.released, items)
+	return f.releaseErr
+}
+
+func (f *fakeReservation) Commit(context.Context, database.DBTX, []model.ReservationItem) error {
+	return nil
+}
+
+type fakePaymentCloser struct {
+	result *paymentport.CloseResult
+	err    error
+	orders []int
+}
+
+func (f *fakePaymentCloser) CloseForOrder(
+	_ context.Context,
+	_ database.DBTX,
+	orderID int,
+) (*paymentport.CloseResult, error) {
+	f.orders = append(f.orders, orderID)
+	return f.result, f.err
+}
+
+type fakeOutboxWriter struct {
+	events []outbox.Event
+	err    error
+}
+
+func (f *fakeOutboxWriter) Enqueue(_ context.Context, _ database.DBTX, event outbox.Event) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.events = append(f.events, event)
+	return nil
 }

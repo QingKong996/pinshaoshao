@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
+	"pinshaoshao/internal/feature/order/paymentport"
 	"pinshaoshao/internal/feature/payment/apperr"
 	"pinshaoshao/internal/feature/payment/model"
 
@@ -25,7 +27,6 @@ type PaymentRepository interface {
 	GetForPayment(ctx context.Context, userID int, paymentNo string) (*model.Payment, error)
 	SetProviderTransaction(ctx context.Context, paymentNo string, providerTransactionID string) error
 	ApplyPaidCallback(ctx context.Context, callback model.PaidCallback) (*model.Payment, error)
-	CloseForUser(ctx context.Context, userID int, paymentNo string) (*model.Payment, error)
 }
 
 type PaymentGateway interface {
@@ -33,17 +34,34 @@ type PaymentGateway interface {
 	ClosePayment(ctx context.Context, providerPaymentNo string) error
 }
 
+type OrderCanceller interface {
+	CancelForPayment(ctx context.Context, userID int, orderID int) error
+}
+
+type OrderExpirer interface {
+	Expire(ctx context.Context, orderID int) error
+}
+
+type OrderLifecycle interface {
+	OrderCanceller
+	OrderExpirer
+}
+
 type Config struct {
-	NotifyURL     string
-	ReturnURLBase string
-	Gateway       PaymentGateway
+	NotifyURL      string
+	ReturnURLBase  string
+	Gateway        PaymentGateway
+	OrderCanceller OrderCanceller
+	OrderExpirer   OrderExpirer
 }
 
 type PaymentService struct {
-	repository    PaymentRepository
-	gateway       PaymentGateway
-	notifyURL     string
-	returnURLBase string
+	repository     PaymentRepository
+	gateway        PaymentGateway
+	orderCanceller OrderCanceller
+	orderExpirer   OrderExpirer
+	notifyURL      string
+	returnURLBase  string
 }
 
 type PaymentSession struct {
@@ -53,10 +71,12 @@ type PaymentSession struct {
 
 func NewPaymentService(repository PaymentRepository, config Config) *PaymentService {
 	return &PaymentService{
-		repository:    repository,
-		gateway:       config.Gateway,
-		notifyURL:     config.NotifyURL,
-		returnURLBase: strings.TrimRight(config.ReturnURLBase, "/"),
+		repository:     repository,
+		gateway:        config.Gateway,
+		orderCanceller: config.OrderCanceller,
+		orderExpirer:   config.OrderExpirer,
+		notifyURL:      config.NotifyURL,
+		returnURLBase:  strings.TrimRight(config.ReturnURLBase, "/"),
 	}
 }
 
@@ -114,7 +134,7 @@ func (s *PaymentService) Pay(
 	if time.Until(payment.OrderExpiresAt) < minProviderPaymentTTL {
 		return nil, fmt.Errorf("service.PayPayment: %w", apperr.ErrOrderNotPayable)
 	}
-	providerExpiresIn := payment.OrderExpiresAt.Sub(payment.CreatedAt)
+	providerExpiresIn := time.Until(payment.OrderExpiresAt)
 	result, err := s.gateway.CreatePayment(ctx, model.ProviderPaymentRequest{
 		MerchantOrderNo: payment.PaymentNo,
 		AmountCents:     payment.AmountCents,
@@ -132,6 +152,21 @@ func (s *PaymentService) Pay(
 	}
 
 	if err := s.repository.SetProviderTransaction(ctx, normalized, result.PaymentNo); err != nil {
+		if errors.Is(err, apperr.ErrPaymentConflict) ||
+			errors.Is(err, apperr.ErrPaymentClosed) {
+			if closeErr := s.gateway.ClosePayment(ctx, result.PaymentNo); closeErr != nil {
+				slog.ErrorContext(
+					ctx,
+					"close provider payment after local conflict",
+					"payment_no",
+					normalized,
+					"provider_transaction_id",
+					result.PaymentNo,
+					"error",
+					closeErr,
+				)
+			}
+		}
 		return nil, fmt.Errorf("service.PayPayment: %w", err)
 	}
 	updated, err := s.repository.GetForPayment(ctx, userID, normalized)
@@ -165,14 +200,14 @@ func (s *PaymentService) Close(
 		return nil, fmt.Errorf("service.ClosePayment: %w", apperr.ErrPaymentConflict)
 	}
 
-	if payment.ProviderTransactionID != nil &&
-		strings.TrimSpace(*payment.ProviderTransactionID) != "" {
-		if err := s.gateway.ClosePayment(ctx, *payment.ProviderTransactionID); err != nil {
-			return nil, fmt.Errorf("service.ClosePayment: %w", err)
-		}
+	if s.orderCanceller == nil {
+		return nil, fmt.Errorf("service.ClosePayment: %w", apperr.ErrInternalServer)
+	}
+	if err := s.orderCanceller.CancelForPayment(ctx, userID, payment.OrderID); err != nil {
+		return nil, fmt.Errorf("service.ClosePayment: %w", err)
 	}
 
-	closed, err := s.repository.CloseForUser(ctx, userID, normalized)
+	closed, err := s.repository.GetForUser(ctx, userID, normalized)
 	if err != nil {
 		return nil, fmt.Errorf("service.ClosePayment: %w", err)
 	}
@@ -206,6 +241,19 @@ func (s *PaymentService) HandlePaidCallback(
 	request.PaidAt = request.PaidAt.UTC()
 
 	payment, err := s.repository.ApplyPaidCallback(ctx, request)
+	if err != nil {
+		var expired *paymentport.OrderExpiredError
+		if !errors.As(err, &expired) {
+			return nil, fmt.Errorf("service.HandlePaidCallback: %w", err)
+		}
+		if s.orderExpirer == nil {
+			return nil, fmt.Errorf("service.HandlePaidCallback: %w", apperr.ErrInternalServer)
+		}
+		if err := s.orderExpirer.Expire(ctx, expired.OrderID); err != nil {
+			return nil, fmt.Errorf("service.HandlePaidCallback: expire order: %w", err)
+		}
+		payment, err = s.repository.ApplyPaidCallback(ctx, request)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("service.HandlePaidCallback: %w", err)
 	}
@@ -251,7 +299,7 @@ func validateProviderResult(
 		result.AmountCents != payment.AmountCents ||
 		strings.ToUpper(strings.TrimSpace(result.Currency)) != model.CurrencyCNY ||
 		(result.Status != "pending" && result.Status != providerPaidStatus) ||
-		strings.TrimSpace(result.CheckoutURL) == "" {
+		(result.Status != providerPaidStatus && strings.TrimSpace(result.CheckoutURL) == "") {
 		return apperr.ErrPaymentProviderInvalid
 	}
 	result.PaymentNo = providerPaymentNo

@@ -263,6 +263,8 @@ func (c *OrderController) writeError(ctx *gin.Context, operation string, err err
 		ctx.JSON(http.StatusNotFound, httpx.ErrorResponse{Error: apperr.ErrOrderNotFound.Error()})
 	case errors.Is(err, apperr.ErrOrderCannotCancel):
 		ctx.JSON(http.StatusConflict, httpx.ErrorResponse{Error: apperr.ErrOrderCannotCancel.Error()})
+	case errors.Is(err, apperr.ErrOrderAmountInvalid):
+		ctx.JSON(http.StatusBadRequest, httpx.ErrorResponse{Error: apperr.ErrOrderAmountInvalid.Error()})
 	default:
 		slog.ErrorContext(ctx.Request.Context(), operation, "error", err)
 		ctx.JSON(http.StatusInternalServerError, httpx.ErrorResponse{Error: apperr.ErrInternalServer.Error()})

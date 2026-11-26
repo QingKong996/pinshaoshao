@@ -22,7 +22,7 @@ func TestShipmentRepositoryShippingAndDeliveryLifecycle(t *testing.T) {
 	resetDatabase(t)
 	seed := insertShippableSubOrder(t)
 
-	orders := orderrepository.NewOrderRepository(
+	orders := orderrepository.NewShippingLifecycle(
 		testPool,
 		inventoryrepository.NewInventoryRepository(testPool),
 	)
