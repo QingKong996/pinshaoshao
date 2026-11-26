@@ -2,13 +2,10 @@ package paymentport
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"pinshaoshao/internal/database"
 )
-
-var ErrOrderExpired = errors.New("order expired")
 
 type OrderStatus string
 
@@ -33,18 +30,6 @@ type CloseResult struct {
 	ProviderTransactionID *string
 	Closed                bool
 	AlreadySettled        bool
-}
-
-type OrderExpiredError struct {
-	OrderID int
-}
-
-func (e *OrderExpiredError) Error() string {
-	return ErrOrderExpired.Error()
-}
-
-func (e *OrderExpiredError) Unwrap() error {
-	return ErrOrderExpired
 }
 
 // Lifecycle exposes the order state changes needed by the payment feature.

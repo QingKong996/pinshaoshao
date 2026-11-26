@@ -78,7 +78,8 @@ type Module struct {
 	paymentController *paymentcontroller.PaymentController
 	webhookHandler    *paymentcontroller.WebhookHandler
 	paymentRepository *paymentrepository.PaymentRepository
-	outboxHandler     outbox.Handler
+	closeHandler      outbox.Handler
+	refundHandler     outbox.Handler
 }
 
 type PaymentCloser interface {
@@ -88,8 +89,9 @@ type PaymentCloser interface {
 func NewModule(
 	pool *pgxpool.Pool,
 	orders paymentport.Lifecycle,
-	orderService paymentservice.OrderLifecycle,
+	orderService paymentservice.OrderCanceller,
 	config Config,
+	outboxWriter paymentrepository.RefundOutboxWriter,
 ) (*Module, error) {
 	config = config.withDefaults()
 	if strings.TrimSpace(config.WebhookSecret) == "" {
@@ -108,13 +110,13 @@ func NewModule(
 		return nil, err
 	}
 
-	paymentRepository := paymentrepository.NewPaymentRepository(pool, orders)
+	refundRepository := paymentrepository.NewRefundRepository(pool, outboxWriter)
+	paymentRepository := paymentrepository.NewPaymentRepository(pool, orders, refundRepository)
 	paymentService := paymentservice.NewPaymentService(paymentRepository, paymentservice.Config{
 		NotifyURL:      config.NotifyURL,
 		ReturnURLBase:  config.ReturnURLBase,
 		Gateway:        gateway,
 		OrderCanceller: orderService,
-		OrderExpirer:   orderService,
 	})
 	return &Module{
 		paymentController: paymentcontroller.NewPaymentController(paymentService),
@@ -124,7 +126,11 @@ func NewModule(
 			config.WebhookTolerance,
 		),
 		paymentRepository: paymentRepository,
-		outboxHandler:     &providerCloseHandler{gateway: gateway},
+		closeHandler:      &providerCloseHandler{gateway: gateway},
+		refundHandler: &providerRefundHandler{
+			store:   refundRepository,
+			gateway: gateway,
+		},
 	}, nil
 }
 
@@ -134,7 +140,8 @@ func (m *Module) PaymentCloser() PaymentCloser {
 
 func (m *Module) OutboxHandlers() map[string]outbox.Handler {
 	return map[string]outbox.Handler{
-		outbox.TopicPaymentCloseProvider: m.outboxHandler,
+		outbox.TopicPaymentCloseProvider:  m.closeHandler,
+		outbox.TopicPaymentRefundProvider: m.refundHandler,
 	}
 }
 

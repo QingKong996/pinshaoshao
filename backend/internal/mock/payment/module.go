@@ -77,6 +77,7 @@ func (c Config) withDefaults() Config {
 
 type Module struct {
 	paymentHandler  *mockpayhandler.PaymentHandler
+	refundHandler   *mockpayhandler.RefundHandler
 	checkoutHandler *mockpayhandler.CheckoutHandler
 	webhookHandler  *mockpayhandler.WebhookHandler
 	authHandler     *mockauth.Handler
@@ -111,6 +112,8 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 		config.NotificationMaxAttempts,
 	)
 	paymentService := mockpayservice.NewPaymentService(paymentRepository, notifyPolicy)
+	refundRepository := mockpayrepository.NewRefundRepository(pool)
+	refundService := mockpayservice.NewRefundService(refundRepository)
 	notificationService := mockpayservice.NewNotificationService(
 		notificationRepository,
 		mockpayservice.NotificationConfig{
@@ -125,6 +128,7 @@ func NewModule(pool *pgxpool.Pool, config Config) (*Module, error) {
 
 	return &Module{
 		paymentHandler:  mockpayhandler.NewPaymentHandler(paymentService, config.PublicBaseURL),
+		refundHandler:   mockpayhandler.NewRefundHandler(refundService),
 		checkoutHandler: mockpayhandler.NewCheckoutHandler(paymentService),
 		webhookHandler:  mockpayhandler.NewWebhookHandler(paymentService, notificationService),
 		authHandler:     mockauth.NewHandler(authService),
@@ -152,6 +156,7 @@ func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
 	api.POST("", m.paymentHandler.Create)
 	api.GET("/:paymentNo", m.paymentHandler.Get)
 	api.POST("/:paymentNo/close", m.paymentHandler.Close)
+	api.POST("/:paymentNo/refunds", m.refundHandler.Refund)
 	api.GET("/:paymentNo/notifications", m.webhookHandler.List)
 	api.POST("/:paymentNo/notifications/retry", m.webhookHandler.Retry)
 

@@ -107,6 +107,7 @@ var routeCases = []routeCase{
 	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments", requestPath: "/mockpay/api/v1/payments", authError: mockauth.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/mockpay/api/v1/payments/:paymentNo", requestPath: "/mockpay/api/v1/payments/1", authError: mockauth.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments/:paymentNo/close", requestPath: "/mockpay/api/v1/payments/1/close", authError: mockauth.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments/:paymentNo/refunds", requestPath: "/mockpay/api/v1/payments/1/refunds", authError: mockauth.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/mockpay/api/v1/payments/:paymentNo/notifications", requestPath: "/mockpay/api/v1/payments/1/notifications", authError: mockauth.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/mockpay/api/v1/payments/:paymentNo/notifications/retry", requestPath: "/mockpay/api/v1/payments/1/notifications/retry", authError: mockauth.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/mockpay/checkout/:paymentNo", requestPath: "/mockpay/checkout/1"},
@@ -141,6 +142,7 @@ func newTestRouter(t *testing.T) *gin.Engine {
 			GatewayUsername: "mockpay-test",
 			GatewayPassword: "mockpay-test-password",
 		},
+		outbox.NewWriter(),
 	)
 	if err != nil {
 		t.Fatalf("create payment module: %v", err)

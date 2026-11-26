@@ -152,6 +152,7 @@ func main() {
 		orderModule.PaymentLifecycle(),
 		orderModule.OrderService(),
 		paymentmodule.ConfigFromEnv(),
+		outboxWriter,
 	)
 	if err != nil {
 		fatal("create payment module", "error", err)

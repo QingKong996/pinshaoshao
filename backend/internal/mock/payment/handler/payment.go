@@ -132,6 +132,14 @@ func httpStatusForError(err error) (int, string) {
 		return http.StatusConflict, model.ErrPaymentClosed.Error()
 	case errors.Is(err, model.ErrPaymentNotClosable):
 		return http.StatusConflict, model.ErrPaymentNotClosable.Error()
+	case errors.Is(err, model.ErrInvalidRefundInput):
+		return http.StatusBadRequest, model.ErrInvalidRefundInput.Error()
+	case errors.Is(err, model.ErrRefundNotFound):
+		return http.StatusNotFound, model.ErrRefundNotFound.Error()
+	case errors.Is(err, model.ErrRefundConflict):
+		return http.StatusConflict, model.ErrRefundConflict.Error()
+	case errors.Is(err, model.ErrPaymentNotRefundable):
+		return http.StatusConflict, model.ErrPaymentNotRefundable.Error()
 	case errors.Is(err, model.ErrNotificationNotFound):
 		return http.StatusNotFound, model.ErrNotificationNotFound.Error()
 	case errors.Is(err, model.ErrNotificationNotRetryable):

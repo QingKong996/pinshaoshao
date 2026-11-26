@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"pinshaoshao/internal/feature/order/paymentport"
 	"pinshaoshao/internal/feature/payment/apperr"
 	"pinshaoshao/internal/feature/payment/model"
 
@@ -38,28 +37,17 @@ type OrderCanceller interface {
 	CancelForPayment(ctx context.Context, userID int, orderID int) error
 }
 
-type OrderExpirer interface {
-	Expire(ctx context.Context, orderID int) error
-}
-
-type OrderLifecycle interface {
-	OrderCanceller
-	OrderExpirer
-}
-
 type Config struct {
 	NotifyURL      string
 	ReturnURLBase  string
 	Gateway        PaymentGateway
 	OrderCanceller OrderCanceller
-	OrderExpirer   OrderExpirer
 }
 
 type PaymentService struct {
 	repository     PaymentRepository
 	gateway        PaymentGateway
 	orderCanceller OrderCanceller
-	orderExpirer   OrderExpirer
 	notifyURL      string
 	returnURLBase  string
 }
@@ -74,7 +62,6 @@ func NewPaymentService(repository PaymentRepository, config Config) *PaymentServ
 		repository:     repository,
 		gateway:        config.Gateway,
 		orderCanceller: config.OrderCanceller,
-		orderExpirer:   config.OrderExpirer,
 		notifyURL:      config.NotifyURL,
 		returnURLBase:  strings.TrimRight(config.ReturnURLBase, "/"),
 	}
@@ -241,19 +228,6 @@ func (s *PaymentService) HandlePaidCallback(
 	request.PaidAt = request.PaidAt.UTC()
 
 	payment, err := s.repository.ApplyPaidCallback(ctx, request)
-	if err != nil {
-		var expired *paymentport.OrderExpiredError
-		if !errors.As(err, &expired) {
-			return nil, fmt.Errorf("service.HandlePaidCallback: %w", err)
-		}
-		if s.orderExpirer == nil {
-			return nil, fmt.Errorf("service.HandlePaidCallback: %w", apperr.ErrInternalServer)
-		}
-		if err := s.orderExpirer.Expire(ctx, expired.OrderID); err != nil {
-			return nil, fmt.Errorf("service.HandlePaidCallback: expire order: %w", err)
-		}
-		payment, err = s.repository.ApplyPaidCallback(ctx, request)
-	}
 	if err != nil {
 		return nil, fmt.Errorf("service.HandlePaidCallback: %w", err)
 	}

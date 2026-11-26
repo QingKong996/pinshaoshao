@@ -18,6 +18,7 @@ import (
 	"pinshaoshao/internal/feature/payment/apperr"
 	"pinshaoshao/internal/feature/payment/model"
 	paymentrepository "pinshaoshao/internal/feature/payment/repository"
+	"pinshaoshao/internal/outbox"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -220,7 +221,7 @@ func TestPaymentRepositoryRejectsCallbackAmountMismatch(t *testing.T) {
 	}
 }
 
-func TestPaymentRepositoryRecordsLatePaymentWithoutRestoringCancelledOrder(t *testing.T) {
+func TestPaymentRepositoryRefundsPaymentForCancelledOrder(t *testing.T) {
 	resetPaymentDatabase(t)
 	ctx := context.Background()
 	userID := insertUser(t, "buyer01")
@@ -238,7 +239,7 @@ func TestPaymentRepositoryRecordsLatePaymentWithoutRestoringCancelledOrder(t *te
 		t.Fatalf("cancel sub-order: %v", err)
 	}
 
-	paid, err := repository.ApplyPaidCallback(ctx, model.PaidCallback{
+	callback := model.PaidCallback{
 		EventID:               uuid.NewString(),
 		EventType:             "payment.paid",
 		ProviderTransactionID: uuid.NewString(),
@@ -246,17 +247,40 @@ func TestPaymentRepositoryRecordsLatePaymentWithoutRestoringCancelledOrder(t *te
 		AmountCents:           3998,
 		Currency:              model.CurrencyCNY,
 		PaidAt:                time.Now().UTC(),
-	})
+	}
+	paid, err := repository.ApplyPaidCallback(ctx, callback)
 	if err != nil {
 		t.Fatalf("apply callback: %v", err)
 	}
 	if paid.Status != model.PaymentStatusSucceeded {
 		t.Fatalf("payment status = %q, want succeeded", paid.Status)
 	}
+	if paid.Refund == nil || paid.Refund.Status != model.RefundStatusPending {
+		t.Fatalf("refund = %+v, want pending", paid.Refund)
+	}
 	requireOrderStatus(t, orderID, "cancelled", "cancelled")
+	requireRefundStatus(t, payment.PaymentNo, model.RefundStatusPending)
+	requireRefundOutboxEvent(t, payment.PaymentNo)
+
+	replayed, err := repository.ApplyPaidCallback(ctx, callback)
+	if err != nil {
+		t.Fatalf("replay callback: %v", err)
+	}
+	if replayed.Refund == nil || replayed.Refund.RefundNo != paid.Refund.RefundNo {
+		t.Fatalf("replayed refund = %+v, want %q", replayed.Refund, paid.Refund.RefundNo)
+	}
+	requireRefundOutboxEvent(t, payment.PaymentNo)
+
+	stored, err := repository.GetForUser(ctx, userID, payment.PaymentNo)
+	if err != nil {
+		t.Fatalf("get payment: %v", err)
+	}
+	if stored.Refund == nil || stored.Refund.RefundNo != paid.Refund.RefundNo {
+		t.Fatalf("stored refund = %+v, want %q", stored.Refund, paid.Refund.RefundNo)
+	}
 }
 
-func TestPaymentRepositoryExpiredCallbackDefersCancellationToOrderService(t *testing.T) {
+func TestPaymentRepositorySettlesExpiredPendingOrder(t *testing.T) {
 	resetPaymentDatabase(t)
 	ctx := context.Background()
 	userID := insertUser(t, "buyer01")
@@ -276,7 +300,7 @@ func TestPaymentRepositoryExpiredCallbackDefersCancellationToOrderService(t *tes
 		t.Fatalf("expire order: %v", err)
 	}
 
-	_, err = repository.ApplyPaidCallback(ctx, model.PaidCallback{
+	paid, err := repository.ApplyPaidCallback(ctx, model.PaidCallback{
 		EventID:               uuid.NewString(),
 		EventType:             "payment.paid",
 		ProviderTransactionID: uuid.NewString(),
@@ -285,20 +309,21 @@ func TestPaymentRepositoryExpiredCallbackDefersCancellationToOrderService(t *tes
 		Currency:              model.CurrencyCNY,
 		PaidAt:                time.Now().UTC(),
 	})
-	var expired *paymentport.OrderExpiredError
-	if !errors.As(err, &expired) || expired.OrderID != orderID {
-		t.Fatalf("error = %v, want expired order %d", err, orderID)
+	if err != nil {
+		t.Fatalf("apply callback: %v", err)
 	}
-
-	requireOrderStatus(t, orderID, "pending_payment", "pending_payment")
+	if paid.Refund != nil {
+		t.Fatalf("refund = %+v, want nil", paid.Refund)
+	}
+	requireOrderStatus(t, orderID, "paid", "awaiting_shipment")
 	requirePaymentFrozenStock(t, skuID, 2)
 
 	stored, err := repository.GetForUser(ctx, userID, payment.PaymentNo)
 	if err != nil {
 		t.Fatalf("get payment: %v", err)
 	}
-	if stored.Status != model.PaymentStatusPending {
-		t.Fatalf("payment status = %q, want pending", stored.Status)
+	if stored.Status != model.PaymentStatusSucceeded {
+		t.Fatalf("payment status = %q, want succeeded", stored.Status)
 	}
 }
 
@@ -353,7 +378,11 @@ func TestPaymentRepositoryRecordsLatePaymentAfterLocalClose(t *testing.T) {
 		*paid.ProviderTransactionID != providerNo {
 		t.Fatalf("paid = %+v, want succeeded with provider transaction", paid)
 	}
+	if paid.Refund == nil || paid.Refund.Status != model.RefundStatusPending {
+		t.Fatalf("refund = %+v, want pending", paid.Refund)
+	}
 	requireOrderStatus(t, orderID, "cancelled", "cancelled")
+	requireRefundStatus(t, payment.PaymentNo, model.RefundStatusPending)
 }
 
 func TestPaymentRepositoryCloseForOrderClosesPendingPayment(t *testing.T) {
@@ -452,7 +481,8 @@ func TestPaymentRepositoryRejectsOtherUser(t *testing.T) {
 
 func newPaymentRepository() *paymentrepository.PaymentRepository {
 	orderLifecycle := orderrepository.NewPaymentLifecycle()
-	return paymentrepository.NewPaymentRepository(testPool, orderLifecycle)
+	refundRepository := paymentrepository.NewRefundRepository(testPool, outbox.NewWriter())
+	return paymentrepository.NewPaymentRepository(testPool, orderLifecycle, refundRepository)
 }
 
 func insertUser(t *testing.T, username string) int {
@@ -598,9 +628,51 @@ func resetPaymentDatabase(t *testing.T) {
 	t.Helper()
 
 	const query = `TRUNCATE users, sessions, shops, shop_sessions, products, product_skus,
-inventory_items, orders, sub_orders, order_item_snapshots, payments RESTART IDENTITY CASCADE`
+inventory_items, orders, sub_orders, order_item_snapshots, payments, refunds,
+outbox_events RESTART IDENTITY CASCADE`
 	if _, err := testPool.Exec(context.Background(), query); err != nil {
 		t.Fatalf("reset payment database: %v", err)
+	}
+}
+
+func requireRefundStatus(
+	t *testing.T,
+	paymentNo string,
+	want model.RefundStatus,
+) {
+	t.Helper()
+
+	var status string
+	if err := testPool.QueryRow(
+		context.Background(),
+		`SELECT r.status::text
+FROM refunds r
+JOIN payments p ON p.id = r.payment_id
+WHERE p.payment_no = $1::uuid`,
+		paymentNo,
+	).Scan(&status); err != nil {
+		t.Fatalf("read refund status: %v", err)
+	}
+	if model.RefundStatus(status) != want {
+		t.Fatalf("refund status = %q, want %q", status, want)
+	}
+}
+
+func requireRefundOutboxEvent(t *testing.T, paymentNo string) {
+	t.Helper()
+
+	var count int
+	if err := testPool.QueryRow(
+		context.Background(),
+		`SELECT COUNT(*)::int FROM outbox_events
+WHERE event_key = $1 AND topic = $2`,
+		"payment.refund:"+paymentNo,
+		outbox.TopicPaymentRefundProvider,
+	).Scan(&count); err != nil {
+		t.Fatalf("read refund outbox event: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("refund outbox events = %d, want 1", count)
 	}
 }
 

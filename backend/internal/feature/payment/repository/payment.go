@@ -20,12 +20,17 @@ const paymentColumns = `id, payment_no::text, order_id, provider, provider_trans
 status::text, amount_cents, paid_at, created_at, updated_at`
 
 type PaymentRepository struct {
-	pool   *pgxpool.Pool
-	orders paymentport.Lifecycle
+	pool    *pgxpool.Pool
+	orders  paymentport.Lifecycle
+	refunds *RefundRepository
 }
 
-func NewPaymentRepository(pool *pgxpool.Pool, orders paymentport.Lifecycle) *PaymentRepository {
-	return &PaymentRepository{pool: pool, orders: orders}
+func NewPaymentRepository(
+	pool *pgxpool.Pool,
+	orders paymentport.Lifecycle,
+	refunds *RefundRepository,
+) *PaymentRepository {
+	return &PaymentRepository{pool: pool, orders: orders, refunds: refunds}
 }
 
 func (r *PaymentRepository) CreateForOrder(
@@ -106,6 +111,9 @@ func (r *PaymentRepository) GetForUser(
 			return apperr.ErrPaymentConflict
 		}
 		payment.OrderExpiresAt = target.ExpiresAt
+		if err := r.attachRefund(ctx, tx, payment); err != nil {
+			return err
+		}
 		result = payment
 		return nil
 	})
@@ -138,6 +146,9 @@ func (r *PaymentRepository) GetForPayment(
 
 		switch payment.Status {
 		case model.PaymentStatusSucceeded:
+			if err := r.attachRefund(ctx, tx, payment); err != nil {
+				return err
+			}
 			result = payment
 			return nil
 		case model.PaymentStatusClosed:
@@ -207,7 +218,8 @@ func (r *PaymentRepository) ApplyPaidCallback(
 
 	var result *model.Payment
 	err = pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
-		if _, err := r.orders.SettlePayment(ctx, tx, orderID, callback.PaidAt); err != nil {
+		orderStatus, err := r.orders.SettlePayment(ctx, tx, orderID, callback.PaidAt)
+		if err != nil {
 			return mapOrderError(err)
 		}
 
@@ -226,28 +238,38 @@ func (r *PaymentRepository) ApplyPaidCallback(
 				*payment.ProviderTransactionID != callback.ProviderTransactionID {
 				return apperr.ErrPaymentConflict
 			}
-			result = payment
-			return nil
-		}
-		if err := payment.MarkSucceeded(callback.ProviderTransactionID, callback.PaidAt); err != nil {
-			return err
-		}
+		} else {
+			if err := payment.MarkSucceeded(callback.ProviderTransactionID, callback.PaidAt); err != nil {
+				return err
+			}
 
-		const query = `UPDATE payments
+			const query = `UPDATE payments
 SET provider_transaction_id = $2, status = 'succeeded', paid_at = $3, updated_at = now()
 WHERE id = $1 AND status IN ('pending', 'closed')`
-		tag, err := tx.Exec(
-			ctx,
-			query,
-			payment.ID,
-			payment.ProviderTransactionID,
-			payment.PaidAt,
-		)
-		if err != nil {
-			return fmt.Errorf("apply paid callback: %w", err)
+			tag, err := tx.Exec(
+				ctx,
+				query,
+				payment.ID,
+				payment.ProviderTransactionID,
+				payment.PaidAt,
+			)
+			if err != nil {
+				return fmt.Errorf("apply paid callback: %w", err)
+			}
+			if tag.RowsAffected() != 1 {
+				return apperr.ErrPaymentConflict
+			}
 		}
-		if tag.RowsAffected() != 1 {
-			return apperr.ErrPaymentConflict
+
+		if orderStatus == paymentport.OrderStatusCancelled {
+			if r.refunds == nil {
+				return apperr.ErrInternalServer
+			}
+			refund, err := r.refunds.EnsureForCancelledPayment(ctx, tx, payment)
+			if err != nil {
+				return err
+			}
+			payment.Refund = refund
 		}
 		result = payment
 		return nil
@@ -256,6 +278,22 @@ WHERE id = $1 AND status IN ('pending', 'closed')`
 		return nil, fmt.Errorf("repository.ApplyPaidCallback: %w", err)
 	}
 	return result, nil
+}
+
+func (r *PaymentRepository) attachRefund(
+	ctx context.Context,
+	db database.DBTX,
+	payment *model.Payment,
+) error {
+	if r.refunds == nil {
+		return nil
+	}
+	refund, err := r.refunds.GetByPayment(ctx, db, payment.ID)
+	if err != nil {
+		return err
+	}
+	payment.Refund = refund
+	return nil
 }
 
 func (r *PaymentRepository) CloseForOrder(

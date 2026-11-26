@@ -31,6 +31,7 @@ type Payment struct {
 	PaidAt                *time.Time
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+	Refund                *Refund
 }
 
 func (p *Payment) MarkSucceeded(providerTransactionID string, paidAt time.Time) error {

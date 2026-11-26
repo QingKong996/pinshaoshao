@@ -457,7 +457,7 @@ func TestZeroAmountOrderSkipsThirdPartyPayment(t *testing.T) {
 	}
 }
 
-func TestLatePaymentExpiresOrderBeforeRecordingPayment(t *testing.T) {
+func TestLatePaymentSettlesPendingOrder(t *testing.T) {
 	resetDatabase(t)
 	buyerID := insertBuyer(t)
 	skuID, _ := insertSellableSKU(t)
@@ -516,7 +516,7 @@ func TestLatePaymentExpiresOrderBeforeRecordingPayment(t *testing.T) {
 		return settled.Status == "succeeded"
 	})
 
-	var cancelled orderdto.OrderResponse
+	var paidOrder orderdto.OrderResponse
 	waitFor(t, 5*time.Second, 50*time.Millisecond, func() bool {
 		app.doJSON(
 			t,
@@ -524,12 +524,96 @@ func TestLatePaymentExpiresOrderBeforeRecordingPayment(t *testing.T) {
 			fmt.Sprintf("/api/v1/orders/%d", order.ID),
 			nil,
 			http.StatusOK,
-			&cancelled,
+			&paidOrder,
 		)
-		return cancelled.Status == "cancelled" &&
-			len(cancelled.SubOrders) == 1 &&
-			cancelled.SubOrders[0].Status == "cancelled"
+		return paidOrder.Status == "paid" &&
+			len(paidOrder.SubOrders) == 1 &&
+			paidOrder.SubOrders[0].Status == "awaiting_shipment"
 	})
+	requireFrozenStock(t, skuID, 2)
+	if settled.Refund != nil {
+		t.Fatalf("settled payment has unexpected refund: %+v", settled.Refund)
+	}
+}
+
+func TestLatePaymentRefundsCancelledOrder(t *testing.T) {
+	resetDatabase(t)
+	buyerID := insertBuyer(t)
+	skuID, _ := insertSellableSKU(t)
+	app := startTestApp(t, buyerID)
+
+	var order orderdto.OrderResponse
+	app.doJSON(t, http.MethodPost, "/api/v1/orders/direct", map[string]any{
+		"checkout_key":     uuid.NewString(),
+		"sku_id":           skuID,
+		"quantity":         2,
+		"receiver_name":    "Refund Buyer",
+		"receiver_phone":   "1234567890",
+		"shipping_address": "Shenzhen",
+	}, http.StatusCreated, &order)
+
+	var payment paymentdto.OrderPaymentResponse
+	app.doJSON(t, http.MethodPost, "/api/v1/payments", map[string]int{
+		"order_id": order.ID,
+	}, http.StatusCreated, &payment)
+
+	var session paymentdto.OrderPaymentResponse
+	app.doJSON(
+		t,
+		http.MethodPost,
+		"/api/v1/payments/"+payment.PaymentNo+"/pay",
+		nil,
+		http.StatusOK,
+		&session,
+	)
+	if session.CheckoutURL == "" {
+		t.Fatalf("payment session has no checkout URL: %+v", session)
+	}
+	if _, err := testPool.Exec(
+		context.Background(),
+		`UPDATE inventory_items SET frozen_stock = 0 WHERE sku_id = $1`,
+		skuID,
+	); err != nil {
+		t.Fatalf("release stock: %v", err)
+	}
+	if _, err := testPool.Exec(
+		context.Background(),
+		`UPDATE sub_orders SET status = 'cancelled' WHERE order_id = $1`,
+		order.ID,
+	); err != nil {
+		t.Fatalf("cancel sub-order: %v", err)
+	}
+	if _, err := testPool.Exec(
+		context.Background(),
+		`UPDATE orders SET status = 'cancelled' WHERE id = $1`,
+		order.ID,
+	); err != nil {
+		t.Fatalf("cancel order: %v", err)
+	}
+
+	response, body := app.do(t, http.MethodPost, session.CheckoutURL+"/pay", nil, "")
+	if response.StatusCode != http.StatusSeeOther {
+		t.Fatalf("checkout pay status = %d, want 303, body = %s", response.StatusCode, body)
+	}
+
+	var refunded paymentdto.OrderPaymentResponse
+	waitFor(t, 10*time.Second, 50*time.Millisecond, func() bool {
+		app.doJSON(
+			t,
+			http.MethodGet,
+			"/api/v1/payments/"+payment.PaymentNo,
+			nil,
+			http.StatusOK,
+			&refunded,
+		)
+		return refunded.Refund != nil &&
+			refunded.Refund.Status == "succeeded"
+	})
+	if refunded.Status != "succeeded" ||
+		refunded.Refund.ProviderRefundNo == nil ||
+		refunded.Refund.RefundedAt == nil {
+		t.Fatalf("refunded payment = %+v", refunded)
+	}
 	requireFrozenStock(t, skuID, 0)
 }
 
@@ -566,6 +650,7 @@ func startTestApp(t *testing.T, userID int) *testApp {
 			GatewayUsername: testMockUsername,
 			GatewayPassword: testMockPassword,
 		},
+		outbox.NewWriter(),
 	)
 	if err != nil {
 		t.Fatalf("create payment module: %v", err)
@@ -907,7 +992,7 @@ func requireFrozenStock(t *testing.T, skuID int, want int) {
 func resetDatabase(t *testing.T) {
 	t.Helper()
 
-	const query = `TRUNCATE outbox_events, shipment_events, shipments, payments,
+	const query = `TRUNCATE outbox_events, shipment_events, shipments, refunds, payments,
 order_item_snapshots, sub_orders, orders, inventory_items, product_skus, products,
 product_categories, shop_sessions, shops, sessions, users RESTART IDENTITY CASCADE`
 	if _, err := testPool.Exec(context.Background(), query); err != nil {
@@ -915,7 +1000,8 @@ product_categories, shop_sessions, shops, sessions, users RESTART IDENTITY CASCA
 	}
 	if _, err := testMockPayPool.Exec(
 		context.Background(),
-		`TRUNCATE mock_payment_notifications, mock_payment_orders RESTART IDENTITY CASCADE`,
+		`TRUNCATE mock_payment_refunds, mock_payment_notifications, mock_payment_orders
+RESTART IDENTITY CASCADE`,
 	); err != nil {
 		t.Fatalf("reset mock payment database: %v", err)
 	}

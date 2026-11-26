@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"pinshaoshao/internal/feature/order/paymentport"
 	"pinshaoshao/internal/feature/payment/apperr"
 	"pinshaoshao/internal/feature/payment/model"
 	"pinshaoshao/internal/feature/payment/service"
@@ -91,14 +90,6 @@ type orderCancellerStub struct {
 
 func (s orderCancellerStub) CancelForPayment(ctx context.Context, userID int, orderID int) error {
 	return s.cancel(ctx, userID, orderID)
-}
-
-type orderExpirerStub struct {
-	expire func(context.Context, int) error
-}
-
-func (s orderExpirerStub) Expire(ctx context.Context, orderID int) error {
-	return s.expire(ctx, orderID)
 }
 
 func TestPaymentServiceCreateUsesSinglePaymentPerOrder(t *testing.T) {
@@ -562,63 +553,37 @@ func TestPaymentServiceHandlePaidCallbackRejectsInvalidEvent(t *testing.T) {
 	}
 }
 
-func TestPaymentServiceHandlePaidCallbackExpiresOrderBeforeRecordingLatePayment(t *testing.T) {
+func TestPaymentServiceHandlePaidCallbackAppliesRepositoryOnce(t *testing.T) {
 	paid := &model.Payment{PaymentNo: testPaymentNo, Status: model.PaymentStatusSucceeded}
 	applyCalls := 0
 	repository := &repositoryStub{
 		applyPaidCallback: func(context.Context, model.PaidCallback) (*model.Payment, error) {
 			applyCalls++
-			if applyCalls == 1 {
-				return nil, &paymentport.OrderExpiredError{OrderID: 7}
-			}
 			return paid, nil
 		},
 	}
-	expiredOrderID := 0
-	paymentService := service.NewPaymentService(repository, service.Config{
-		OrderExpirer: orderExpirerStub{expire: func(_ context.Context, orderID int) error {
-			expiredOrderID = orderID
-			return nil
-		}},
-	})
+	paymentService := service.NewPaymentService(repository, service.Config{})
 
 	got, err := paymentService.HandlePaidCallback(context.Background(), validPaidCallback())
 	if err != nil {
 		t.Fatalf("handle late callback: %v", err)
 	}
-	if got != paid || applyCalls != 2 || expiredOrderID != 7 {
-		t.Fatalf(
-			"payment/calls/order = %+v/%d/%d, want %+v/2/7",
-			got,
-			applyCalls,
-			expiredOrderID,
-			paid,
-		)
+	if got != paid || applyCalls != 1 {
+		t.Fatalf("payment/calls = %+v/%d, want %+v/1", got, applyCalls, paid)
 	}
 }
 
-func TestPaymentServiceHandlePaidCallbackStopsWhenOrderExpiryFails(t *testing.T) {
-	applyCalls := 0
+func TestPaymentServiceHandlePaidCallbackReturnsRepositoryError(t *testing.T) {
 	repository := &repositoryStub{
 		applyPaidCallback: func(context.Context, model.PaidCallback) (*model.Payment, error) {
-			applyCalls++
-			return nil, &paymentport.OrderExpiredError{OrderID: 7}
+			return nil, apperr.ErrPaymentConflict
 		},
 	}
-	expireCalls := 0
-	paymentService := service.NewPaymentService(repository, service.Config{
-		OrderExpirer: orderExpirerStub{expire: func(context.Context, int) error {
-			expireCalls++
-			return apperr.ErrOrderNotPayable
-		}},
-	})
+	paymentService := service.NewPaymentService(repository, service.Config{})
 
 	_, err := paymentService.HandlePaidCallback(context.Background(), validPaidCallback())
-	if !errors.Is(err, apperr.ErrOrderNotPayable) {
-		t.Fatalf("error = %v, want %v", err, apperr.ErrOrderNotPayable)
-	}
-	if applyCalls != 1 || expireCalls != 1 {
-		t.Fatalf("apply/expire calls = %d/%d, want 1/1", applyCalls, expireCalls)
+	if !errors.Is(err, apperr.ErrPaymentConflict) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrPaymentConflict)
 	}
 }
 

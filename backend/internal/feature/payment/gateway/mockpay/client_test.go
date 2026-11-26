@@ -136,3 +136,95 @@ func TestClientClosePaymentMapsConflict(t *testing.T) {
 		t.Fatalf("error = %v, want %v", err, apperr.ErrPaymentConflict)
 	}
 }
+
+func TestClientRefundPayment(t *testing.T) {
+	const (
+		providerNo       = "8ad23f19-24f5-48b8-bbc7-243e1f1e0a98"
+		refundNo         = "dfa6b2df-e55d-47fa-97f9-0fe58e02e99e"
+		providerRefundNo = "68ccf395-3fd5-4056-aa35-0b0e2eb9e22b"
+	)
+	refundedAt := time.Date(2026, 11, 26, 10, 0, 0, 0, time.UTC)
+
+	var received refundPaymentRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == loginPath {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"token": testToken})
+			return
+		}
+		if r.Method != http.MethodPost ||
+			r.URL.Path != closePaymentPathPrefix+providerNo+"/refunds" {
+			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer "+testToken {
+			t.Fatalf("authorization = %q", got)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"refund_no":          refundNo,
+			"provider_refund_no": providerRefundNo,
+			"payment_no":         providerNo,
+			"amount_cents":       3998,
+			"status":             "succeeded",
+			"refunded_at":        refundedAt,
+		})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, testUsername, testPassword, nil)
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	result, err := client.RefundPayment(
+		context.Background(),
+		providerNo,
+		model.ProviderRefundRequest{
+			RefundNo:    refundNo,
+			AmountCents: 3998,
+			Reason:      "order_cancelled_after_payment",
+		},
+	)
+	if err != nil {
+		t.Fatalf("refund payment: %v", err)
+	}
+	if received.RefundNo != refundNo ||
+		received.AmountCents != 3998 ||
+		result.ProviderRefundNo != providerRefundNo ||
+		result.Status != "succeeded" ||
+		!result.RefundedAt.Equal(refundedAt) {
+		t.Fatalf("request/result = %+v/%+v", received, result)
+	}
+}
+
+func TestClientRefundPaymentMapsConflict(t *testing.T) {
+	const providerNo = "8ad23f19-24f5-48b8-bbc7-243e1f1e0a98"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == loginPath {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"token": testToken})
+			return
+		}
+		http.Error(w, "refund conflicts", http.StatusConflict)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, testUsername, testPassword, nil)
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	_, err = client.RefundPayment(
+		context.Background(),
+		providerNo,
+		model.ProviderRefundRequest{
+			RefundNo:    "dfa6b2df-e55d-47fa-97f9-0fe58e02e99e",
+			AmountCents: 3998,
+			Reason:      "order_cancelled_after_payment",
+		},
+	)
+	if !errors.Is(err, apperr.ErrPaymentConflict) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrPaymentConflict)
+	}
+}
