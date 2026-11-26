@@ -10,6 +10,7 @@ var (
 	ErrInvalidWebhookSignature    = errors.New("invalid webhook signature")
 	ErrStaleWebhookSignature      = errors.New("webhook signature timestamp is outside the allowed window")
 	ErrPaymentNotFound            = errors.New("payment not found")
+	ErrRefundNotFound             = errors.New("refund not found")
 	ErrOrderNotFound              = errors.New("order not found")
 	ErrOrderNotPayable            = errors.New("order is not payable")
 	ErrPaymentClosed              = errors.New("payment is closed")

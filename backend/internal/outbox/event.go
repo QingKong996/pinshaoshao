@@ -6,6 +6,7 @@ import (
 )
 
 const TopicPaymentCloseProvider = "payment.close_provider"
+const TopicPaymentRefundProvider = "payment.refund_provider"
 
 type Event struct {
 	ID            int64

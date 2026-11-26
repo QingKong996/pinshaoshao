@@ -158,7 +158,7 @@ func (c *PaymentController) Close(ctx *gin.Context) {
 }
 
 func newOrderPaymentResponse(payment *model.Payment, checkoutURL string) dto.OrderPaymentResponse {
-	return dto.OrderPaymentResponse{
+	response := dto.OrderPaymentResponse{
 		PaymentNo:             payment.PaymentNo,
 		OrderID:               payment.OrderID,
 		Provider:              payment.Provider,
@@ -170,6 +170,21 @@ func newOrderPaymentResponse(payment *model.Payment, checkoutURL string) dto.Ord
 		CreatedAt:             payment.CreatedAt,
 		UpdatedAt:             payment.UpdatedAt,
 	}
+	if payment.Refund != nil {
+		response.Refund = &dto.RefundResponse{
+			RefundNo:         payment.Refund.RefundNo,
+			AmountCents:      payment.Refund.AmountCents,
+			Reason:           payment.Refund.Reason,
+			Status:           string(payment.Refund.Status),
+			ProviderRefundNo: payment.Refund.ProviderRefundNo,
+			RefundedAt:       payment.Refund.RefundedAt,
+			FailedAt:         payment.Refund.FailedAt,
+			LastError:        payment.Refund.LastError,
+			CreatedAt:        payment.Refund.CreatedAt,
+			UpdatedAt:        payment.Refund.UpdatedAt,
+		}
+	}
+	return response
 }
 
 func writePaymentError(ctx *gin.Context, operation string, err error) {

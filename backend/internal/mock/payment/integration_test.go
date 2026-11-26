@@ -97,10 +97,16 @@ func resetMockPaymentTables(t *testing.T) {
 	t.Helper()
 	if _, err := testPool.Exec(
 		context.Background(),
-		`TRUNCATE mock_payment_notifications, mock_payment_orders RESTART IDENTITY CASCADE`,
+		`TRUNCATE mock_payment_refunds, mock_payment_notifications, mock_payment_orders
+RESTART IDENTITY CASCADE`,
 	); err != nil {
 		t.Fatalf("reset mock payment tables: %v", err)
 	}
+}
+
+func newRefundService() *mockpayservice.RefundService {
+	repository := mockpayrepository.NewRefundRepository(testPool)
+	return mockpayservice.NewRefundService(repository)
 }
 
 func newTestServices() (*mockpayservice.PaymentService, *mockpayservice.NotificationService, *mockpayrepository.NotificationRepository) {
@@ -298,6 +304,136 @@ WHERE payment_no = $1::uuid`,
 	}
 	if closedCount != 1 {
 		t.Fatalf("closed count = %d, want 1", closedCount)
+	}
+}
+
+func TestMockPaymentRefundIsIdempotent(t *testing.T) {
+	resetMockPaymentTables(t)
+	paymentService, _, _ := newTestServices()
+	refundService := newRefundService()
+	ctx := context.Background()
+
+	payment, _, err := paymentService.Create(ctx, mockpayservice.CreatePaymentInput{
+		MerchantOrderNo: "refund-1",
+		AmountCents:     3998,
+		Subject:         "Refund test",
+		NotifyURL:       "http://localhost:8080/webhook",
+		ExpiresIn:       time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("create payment: %v", err)
+	}
+	if _, err := paymentService.Pay(ctx, payment.PaymentNo); err != nil {
+		t.Fatalf("pay payment: %v", err)
+	}
+
+	input := model.RefundInput{
+		RefundNo:    "8ad23f19-24f5-48b8-bbc7-243e1f1e0a98",
+		AmountCents: 3998,
+		Reason:      "order_cancelled_after_payment",
+	}
+	refund, err := refundService.Refund(ctx, payment.PaymentNo, input)
+	if err != nil {
+		t.Fatalf("refund payment: %v", err)
+	}
+	if refund.Status != model.RefundStatusSucceeded || refund.PaymentNo != payment.PaymentNo {
+		t.Fatalf("refund = %+v", refund)
+	}
+	replayed, err := refundService.Refund(ctx, payment.PaymentNo, input)
+	if err != nil {
+		t.Fatalf("replay refund: %v", err)
+	}
+	if replayed.ProviderRefundNo != refund.ProviderRefundNo {
+		t.Fatalf(
+			"replayed provider refund = %q, want %q",
+			replayed.ProviderRefundNo,
+			refund.ProviderRefundNo,
+		)
+	}
+
+	conflictingRefund := input
+	conflictingRefund.RefundNo = "bdce2f67-3b2e-44c5-b3c4-2f3edc913775"
+	if _, err := refundService.Refund(ctx, payment.PaymentNo, conflictingRefund); !errors.Is(err, model.ErrRefundConflict) {
+		t.Fatalf("conflicting refund number error = %v, want %v", err, model.ErrRefundConflict)
+	}
+
+	conflictingAmount := input
+	conflictingAmount.AmountCents = 1
+	if _, err := refundService.Refund(ctx, payment.PaymentNo, conflictingAmount); !errors.Is(err, model.ErrRefundConflict) {
+		t.Fatalf("conflicting amount error = %v, want %v", err, model.ErrRefundConflict)
+	}
+}
+
+func TestMockPaymentRefundRejectsUnpaidPayment(t *testing.T) {
+	resetMockPaymentTables(t)
+	paymentService, _, _ := newTestServices()
+	refundService := newRefundService()
+	ctx := context.Background()
+
+	payment, _, err := paymentService.Create(ctx, mockpayservice.CreatePaymentInput{
+		MerchantOrderNo: "refund-unpaid",
+		AmountCents:     3998,
+		Subject:         "Unpaid refund test",
+		NotifyURL:       "http://localhost:8080/webhook",
+		ExpiresIn:       time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("create payment: %v", err)
+	}
+	_, err = refundService.Refund(ctx, payment.PaymentNo, model.RefundInput{
+		RefundNo:    "dfa6b2df-e55d-47fa-97f9-0fe58e02e99e",
+		AmountCents: 3998,
+		Reason:      "order_cancelled_after_payment",
+	})
+	if !errors.Is(err, model.ErrPaymentNotRefundable) {
+		t.Fatalf("error = %v, want %v", err, model.ErrPaymentNotRefundable)
+	}
+}
+
+func TestMockPaymentRefundRejectsRefundNumberUsedByAnotherPayment(t *testing.T) {
+	resetMockPaymentTables(t)
+	paymentService, _, _ := newTestServices()
+	refundService := newRefundService()
+	ctx := context.Background()
+
+	first, _, err := paymentService.Create(ctx, mockpayservice.CreatePaymentInput{
+		MerchantOrderNo: "refund-first",
+		AmountCents:     3998,
+		Subject:         "First refund test",
+		NotifyURL:       "http://localhost:8080/webhook",
+		ExpiresIn:       time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("create first payment: %v", err)
+	}
+	if _, err := paymentService.Pay(ctx, first.PaymentNo); err != nil {
+		t.Fatalf("pay first payment: %v", err)
+	}
+
+	second, _, err := paymentService.Create(ctx, mockpayservice.CreatePaymentInput{
+		MerchantOrderNo: "refund-second",
+		AmountCents:     3998,
+		Subject:         "Second refund test",
+		NotifyURL:       "http://localhost:8080/webhook",
+		ExpiresIn:       time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("create second payment: %v", err)
+	}
+	if _, err := paymentService.Pay(ctx, second.PaymentNo); err != nil {
+		t.Fatalf("pay second payment: %v", err)
+	}
+
+	input := model.RefundInput{
+		RefundNo:    "8ad23f19-24f5-48b8-bbc7-243e1f1e0a98",
+		AmountCents: 3998,
+		Reason:      "order_cancelled_after_payment",
+	}
+	if _, err := refundService.Refund(ctx, first.PaymentNo, input); err != nil {
+		t.Fatalf("refund first payment: %v", err)
+	}
+	if _, err := refundService.Refund(ctx, second.PaymentNo, input); !errors.Is(err, model.ErrRefundConflict) {
+		t.Fatalf("error = %v, want %v", err, model.ErrRefundConflict)
 	}
 }
 

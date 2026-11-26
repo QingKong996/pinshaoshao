@@ -190,6 +190,113 @@ func (c *Client) ClosePayment(ctx context.Context, providerPaymentNo string) err
 	return nil
 }
 
+type refundPaymentRequest struct {
+	RefundNo    string `json:"refund_no"`
+	AmountCents int64  `json:"amount_cents"`
+	Reason      string `json:"reason"`
+}
+
+type refundPaymentResponse struct {
+	RefundNo         string    `json:"refund_no"`
+	ProviderRefundNo string    `json:"provider_refund_no"`
+	PaymentNo        string    `json:"payment_no"`
+	AmountCents      int64     `json:"amount_cents"`
+	Status           string    `json:"status"`
+	RefundedAt       time.Time `json:"refunded_at"`
+}
+
+func (c *Client) RefundPayment(
+	ctx context.Context,
+	providerPaymentNo string,
+	input model.ProviderRefundRequest,
+) (*model.ProviderRefundResult, error) {
+	providerPaymentNo = strings.TrimSpace(providerPaymentNo)
+	if providerPaymentNo == "" ||
+		strings.TrimSpace(input.RefundNo) == "" ||
+		input.AmountCents <= 0 ||
+		strings.TrimSpace(input.Reason) == "" {
+		return nil, apperr.ErrPaymentProviderInvalid
+	}
+	payload, err := json.Marshal(refundPaymentRequest{
+		RefundNo:    input.RefundNo,
+		AmountCents: input.AmountCents,
+		Reason:      input.Reason,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("encode mock refund request: %w", err)
+	}
+
+	endpoint := c.baseURL.ResolveReference(&url.URL{
+		Path: closePaymentPathPrefix + url.PathEscape(providerPaymentNo) + "/refunds",
+	})
+	response, err := c.session.Do(ctx, func() (*http.Request, error) {
+		request, err := http.NewRequest(
+			http.MethodPost,
+			endpoint.String(),
+			bytes.NewReader(payload),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("create mock refund request: %w", err)
+		}
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Accept", "application/json")
+		return request, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", apperr.ErrPaymentProviderUnavailable, err)
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
+	if err != nil {
+		return nil, fmt.Errorf("%w: read response: %v", apperr.ErrPaymentProviderUnavailable, err)
+	}
+	switch response.StatusCode {
+	case http.StatusOK, http.StatusCreated:
+	case http.StatusConflict:
+		return nil, fmt.Errorf(
+			"%w: status %d: %s",
+			apperr.ErrPaymentConflict,
+			response.StatusCode,
+			strings.TrimSpace(string(body)),
+		)
+	case http.StatusNotFound, http.StatusBadRequest:
+		return nil, fmt.Errorf(
+			"%w: status %d: %s",
+			apperr.ErrPaymentProviderInvalid,
+			response.StatusCode,
+			strings.TrimSpace(string(body)),
+		)
+	default:
+		return nil, fmt.Errorf(
+			"%w: status %d: %s",
+			apperr.ErrPaymentProviderUnavailable,
+			response.StatusCode,
+			strings.TrimSpace(string(body)),
+		)
+	}
+
+	var result refundPaymentResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("%w: decode response: %v", apperr.ErrPaymentProviderInvalid, err)
+	}
+	if result.RefundNo != input.RefundNo ||
+		result.PaymentNo != providerPaymentNo ||
+		result.AmountCents != input.AmountCents ||
+		result.Status != "succeeded" ||
+		strings.TrimSpace(result.ProviderRefundNo) == "" ||
+		result.RefundedAt.IsZero() {
+		return nil, apperr.ErrPaymentProviderInvalid
+	}
+	return &model.ProviderRefundResult{
+		RefundNo:         result.RefundNo,
+		ProviderRefundNo: result.ProviderRefundNo,
+		Status:           result.Status,
+		AmountCents:      result.AmountCents,
+		RefundedAt:       result.RefundedAt.UTC(),
+	}, nil
+}
+
 func (c *Client) resolveCheckoutURL(value string) (string, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
