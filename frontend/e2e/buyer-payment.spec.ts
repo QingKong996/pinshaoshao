@@ -5,10 +5,19 @@ const paymentNo = "4f2614df-f674-4b5e-a9e4-3fc5e7f62013"
 const providerNo = "8ad23f19-24f5-48b8-bbc7-243e1f1e0a98"
 const checkoutURL = `http://127.0.0.1:8080/mockpay/checkout/${providerNo}`
 
-function orderResponse(paid: boolean) {
+type OrderStatus = "pending_payment" | "paid" | "cancelled"
+
+function orderResponse(status: OrderStatus) {
+  const paid = status === "paid"
+  const cancelled = status === "cancelled"
+  const subOrderStatus = cancelled
+    ? "cancelled"
+    : paid
+      ? "awaiting_shipment"
+      : "pending_payment"
   return {
     id: orderID,
-    status: paid ? "paid" : "pending_payment",
+    status,
     total_amount_cents: 3998,
     receiver_name: "E2E Buyer",
     receiver_phone: "13800000000",
@@ -22,7 +31,7 @@ function orderResponse(paid: boolean) {
         id: 11,
         shop_id: 3,
         shop_name: "E2E Shop",
-        status: paid ? "awaiting_shipment" : "pending_payment",
+        status: subOrderStatus,
         total_amount_cents: 3998,
         items: [
           {
@@ -56,9 +65,10 @@ function pendingPayment() {
 }
 
 async function mockPaymentFlow(page: Page) {
-  let paid = false
+  let orderStatus: OrderStatus = "pending_payment"
   let created = false
   let sessionStarted = false
+  let cancelled = false
 
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request()
@@ -84,7 +94,16 @@ async function mockPaymentFlow(page: Page) {
       request.method() === "GET" &&
       pathname.endsWith(`/orders/${orderID}`)
     ) {
-      await route.fulfill({ json: orderResponse(paid) })
+      await route.fulfill({ json: orderResponse(orderStatus) })
+      return
+    }
+    if (
+      request.method() === "POST" &&
+      pathname.endsWith(`/orders/${orderID}/cancel`)
+    ) {
+      cancelled = true
+      orderStatus = "cancelled"
+      await route.fulfill({ json: orderResponse(orderStatus) })
       return
     }
     if (request.method() === "POST" && pathname.endsWith("/payments")) {
@@ -130,13 +149,16 @@ async function mockPaymentFlow(page: Page) {
 
   return {
     markPaid() {
-      paid = true
+      orderStatus = "paid"
     },
     wasCreated() {
       return created
     },
     wasSessionStarted() {
       return sessionStarted
+    },
+    wasCancelled() {
+      return cancelled
     },
   }
 }
@@ -170,4 +192,38 @@ test("buyer pays through MockPay checkout and returns to the paid order", async 
   await expect(page).toHaveURL(new RegExp(`/orders/${orderID}$`))
   await expect(page.getByText("Payment completed")).toBeVisible()
   await expect(page.getByText("Paid", { exact: true }).first()).toBeVisible()
+})
+
+test("buyer cancels an unpaid order and releases the payment panel", async ({
+  page,
+}) => {
+  const flow = await mockPaymentFlow(page)
+
+  await page.goto("/signin")
+  await page.getByLabel("Username").fill("buyer")
+  await page.getByLabel("Password", { exact: true }).fill("password")
+  await page.getByRole("button", { name: "Sign in", exact: true }).click()
+  await page.waitForURL(/\/$/)
+
+  await page.goto(`/orders/${orderID}`)
+  await expect(
+    page.getByRole("heading", { name: `Order #${orderID}` }),
+  ).toBeVisible()
+  await expect(page.getByRole("button", { name: "Pay now" })).toBeVisible()
+
+  await page
+    .getByRole("button", { name: "Cancel order", exact: true })
+    .click()
+  await expect(page.getByText("Cancel this order?")).toBeVisible()
+  await page
+    .getByRole("button", { name: "Cancel order", exact: true })
+    .last()
+    .click()
+
+  await expect(page.getByText("Cancelled", { exact: true }).first()).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "Cancel order", exact: true }),
+  ).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "Pay now" })).toHaveCount(0)
+  expect(flow.wasCancelled()).toBe(true)
 })

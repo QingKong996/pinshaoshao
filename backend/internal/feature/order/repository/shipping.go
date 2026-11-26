@@ -8,17 +8,28 @@ import (
 	"time"
 
 	"pinshaoshao/internal/database"
+	"pinshaoshao/internal/feature/inventory"
 	inventoryapperr "pinshaoshao/internal/feature/inventory/apperr"
 	inventorymodel "pinshaoshao/internal/feature/inventory/model"
 	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/shippingport"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const maxShipmentItemSummaryLen = 200
 
-func (r *OrderRepository) GetShipmentTarget(
+type ShippingLifecycle struct {
+	pool        *pgxpool.Pool
+	reservation inventory.Reservation
+}
+
+func NewShippingLifecycle(pool *pgxpool.Pool, reservation inventory.Reservation) *ShippingLifecycle {
+	return &ShippingLifecycle{pool: pool, reservation: reservation}
+}
+
+func (r *ShippingLifecycle) GetShipmentTarget(
 	ctx context.Context,
 	shopID int,
 	subOrderID int,
@@ -30,28 +41,28 @@ func (r *OrderRepository) GetShipmentTarget(
 	return target, nil
 }
 
-func (r *OrderRepository) LockOrder(ctx context.Context, tx pgx.Tx, orderID int) error {
-	if err := lockOrder(ctx, tx, orderID); err != nil {
+func (r *ShippingLifecycle) LockOrder(ctx context.Context, db database.DBTX, orderID int) error {
+	if err := lockOrder(ctx, db, orderID); err != nil {
 		return fmt.Errorf("repository.LockOrder: %w", err)
 	}
 	return nil
 }
 
-func (r *OrderRepository) ShipSubOrder(
+func (r *ShippingLifecycle) ShipSubOrder(
 	ctx context.Context,
-	tx pgx.Tx,
+	db database.DBTX,
 	shopID int,
 	subOrderID int,
 	shippedAt time.Time,
 ) (*shippingport.Target, bool, error) {
-	target, err := loadShippingTarget(ctx, tx, shopID, subOrderID, false)
+	target, err := loadShippingTarget(ctx, db, shopID, subOrderID, false)
 	if err != nil {
 		return nil, false, fmt.Errorf("repository.ShipSubOrder: %w", err)
 	}
-	if err := lockOrder(ctx, tx, target.OrderID); err != nil {
+	if err := lockOrder(ctx, db, target.OrderID); err != nil {
 		return nil, false, fmt.Errorf("repository.ShipSubOrder: %w", err)
 	}
-	target, err = loadShippingTarget(ctx, tx, shopID, subOrderID, true)
+	target, err = loadShippingTarget(ctx, db, shopID, subOrderID, true)
 	if err != nil {
 		return nil, false, fmt.Errorf("repository.ShipSubOrder: %w", err)
 	}
@@ -64,15 +75,15 @@ func (r *OrderRepository) ShipSubOrder(
 		return nil, false, shippingport.ErrSubOrderNotShippable
 	}
 
-	items, err := subOrderReservationItems(ctx, tx, subOrderID)
+	items, err := subOrderReservationItems(ctx, db, subOrderID)
 	if err != nil {
 		return nil, false, fmt.Errorf("repository.ShipSubOrder: %w", err)
 	}
-	if err := r.reservation.Commit(ctx, tx, items); err != nil {
+	if err := r.reservation.Commit(ctx, db, items); err != nil {
 		return nil, false, fmt.Errorf("repository.ShipSubOrder: %w", mapCommitError(err))
 	}
 
-	tag, err := tx.Exec(ctx, `UPDATE sub_orders
+	tag, err := db.Exec(ctx, `UPDATE sub_orders
 SET status = 'shipped', updated_at = $2
 WHERE id = $1 AND status = 'awaiting_shipment'`, subOrderID, shippedAt.UTC())
 	if err != nil {
@@ -81,7 +92,7 @@ WHERE id = $1 AND status = 'awaiting_shipment'`, subOrderID, shippedAt.UTC())
 	if tag.RowsAffected() != 1 {
 		return nil, false, shippingport.ErrSubOrderNotShippable
 	}
-	if err := recalculateOrderStatus(ctx, tx, target.OrderID); err != nil {
+	if err := recalculateOrderStatus(ctx, db, target.OrderID); err != nil {
 		return nil, false, fmt.Errorf("repository.ShipSubOrder: %w", err)
 	}
 
@@ -89,20 +100,20 @@ WHERE id = $1 AND status = 'awaiting_shipment'`, subOrderID, shippedAt.UTC())
 	return target, true, nil
 }
 
-func (r *OrderRepository) CompleteSubOrder(
+func (r *ShippingLifecycle) CompleteSubOrder(
 	ctx context.Context,
-	tx pgx.Tx,
+	db database.DBTX,
 	subOrderID int,
 	deliveredAt time.Time,
 ) error {
-	target, err := loadShippingTarget(ctx, tx, 0, subOrderID, false)
+	target, err := loadShippingTarget(ctx, db, 0, subOrderID, false)
 	if err != nil {
 		return fmt.Errorf("repository.CompleteSubOrder: %w", err)
 	}
-	if err := lockOrder(ctx, tx, target.OrderID); err != nil {
+	if err := lockOrder(ctx, db, target.OrderID); err != nil {
 		return fmt.Errorf("repository.CompleteSubOrder: %w", err)
 	}
-	target, err = loadShippingTarget(ctx, tx, 0, subOrderID, true)
+	target, err = loadShippingTarget(ctx, db, 0, subOrderID, true)
 	if err != nil {
 		return fmt.Errorf("repository.CompleteSubOrder: %w", err)
 	}
@@ -115,7 +126,7 @@ func (r *OrderRepository) CompleteSubOrder(
 		return shippingport.ErrSubOrderNotShippable
 	}
 
-	tag, err := tx.Exec(ctx, `UPDATE sub_orders
+	tag, err := db.Exec(ctx, `UPDATE sub_orders
 SET status = 'completed', updated_at = $2
 WHERE id = $1 AND status = 'shipped'`, subOrderID, deliveredAt.UTC())
 	if err != nil {
@@ -124,7 +135,7 @@ WHERE id = $1 AND status = 'shipped'`, subOrderID, deliveredAt.UTC())
 	if tag.RowsAffected() != 1 {
 		return shippingport.ErrSubOrderNotShippable
 	}
-	if err := recalculateOrderStatus(ctx, tx, target.OrderID); err != nil {
+	if err := recalculateOrderStatus(ctx, db, target.OrderID); err != nil {
 		return fmt.Errorf("repository.CompleteSubOrder: %w", err)
 	}
 	return nil
@@ -214,9 +225,9 @@ ORDER BY id`
 	return truncateSummary(strings.Join(parts, ", "), maxShipmentItemSummaryLen), nil
 }
 
-func lockOrder(ctx context.Context, tx pgx.Tx, orderID int) error {
+func lockOrder(ctx context.Context, db database.DBTX, orderID int) error {
 	var id int
-	if err := tx.QueryRow(ctx, `SELECT id FROM orders WHERE id = $1 FOR UPDATE`, orderID).Scan(&id); err != nil {
+	if err := db.QueryRow(ctx, `SELECT id FROM orders WHERE id = $1 FOR UPDATE`, orderID).Scan(&id); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apperr.ErrOrderNotFound
 		}
@@ -256,7 +267,7 @@ ORDER BY sku_id`
 	return items, nil
 }
 
-func recalculateOrderStatus(ctx context.Context, tx pgx.Tx, orderID int) error {
+func recalculateOrderStatus(ctx context.Context, db database.DBTX, orderID int) error {
 	const query = `SELECT COUNT(*),
        COUNT(*) FILTER (WHERE status = 'pending_payment'),
        COUNT(*) FILTER (WHERE status = 'awaiting_shipment'),
@@ -267,7 +278,7 @@ FROM sub_orders
 WHERE order_id = $1`
 
 	var total, pending, awaiting, shipped, completed, cancelled int
-	if err := tx.QueryRow(ctx, query, orderID).Scan(
+	if err := db.QueryRow(ctx, query, orderID).Scan(
 		&total,
 		&pending,
 		&awaiting,
@@ -299,7 +310,7 @@ WHERE order_id = $1`
 		return apperr.ErrOrderStateInvalid
 	}
 
-	if _, err := tx.Exec(ctx, `UPDATE orders SET status = $2, updated_at = now() WHERE id = $1`, orderID, status); err != nil {
+	if _, err := db.Exec(ctx, `UPDATE orders SET status = $2, updated_at = now() WHERE id = $1`, orderID, status); err != nil {
 		return err
 	}
 	return nil
@@ -321,4 +332,4 @@ func truncateSummary(value string, limit int) string {
 	return strings.TrimSpace(string(runes[:limit]))
 }
 
-var _ shippingport.Lifecycle = (*OrderRepository)(nil)
+var _ shippingport.Lifecycle = (*ShippingLifecycle)(nil)

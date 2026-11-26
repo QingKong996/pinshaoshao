@@ -11,8 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"pinshaoshao/internal/database"
+	inventoryrepository "pinshaoshao/internal/feature/inventory/repository"
 	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/model"
+	orderrepository "pinshaoshao/internal/feature/order/repository"
+	orderservice "pinshaoshao/internal/feature/order/service"
 	productmodel "pinshaoshao/internal/feature/product/model"
 )
 
@@ -60,6 +64,18 @@ func testCheckoutKeyFor(index int) string {
 	return fmt.Sprintf("00000000-0000-4000-8000-%012d", index)
 }
 
+func newTestOrderService() *orderservice.OrderService {
+	inventoryRepository := inventoryrepository.NewInventoryRepository(testPool)
+	orderRepository := orderrepository.NewOrderRepository(testPool, inventoryRepository)
+	return orderservice.NewOrderService(
+		orderRepository,
+		inventoryRepository,
+		nil,
+		nil,
+		database.NewTransactor(testPool),
+	)
+}
+
 func TestOrderRepositoryCreateSplitsShopsAndFreezesStock(t *testing.T) {
 	ctx := context.Background()
 	resetDatabase(t)
@@ -96,6 +112,54 @@ func TestOrderRepositoryCreateSplitsShopsAndFreezesStock(t *testing.T) {
 	requireFrozenStock(t, firstSKU.ID, 2)
 	requireFrozenStock(t, secondSKU.ID, 1)
 	requireCartItemCount(t, user.ID, 0)
+}
+
+func TestOrderRepositoryCreateZeroAmountOrderIsPaidImmediately(t *testing.T) {
+	ctx := context.Background()
+	resetDatabase(t)
+	user := insertBuyer(t, "buyer01")
+	_, _, sku := insertCatalogSKU(
+		t,
+		"shop01",
+		"Shop",
+		productmodel.ProductStatusOnShelf,
+		true,
+		0,
+		10,
+	)
+	item := addCartItem(t, user.ID, sku.ID, 2)
+
+	order, err := newTestOrderRepository().Create(ctx, user.ID, testOrderInput(
+		[]int{item.ID},
+		[]int{2},
+		testRequestHash("z"),
+	))
+	if err != nil {
+		t.Fatalf("create zero-amount order: %v", err)
+	}
+	if order.Status != model.OrderStatusPaid ||
+		order.TotalAmountCents != 0 ||
+		order.PaidAt == nil {
+		t.Fatalf("order = %+v, want paid zero-amount order", order)
+	}
+	if len(order.SubOrders) != 1 ||
+		order.SubOrders[0].Status != model.SubOrderStatusAwaitingShipment {
+		t.Fatalf("sub-orders = %+v, want awaiting_shipment", order.SubOrders)
+	}
+	requireFrozenStock(t, sku.ID, 2)
+	requireCartItemCount(t, user.ID, 0)
+
+	var paymentCount int
+	if err := testPool.QueryRow(
+		ctx,
+		`SELECT COUNT(*)::int FROM payments WHERE order_id = $1`,
+		order.ID,
+	).Scan(&paymentCount); err != nil {
+		t.Fatalf("count payments: %v", err)
+	}
+	if paymentCount != 0 {
+		t.Fatalf("payment count = %d, want 0", paymentCount)
+	}
 }
 
 func TestOrderRepositoryCreateIsIdempotent(t *testing.T) {
@@ -190,7 +254,7 @@ func TestOrderRepositoryCreateReplayAfterCancelKeepsCancelledState(t *testing.T)
 	if err != nil {
 		t.Fatalf("create order: %v", err)
 	}
-	if _, err := repository.Cancel(ctx, user.ID, first.ID); err != nil {
+	if _, err := newTestOrderService().Cancel(ctx, user.ID, first.ID); err != nil {
 		t.Fatalf("cancel order: %v", err)
 	}
 
@@ -440,7 +504,7 @@ func TestOrderRepositoryCreateDirectRejectsUnavailableSKU(t *testing.T) {
 	})
 }
 
-func TestOrderRepositoryCancelReleasesStockOnce(t *testing.T) {
+func TestOrderServiceCancelReleasesStockOnce(t *testing.T) {
 	ctx := context.Background()
 	resetDatabase(t)
 	user := insertBuyer(t, "buyer01")
@@ -455,7 +519,7 @@ func TestOrderRepositoryCancelReleasesStockOnce(t *testing.T) {
 		t.Fatalf("create order: %v", err)
 	}
 
-	cancelled, err := newTestOrderRepository().Cancel(ctx, user.ID, order.ID)
+	cancelled, err := newTestOrderService().Cancel(ctx, user.ID, order.ID)
 	if err != nil {
 		t.Fatalf("cancel order: %v", err)
 	}
@@ -467,7 +531,7 @@ func TestOrderRepositoryCancelReleasesStockOnce(t *testing.T) {
 	}
 	requireFrozenStock(t, sku.ID, 0)
 
-	again, err := newTestOrderRepository().Cancel(ctx, user.ID, order.ID)
+	again, err := newTestOrderService().Cancel(ctx, user.ID, order.ID)
 	if err != nil {
 		t.Fatalf("cancel order again: %v", err)
 	}
@@ -477,7 +541,7 @@ func TestOrderRepositoryCancelReleasesStockOnce(t *testing.T) {
 	requireFrozenStock(t, sku.ID, 0)
 }
 
-func TestOrderRepositoryListCancelsDueOrder(t *testing.T) {
+func TestOrderServiceExpireCancelsDueOrder(t *testing.T) {
 	ctx := context.Background()
 	resetDatabase(t)
 	user := insertBuyer(t, "buyer01")
@@ -495,17 +559,35 @@ func TestOrderRepositoryListCancelsDueOrder(t *testing.T) {
 	}
 	markOrderCreatedMinutesAgo(t, order.ID, 31)
 
-	orders, err := repository.List(ctx, user.ID, model.OrderListFilter{Page: 1, PageSize: 10})
+	service := newTestOrderService()
+	orderIDs, err := service.DueOrderIDs(ctx, 10)
 	if err != nil {
-		t.Fatalf("list orders: %v", err)
+		t.Fatalf("list due orders: %v", err)
 	}
-	if len(orders.Orders) != 1 || orders.Orders[0].Status != model.OrderStatusCancelled {
-		t.Fatalf("orders = %+v, want one cancelled order", orders.Orders)
+	if len(orderIDs) != 1 || orderIDs[0] != order.ID {
+		t.Fatalf("due order IDs = %v, want [%d]", orderIDs, order.ID)
+	}
+	if err := service.Expire(ctx, order.ID); err != nil {
+		t.Fatalf("expire order: %v", err)
+	}
+
+	expired, err := repository.Get(ctx, user.ID, order.ID)
+	if err != nil {
+		t.Fatalf("get expired order: %v", err)
+	}
+	if expired.Status != model.OrderStatusCancelled ||
+		expired.SubOrders[0].Status != model.SubOrderStatusCancelled {
+		t.Fatalf("expired order = %q/%q, want cancelled", expired.Status, expired.SubOrders[0].Status)
+	}
+	requireFrozenStock(t, sku.ID, 0)
+
+	if err := service.Expire(ctx, order.ID); err != nil {
+		t.Fatalf("expire order again: %v", err)
 	}
 	requireFrozenStock(t, sku.ID, 0)
 }
 
-func TestOrderRepositoryGetCancelsDueOrder(t *testing.T) {
+func TestOrderRepositoryGetLeavesDueOrderPending(t *testing.T) {
 	ctx := context.Background()
 	resetDatabase(t)
 	user := insertBuyer(t, "buyer01")
@@ -527,74 +609,48 @@ func TestOrderRepositoryGetCancelsDueOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get expired order: %v", err)
 	}
-	if expired.Status != model.OrderStatusCancelled || expired.SubOrders[0].Status != model.SubOrderStatusCancelled {
-		t.Fatalf("expired order = %q/%q, want cancelled", expired.Status, expired.SubOrders[0].Status)
+	if expired.Status != model.OrderStatusPendingPayment ||
+		expired.SubOrders[0].Status != model.SubOrderStatusPendingPayment {
+		t.Fatalf(
+			"expired order = %q/%q, want pending_payment",
+			expired.Status,
+			expired.SubOrders[0].Status,
+		)
 	}
-	requireFrozenStock(t, sku.ID, 0)
-
-	expired, err = repository.Get(ctx, user.ID, order.ID)
-	if err != nil {
-		t.Fatalf("get expired order again: %v", err)
-	}
-	if expired.Status != model.OrderStatusCancelled {
-		t.Fatalf("status = %q, want cancelled", expired.Status)
-	}
-	requireFrozenStock(t, sku.ID, 0)
+	requireFrozenStock(t, sku.ID, 2)
 }
 
-func TestOrderRepositoryListContinuesWhenDueOrderCancellationFails(t *testing.T) {
+func TestOrderServiceExpireRollsBackOnStockInconsistency(t *testing.T) {
 	ctx := context.Background()
 	resetDatabase(t)
 	user := insertBuyer(t, "buyer01")
-	_, _, firstSKU := insertCatalogSKU(t, "shop01", "First shop", productmodel.ProductStatusOnShelf, true, 1999, 10)
-	_, _, secondSKU := insertCatalogSKU(t, "shop02", "Second shop", productmodel.ProductStatusOnShelf, true, 2999, 10)
-	firstItem := addCartItem(t, user.ID, firstSKU.ID, 1)
-	secondItem := addCartItem(t, user.ID, secondSKU.ID, 1)
+	_, _, sku := insertCatalogSKU(t, "shop01", "Shop", productmodel.ProductStatusOnShelf, true, 1999, 10)
+	item := addCartItem(t, user.ID, sku.ID, 1)
 	repository := newTestOrderRepository()
 
-	first, err := repository.Create(ctx, user.ID, testOrderInputWithKey(
-		[]int{firstItem.ID},
+	order, err := repository.Create(ctx, user.ID, testOrderInput(
+		[]int{item.ID},
 		[]int{1},
 		testRequestHash("a"),
-		testCheckoutKeyFor(1),
 	))
 	if err != nil {
-		t.Fatalf("create first order: %v", err)
+		t.Fatalf("create order: %v", err)
 	}
-	second, err := repository.Create(ctx, user.ID, testOrderInputWithKey(
-		[]int{secondItem.ID},
-		[]int{1},
-		testRequestHash("b"),
-		testCheckoutKeyFor(2),
-	))
-	if err != nil {
-		t.Fatalf("create second order: %v", err)
-	}
-	markOrderCreatedMinutesAgo(t, first.ID, 32)
-	markOrderCreatedMinutesAgo(t, second.ID, 31)
-	if _, err := testPool.Exec(ctx, `UPDATE inventory_items SET frozen_stock = 0 WHERE sku_id = $1`, firstSKU.ID); err != nil {
+	markOrderCreatedMinutesAgo(t, order.ID, 31)
+	if _, err := testPool.Exec(ctx, `UPDATE inventory_items SET frozen_stock = 0 WHERE sku_id = $1`, sku.ID); err != nil {
 		t.Fatalf("corrupt frozen stock: %v", err)
 	}
 
-	orders, err := repository.List(ctx, user.ID, model.OrderListFilter{Page: 1, PageSize: 10})
-	if err != nil {
-		t.Fatalf("list orders: %v", err)
-	}
-	if len(orders.Orders) != 2 {
-		t.Fatalf("order count = %d, want 2", len(orders.Orders))
-	}
+	err = newTestOrderService().Expire(ctx, order.ID)
+	requireErrorIs(t, err, apperr.ErrOrderStateInvalid)
 
-	statuses := make(map[int]model.OrderStatus, len(orders.Orders))
-	for _, order := range orders.Orders {
-		statuses[order.ID] = order.Status
+	pending, err := repository.Get(ctx, user.ID, order.ID)
+	if err != nil {
+		t.Fatalf("get order after failed expiry: %v", err)
 	}
-	if statuses[first.ID] != model.OrderStatusPendingPayment {
-		t.Fatalf("first order status = %q, want pending_payment", statuses[first.ID])
+	if pending.Status != model.OrderStatusPendingPayment {
+		t.Fatalf("status = %q, want pending_payment", pending.Status)
 	}
-	if statuses[second.ID] != model.OrderStatusCancelled {
-		t.Fatalf("second order status = %q, want cancelled", statuses[second.ID])
-	}
-	requireFrozenStock(t, secondSKU.ID, 0)
 }
 
 func markOrderCreatedMinutesAgo(t *testing.T, orderID int, minutesAgo int) {
@@ -672,7 +728,7 @@ func TestOrderRepositoryRejectsOtherUser(t *testing.T) {
 
 	_, err = repository.Get(ctx, other.ID, order.ID)
 	requireErrorIs(t, err, apperr.ErrOrderNotFound)
-	_, err = repository.Cancel(ctx, other.ID, order.ID)
+	_, err = newTestOrderService().Cancel(ctx, other.ID, order.ID)
 	requireErrorIs(t, err, apperr.ErrOrderNotFound)
 }
 
@@ -696,7 +752,7 @@ func TestOrderRepositoryCancelReportsInventoryInconsistency(t *testing.T) {
 		t.Fatalf("corrupt frozen stock: %v", err)
 	}
 
-	_, err = repository.Cancel(ctx, user.ID, order.ID)
+	_, err = newTestOrderService().Cancel(ctx, user.ID, order.ID)
 	requireErrorIs(t, err, apperr.ErrOrderStateInvalid)
 
 	pending, err := repository.Get(ctx, user.ID, order.ID)

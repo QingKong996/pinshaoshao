@@ -42,6 +42,9 @@ func (r *PaymentRepository) CreateForOrder(
 		if err != nil {
 			return mapOrderError(err)
 		}
+		if target.Expired || target.Status != paymentport.OrderStatusPendingPayment {
+			return apperr.ErrOrderNotPayable
+		}
 
 		existing, err := getByOrderForUpdate(ctx, tx, orderID)
 		if err == nil {
@@ -51,9 +54,6 @@ func (r *PaymentRepository) CreateForOrder(
 		}
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return err
-		}
-		if target.Status != paymentport.OrderStatusPendingPayment {
-			return apperr.ErrOrderNotPayable
 		}
 
 		const query = `INSERT INTO payments
@@ -179,16 +179,19 @@ WHERE payment_no = $1::uuid
 		return nil
 	}
 
-	var exists bool
+	var status string
 	if err := r.pool.QueryRow(
 		ctx,
-		`SELECT EXISTS (SELECT 1 FROM payments WHERE payment_no = $1::uuid)`,
+		`SELECT status::text FROM payments WHERE payment_no = $1::uuid`,
 		paymentNo,
-	).Scan(&exists); err != nil {
+	).Scan(&status); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperr.ErrPaymentNotFound
+		}
 		return fmt.Errorf("check payment after provider transaction: %w", err)
 	}
-	if !exists {
-		return apperr.ErrPaymentNotFound
+	if model.PaymentStatus(status) == model.PaymentStatusClosed {
+		return apperr.ErrPaymentClosed
 	}
 	return apperr.ErrPaymentConflict
 }
@@ -232,7 +235,7 @@ func (r *PaymentRepository) ApplyPaidCallback(
 
 		const query = `UPDATE payments
 SET provider_transaction_id = $2, status = 'succeeded', paid_at = $3, updated_at = now()
-WHERE id = $1 AND status = 'pending'`
+WHERE id = $1 AND status IN ('pending', 'closed')`
 		tag, err := tx.Exec(
 			ctx,
 			query,
@@ -255,60 +258,47 @@ WHERE id = $1 AND status = 'pending'`
 	return result, nil
 }
 
-func (r *PaymentRepository) CloseForUser(
+func (r *PaymentRepository) CloseForOrder(
 	ctx context.Context,
-	userID int,
-	paymentNo string,
-) (*model.Payment, error) {
-	orderID, err := paymentOrderID(ctx, r.pool, paymentNo)
+	db database.DBTX,
+	orderID int,
+) (*paymentport.CloseResult, error) {
+	payment, err := getByOrderForUpdate(ctx, db, orderID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
+		return nil, fmt.Errorf("close payment for order: %w", err)
+	}
+
+	result := &paymentport.CloseResult{
+		PaymentID:             payment.ID,
+		PaymentNo:             payment.PaymentNo,
+		ProviderTransactionID: payment.ProviderTransactionID,
+	}
+	switch payment.Status {
+	case model.PaymentStatusClosed:
+		result.Closed = true
+		return result, nil
+	case model.PaymentStatusSucceeded:
+		result.AlreadySettled = true
+		return result, nil
+	}
+
+	if err := payment.MarkClosed(time.Now()); err != nil {
 		return nil, err
 	}
-
-	var result *model.Payment
-	err = pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
-		status, err := r.orders.CancelForPayment(ctx, tx, userID, orderID)
-		if err != nil {
-			return mapOrderError(err)
-		}
-		if status != paymentport.OrderStatusCancelled {
-			return apperr.ErrPaymentConflict
-		}
-
-		payment, err := getByPaymentNo(ctx, tx, paymentNo, true)
-		if err != nil {
-			return err
-		}
-		if payment.OrderID != orderID {
-			return apperr.ErrPaymentConflict
-		}
-		switch payment.Status {
-		case model.PaymentStatusClosed:
-			result = payment
-			return nil
-		case model.PaymentStatusSucceeded:
-			return apperr.ErrPaymentConflict
-		}
-		if err := payment.MarkClosed(time.Now()); err != nil {
-			return err
-		}
-
-		const query = `UPDATE payments
+	const query = `UPDATE payments
 SET status = 'closed', updated_at = $2
 WHERE id = $1 AND status = 'pending'`
-		tag, err := tx.Exec(ctx, query, payment.ID, payment.UpdatedAt)
-		if err != nil {
-			return fmt.Errorf("close payment: %w", err)
-		}
-		if tag.RowsAffected() != 1 {
-			return apperr.ErrPaymentConflict
-		}
-		result = payment
-		return nil
-	})
+	tag, err := db.Exec(ctx, query, payment.ID, payment.UpdatedAt)
 	if err != nil {
-		return nil, fmt.Errorf("repository.ClosePaymentForUser: %w", err)
+		return nil, fmt.Errorf("close payment for order: %w", err)
 	}
+	if tag.RowsAffected() != 1 {
+		return nil, apperr.ErrPaymentConflict
+	}
+	result.Closed = true
 	return result, nil
 }
 

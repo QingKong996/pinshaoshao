@@ -2,10 +2,13 @@ package paymentport
 
 import (
 	"context"
+	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"pinshaoshao/internal/database"
 )
+
+var ErrOrderExpired = errors.New("order expired")
 
 type OrderStatus string
 
@@ -21,11 +24,31 @@ type Order struct {
 	Status           OrderStatus
 	TotalAmountCents int64
 	ExpiresAt        time.Time
+	Expired          bool
+}
+
+type CloseResult struct {
+	PaymentID             int64
+	PaymentNo             string
+	ProviderTransactionID *string
+	Closed                bool
+	AlreadySettled        bool
+}
+
+type OrderExpiredError struct {
+	OrderID int
+}
+
+func (e *OrderExpiredError) Error() string {
+	return ErrOrderExpired.Error()
+}
+
+func (e *OrderExpiredError) Unwrap() error {
+	return ErrOrderExpired
 }
 
 // Lifecycle exposes the order state changes needed by the payment feature.
 type Lifecycle interface {
-	LockForPayment(ctx context.Context, tx pgx.Tx, userID int, orderID int) (*Order, error)
-	SettlePayment(ctx context.Context, tx pgx.Tx, orderID int, paidAt time.Time) (OrderStatus, error)
-	CancelForPayment(ctx context.Context, tx pgx.Tx, userID int, orderID int) (OrderStatus, error)
+	LockForPayment(ctx context.Context, db database.DBTX, userID int, orderID int) (*Order, error)
+	SettlePayment(ctx context.Context, db database.DBTX, orderID int, paidAt time.Time) (OrderStatus, error)
 }

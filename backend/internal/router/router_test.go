@@ -26,6 +26,7 @@ import (
 	mockauth "pinshaoshao/internal/mock/auth"
 	mocklogisticsmodule "pinshaoshao/internal/mock/logistics"
 	mockpaymentmodule "pinshaoshao/internal/mock/payment"
+	"pinshaoshao/internal/outbox"
 	"pinshaoshao/internal/router"
 
 	"github.com/gin-gonic/gin"
@@ -128,10 +129,11 @@ func newTestRouter(t *testing.T) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	inventoryModule := inventorymodule.NewModule(nil)
-	orderModule := ordermodule.NewModule(nil, inventoryModule.Reservation())
+	orderModule := ordermodule.NewModule(nil, inventoryModule.Reservation(), outbox.NewWriter())
 	paymentModule, err := paymentmodule.NewModule(
 		nil,
 		orderModule.PaymentLifecycle(),
+		orderModule.OrderService(),
 		paymentmodule.Config{
 			GatewayBaseURL:  "http://localhost:8080",
 			WebhookSecret:   "test-signing-key",
@@ -143,6 +145,7 @@ func newTestRouter(t *testing.T) *gin.Engine {
 	if err != nil {
 		t.Fatalf("create payment module: %v", err)
 	}
+	orderModule.SetPaymentCloser(paymentModule.PaymentCloser())
 	logisticsModule, err := logisticsmodule.NewModule(
 		nil,
 		orderModule.ShippingLifecycle(),

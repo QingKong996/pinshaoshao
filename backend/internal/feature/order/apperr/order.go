@@ -14,4 +14,5 @@ var (
 	ErrOrderCannotCancel  = errors.New("order cannot be cancelled")
 	ErrInvalidOrderList   = errors.New("invalid order list query")
 	ErrOrderStateInvalid  = errors.New("order state is inconsistent")
+	ErrOrderAmountInvalid = errors.New("order amount is invalid")
 )

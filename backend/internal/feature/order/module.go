@@ -1,6 +1,10 @@
 package order
 
 import (
+	"context"
+	"time"
+
+	"pinshaoshao/internal/database"
 	inventoryfeature "pinshaoshao/internal/feature/inventory"
 	ordercontroller "pinshaoshao/internal/feature/order/controller"
 	"pinshaoshao/internal/feature/order/paymentport"
@@ -14,19 +18,49 @@ import (
 
 type Module struct {
 	controller        *ordercontroller.OrderController
+	orderService      *orderservice.OrderService
 	paymentLifecycle  paymentport.Lifecycle
 	shippingLifecycle shippingport.Lifecycle
+	expiryWorker      *orderservice.ExpiryWorker
 }
 
 // NewModule wires the order feature and its stock reservation dependency.
-func NewModule(pool *pgxpool.Pool, reservation inventoryfeature.Reservation) *Module {
+func NewModule(
+	pool *pgxpool.Pool,
+	reservation inventoryfeature.Reservation,
+	outboxWriter orderservice.OutboxWriter,
+) *Module {
 	orderRepository := orderrepository.NewOrderRepository(pool, reservation)
-	orderService := orderservice.NewOrderService(orderRepository)
+	orderService := orderservice.NewOrderService(
+		orderRepository,
+		reservation,
+		nil,
+		outboxWriter,
+		database.NewTransactor(pool),
+	)
 	return &Module{
 		controller:        ordercontroller.NewOrderController(orderService),
-		paymentLifecycle:  orderRepository,
-		shippingLifecycle: orderRepository,
+		orderService:      orderService,
+		paymentLifecycle:  orderrepository.NewPaymentLifecycle(),
+		shippingLifecycle: orderrepository.NewShippingLifecycle(pool, reservation),
+		expiryWorker:      orderservice.NewExpiryWorker(orderService, time.Minute, 100),
 	}
+}
+
+func (m *Module) OrderService() *orderservice.OrderService {
+	return m.orderService
+}
+
+func (m *Module) SetPaymentCloser(closer orderservice.PaymentCloser) {
+	m.orderService.SetPaymentCloser(closer)
+}
+
+func (m *Module) StartBackgroundWorkers(ctx context.Context) {
+	m.expiryWorker.Start(ctx)
+}
+
+func (m *Module) StopBackgroundWorkers() {
+	m.expiryWorker.Stop()
 }
 
 // PaymentLifecycle returns the order state operations used by the payment feature.

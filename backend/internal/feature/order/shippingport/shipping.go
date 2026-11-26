@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"pinshaoshao/internal/database"
 )
 
 var (
@@ -29,13 +29,13 @@ type Target struct {
 // Lifecycle exposes the order transitions needed by the logistics feature.
 type Lifecycle interface {
 	GetShipmentTarget(ctx context.Context, shopID int, subOrderID int) (*Target, error)
-	LockOrder(ctx context.Context, tx pgx.Tx, orderID int) error
+	LockOrder(ctx context.Context, db database.DBTX, orderID int) error
 	ShipSubOrder(
 		ctx context.Context,
-		tx pgx.Tx,
+		db database.DBTX,
 		shopID int,
 		subOrderID int,
 		shippedAt time.Time,
 	) (*Target, bool, error)
-	CompleteSubOrder(ctx context.Context, tx pgx.Tx, subOrderID int, deliveredAt time.Time) error
+	CompleteSubOrder(ctx context.Context, db database.DBTX, subOrderID int, deliveredAt time.Time) error
 }

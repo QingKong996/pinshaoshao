@@ -307,7 +307,8 @@ func validateProviderResult(
 		result.MerchantNo != merchantNo ||
 		strings.TrimSpace(result.TrackingNo) == "" ||
 		strings.TrimSpace(result.Carrier) == "" ||
-		!result.Status.Valid() {
+		!result.Status.Valid() ||
+		result.Status != model.StatusPendingPickup {
 		return apperr.ErrProviderInvalid
 	}
 	result.ShipmentNo = providerNo.String()

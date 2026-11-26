@@ -157,3 +157,15 @@ type CreateDirectOrderInput struct {
 	ReceiverPhone   string
 	ShippingAddress string
 }
+
+type ReservationItem struct {
+	SKUID    int
+	Quantity int
+}
+
+type CancelTarget struct {
+	OrderID int
+	UserID  int
+	Status  OrderStatus
+	Items   []ReservationItem
+}

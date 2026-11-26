@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"pinshaoshao/internal/database"
 	"pinshaoshao/internal/feature/order/apperr"
 	ordermodel "pinshaoshao/internal/feature/order/model"
 	"pinshaoshao/internal/feature/order/paymentport"
@@ -13,9 +14,15 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (r *OrderRepository) LockForPayment(
+type PaymentLifecycle struct{}
+
+func NewPaymentLifecycle() *PaymentLifecycle {
+	return &PaymentLifecycle{}
+}
+
+func (l *PaymentLifecycle) LockForPayment(
 	ctx context.Context,
-	tx pgx.Tx,
+	db database.DBTX,
 	userID int,
 	orderID int,
 ) (*paymentport.Order, error) {
@@ -27,15 +34,14 @@ FOR UPDATE`
 
 	var result paymentport.Order
 	var status string
-	var expired bool
 	var createdAt time.Time
-	if err := tx.QueryRow(ctx, query, orderID, userID, ordermodel.PendingPaymentTTL.Seconds()).Scan(
+	if err := db.QueryRow(ctx, query, orderID, userID, ordermodel.PendingPaymentTTL.Seconds()).Scan(
 		&result.ID,
 		&result.UserID,
 		&status,
 		&result.TotalAmountCents,
 		&createdAt,
-		&expired,
+		&result.Expired,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperr.ErrOrderNotFound
@@ -44,19 +50,12 @@ FOR UPDATE`
 	}
 	result.Status = paymentport.OrderStatus(status)
 	result.ExpiresAt = createdAt.Add(ordermodel.PendingPaymentTTL)
-
-	if result.Status == paymentport.OrderStatusPendingPayment && expired {
-		if err := r.cancelPendingOrder(ctx, tx, orderID); err != nil {
-			return nil, fmt.Errorf("cancel expired order before payment: %w", err)
-		}
-		result.Status = paymentport.OrderStatusCancelled
-	}
 	return &result, nil
 }
 
-func (r *OrderRepository) SettlePayment(
+func (l *PaymentLifecycle) SettlePayment(
 	ctx context.Context,
-	tx pgx.Tx,
+	db database.DBTX,
 	orderID int,
 	paidAt time.Time,
 ) (paymentport.OrderStatus, error) {
@@ -68,7 +67,7 @@ FOR UPDATE`
 
 	var status string
 	var expired bool
-	if err := tx.QueryRow(
+	if err := db.QueryRow(
 		ctx,
 		lockQuery,
 		orderID,
@@ -81,23 +80,20 @@ FOR UPDATE`
 	}
 	current := paymentport.OrderStatus(status)
 	if current == paymentport.OrderStatusPendingPayment && expired {
-		if err := r.cancelPendingOrder(ctx, tx, orderID); err != nil {
-			return "", fmt.Errorf("cancel expired order during settlement: %w", err)
-		}
-		return paymentport.OrderStatusCancelled, nil
+		return "", &paymentport.OrderExpiredError{OrderID: orderID}
 	}
 	if current != paymentport.OrderStatusPendingPayment {
 		return current, nil
 	}
 
 	paidAt = paidAt.UTC()
-	if _, err := tx.Exec(ctx, `
+	if _, err := db.Exec(ctx, `
 UPDATE orders
 SET status = 'paid', paid_at = $2, updated_at = now()
 WHERE id = $1`, orderID, paidAt); err != nil {
 		return "", fmt.Errorf("mark order paid: %w", err)
 	}
-	if _, err := tx.Exec(ctx, `
+	if _, err := db.Exec(ctx, `
 UPDATE sub_orders
 SET status = 'awaiting_shipment', updated_at = now()
 WHERE order_id = $1 AND status = 'pending_payment'`, orderID); err != nil {
@@ -106,34 +102,4 @@ WHERE order_id = $1 AND status = 'pending_payment'`, orderID); err != nil {
 	return paymentport.OrderStatusPaid, nil
 }
 
-func (r *OrderRepository) CancelForPayment(
-	ctx context.Context,
-	tx pgx.Tx,
-	userID int,
-	orderID int,
-) (paymentport.OrderStatus, error) {
-	const lockQuery = `SELECT status::text
-FROM orders
-WHERE id = $1 AND user_id = $2
-FOR UPDATE`
-
-	var status string
-	if err := tx.QueryRow(ctx, lockQuery, orderID, userID).Scan(&status); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", apperr.ErrOrderNotFound
-		}
-		return "", fmt.Errorf("lock order for payment cancellation: %w", err)
-	}
-
-	current := paymentport.OrderStatus(status)
-	if current == paymentport.OrderStatusCancelled {
-		return current, nil
-	}
-	if current != paymentport.OrderStatusPendingPayment {
-		return current, nil
-	}
-	if err := r.cancelPendingOrder(ctx, tx, orderID); err != nil {
-		return "", fmt.Errorf("cancel order for payment: %w", err)
-	}
-	return paymentport.OrderStatusCancelled, nil
-}
+var _ paymentport.Lifecycle = (*PaymentLifecycle)(nil)
