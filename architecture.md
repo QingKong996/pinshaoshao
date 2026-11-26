@@ -22,7 +22,7 @@ flowchart LR
 ```
 
 - 当前部署形态是一个前端 SPA、一个 Go API 进程、一个 PostgreSQL 服务和一个 Redis 服务；PostgreSQL 内有 `pinshaoshao`、`pinshaoshao_mockpay`、`pinshaoshao_mocklogistics` 三个逻辑数据库。
-- 用户端、商户端和模拟支付控制台共用同一套前端应用，但在代码层按模块隔离。
+- 用户端、商户端和两个模拟平台控制台共用同一套前端应用，但在代码层按模块隔离。
 - 模拟支付和模拟物流与主应用同进程、同端口部署，分别通过 `/mockpay`、`/mocklogistics` 路由命名空间隔离；业务 API 保持 `/api/v1`。二者各自使用独立连接池、逻辑数据库和 Bearer Session，不依赖主项目用户库或 Session 实现。
 
 ## 后端
@@ -51,6 +51,7 @@ flowchart TB
         DatabaseLayer[database<br/>连接、事务、约束]
         Security[security + middleware<br/>会话、鉴权、CORS]
         RateLimit[ratelimit<br/>Redis 多层滑动窗口]
+        Outbox[outbox<br/>事务性事件与 Worker]
         HTTPLayer[http<br/>通用请求响应]
     end
 
@@ -69,6 +70,7 @@ flowchart TB
     Main --> Logistics
     Main --> MockPayment
     Main --> MockLogistics
+    Main --> Outbox
     Main --> RateLimit
 
     Router --> User
@@ -87,6 +89,8 @@ flowchart TB
     Order -. 使用库存接口 .-> Inventory
     Payment -. 使用订单支付端口 .-> Order
     Logistics -. 使用订单履约端口 .-> Order
+    Order -. 写入关单事件 .-> Outbox
+    Payment -. 提供关单处理器 .-> Outbox
     Payment -. 创建渠道支付单 / 接收签名回调 .-> MockPayment
     Logistics -. 创建物流单 / 接收签名回调 .-> MockLogistics
 
@@ -107,7 +111,7 @@ flowchart TB
 - feature 之间不直接访问对方的 repository。product、order 通过 inventory 暴露的接口协作；payment 通过 order 暴露的 `paymentport.Lifecycle` 锁定订单并完成支付结算；logistics 通过 `shippingport.Lifecycle` 发货、扣减冻结库存并完成签收。
 - `internal/mock/payment` 与 `internal/mock/logistics` 各自拥有 handler、service、repository、model 和 dto，不引用任何业务 feature。
 - `internal/mock/auth` 为两个 Mock 平台提供独立的账号、Argon2id 密码校验、随机 Session 和 Bearer 中间件；它不导入业务用户、Session 或 Gateway 实现。
-- `payment` 拥有业务支付单；它只通过 HTTP 调用模拟支付平台创建渠道支付会话，并通过签名回调接收支付结果。
+- `payment` 拥有业务支付单；它只通过 HTTP 调用模拟支付平台创建渠道支付会话，并通过签名回调接收支付结果。订单取消与支付单关闭在同一事务内写入 outbox，渠道关单由进程内 worker 异步完成。
 - 业务 feature 与 `internal/mock` 不互相 import。支付业务与模拟支付、物流业务与模拟物流都只通过网络交互；回调验签算法放在中立的 `internal/webhooksig`。业务物流记录发货单与轨迹，模拟物流负责承运状态机、出库动作和回调投递。
 - `module.go` 是各模块的装配入口，`cmd/server` 是全局 composition root，`internal/router` 只负责挂载路由。
 
@@ -144,70 +148,23 @@ flowchart TB
 - 物流切片同时服务买家订单详情、物流详情和商户发货页面；跨 feature 的组合只发生在 `src/app`。
 - `src/mock/payment` 与 `src/mock/logistics` 统一放在 `src/mock` 下，复用 `src/mock/auth` 的独立会话外壳，并只依赖 `src/shared` 的基础能力；业务 feature 不依赖它们。
 - `src/shared` 只提供通用基础能力，不反向依赖 app、feature 或 mock 模块。
-- 上述依赖方向由 `frontend/.dependency-cruiser.cjs` 和 `npm run lint:architecture` 强制检查。
+- 上述依赖方向由 `frontend/.dependency-cruiser.cjs` 强制检查。
 
-## 模拟支付边界
+## Mock 平台边界
 
-```mermaid
-flowchart LR
-    Caller[商户 / 联调调用方]
-    Buyer[收银台浏览器]
-    API[Mock Payment API<br/>创建、查询、关单]
-    Expiry[过期关单 Worker]
-    Notifier[通知投递 Worker]
-    DB[(mock_payment_orders<br/>mock_payment_notifications)]
-    Receiver[notify_url]
-
-    Caller -->|REST| API
-    Buyer -->|checkout_url| API
-    API --> DB
-    Expiry --> DB
-    Notifier --> DB
-    Notifier -->|HMAC-SHA256 签名| Receiver
-```
-
-- 支付状态、回调 outbox、重试和超时关闭都封装在 `internal/mock/payment` 内。
-- 回调通过独立后台 worker 投递；重试过程复用同一事件 ID，达到上限后进入 `exhausted`。
-- 模拟支付表与业务表没有外键关系；模块与主 API 共用进程和端口，但使用独立数据库、连接池与 Session。
-- 运营 API 使用环境变量引导的独立账号登录。业务支付 Gateway 缓存 Bearer token，在 `401` 后刷新并重试一次；收银台只依赖 `paymentNo` 能力凭证。
-- 收银台由后端提供，前端控制台不绕过收银台直接标记支付成功。
+- MockPay 与 MockLogistics 和主 API 共用进程与端口，但各自使用独立逻辑数据库、连接池和 Bearer Session；模拟表与业务表没有外键关系。
+- MockPay 封装支付状态机、过期关单、回调 outbox 与重试；MockLogistics 封装承运状态机、自动推进、回调 outbox 与重试。
+- 业务支付和物流 Gateway 只通过 HTTP 调用 Mock 平台，缓存 Bearer token，并在 `401` 后刷新重试一次。
+- 收银台只依赖 `paymentNo` 能力凭证；业务 feature 与 Mock 不互相 import，签名算法共享中立的 `internal/webhooksig`。
+- 状态机、接口与协议分别见 [docs/payment.md](docs/payment.md)、[docs/mock-payment.md](docs/mock-payment.md)、[docs/logistics.md](docs/logistics.md) 与 [docs/mock-logistics.md](docs/mock-logistics.md)。
 
 ## 数据与边界约束
 
 - 主业务、MockPay 和 MockLogistics 各有一个 PostgreSQL 连接池，启动时校验三个 `current_database()` 互不相同。
 - Redis 只保存短生命周期限流窗口，不作为业务数据或 Session 的事实来源。
 - HTTP 访问日志通过有界队列异步写入 `slog`；输出阻塞时不占用请求 goroutine，队列溢出会产生丢弃计数。
-- 主业务迁移位于 `backend/migrations`，Mock 迁移分别位于 `backend/migrations/mockpay` 与 `backend/migrations/mocklogistics`。
 - 业务 feature 与模拟平台之间没有共享领域模型或业务代码，只通过 HTTP API 和签名回调交互。业务支付状态保存在 `payments`，业务物流状态保存在 `shipments`、`shipment_events`，不复制渠道内部状态。
-- 后端架构测试禁止 `internal/feature` 与 `internal/mock` 互相导入，也禁止模拟支付与模拟物流互相导入。
-- 开发环境中 Vite 代理 `/api`、`/mockpay/api`、`/mockpay/checkout` 与 `/mocklogistics/api` 到 Go 后端，避免模拟控制台 SPA 路由与后端路径冲突。
-- 当前不引入微服务、消息队列或跨库事务；后台任务随 API 进程启动和停止。
-- 支付 E2E 位于 `backend/internal/e2e`，通过真实 HTTP 和数据库验证下单、支付、回调与结算；该测试只作为组合根级验证，不引入生产依赖。
-
-## 模拟物流边界
-
-```mermaid
-flowchart LR
-    Merchant[商家控制台 / 调用方]
-    API[MockLogistics API<br/>创建、查询、出库、推进、完成]
-    DB[(mock_shipments<br/>mock_logistics_events<br/>mock_logistics_notifications)]
-    Progress[自动推进 Worker]
-    Notifier[通知投递 Worker]
-    Receiver[notify_url]
-
-    Merchant -->|REST| API
-    API --> DB
-    Progress --> DB
-    Notifier --> DB
-    Notifier -->|HMAC-SHA256 签名| Receiver
-```
-
-- 物流状态机、轨迹事件、回调 outbox 和重试全部封装在 `internal/mock/logistics`。
-- 商家必须先确认出库，之后按可配置的总配送时长自动完成揽收、转运、派送和签收；手动推进与签收仍可用。
-- 模拟数据由 `gofakeit` 生成，状态和时间戳仍由显式状态机控制；自动推进 worker 只按计划触发同一状态机。
-- 业务 `internal/feature/logistics` 通过 HTTP 创建物流单并立即出库；签名回调写入业务发货单轨迹，并在签收时完成订单。
-- 业务发货单保存在 `shipments`、`shipment_events`，与模拟平台表没有外键关系。
-
-具体支付接口、状态机和回调协议见 [docs/mock-payment.md](docs/mock-payment.md)，业务支付见 [docs/payment.md](docs/payment.md)，业务物流见 [docs/logistics.md](docs/logistics.md)，模拟物流接口见 [docs/mock-logistics.md](docs/mock-logistics.md)。
+- 业务取消订单、关闭支付单和写入 `outbox_events` 在同一事务提交；渠道关单由进程内 worker 异步投递并可幂等重试。
+- 当前不引入微服务、外部消息队列或跨库事务；过期、自动推进、outbox 和通知 worker 都随 API 进程启动和停止。
 
 `/api/` 请求通过 Redis 执行全站总量、未认证 IP、单路由和用户/商户主体滑动窗口限流，配置与故障策略见 [docs/rate-limiting.md](docs/rate-limiting.md)。
