@@ -1,129 +1,63 @@
 # 业务支付
 
-`internal/feature/payment` 是商城侧的支付 feature。它不实现收银台，也不保存渠道内部通知队列；渠道能力由同一 API 进程中的 `internal/mock/payment` 提供，双方仍只通过网络通信。
-
-支付 feature 与模拟支付平台不互相 import，只能通过 HTTP API 和签名回调通信。业务 Gateway 复用中立的 `internal/http/sessionclient` 管理 MockPay Bearer Session，双方共享的算法位于中立 `internal/webhooksig`。
+`internal/feature/payment` 是商城侧的支付 feature。它不实现收银台；渠道能力由同一进程中的 `internal/mock/payment` 通过 `/mockpay` 提供。双方只通过 HTTP API 和签名回调通信，不互相 import。模拟支付平台见 [mock-payment.md](mock-payment.md)。
 
 ## 职责边界
 
-- `payment` 拥有 `payments` 表，每张父订单最多一张业务支付单。
-- `payment_no` 是业务支付单号，同时作为向渠道创建支付会话的幂等键。
-- 创建业务支付单只落本地记录；发起支付时才向渠道创建或复用支付会话。
-- 渠道支付成功后发送签名回调；`payment` 验签、核对金额与流水，并在同一事务内推进支付单、父订单和子订单状态。
-- 支付模块只提供关单操作，不允许修改金额或流水。状态只能按 `pending -> succeeded` 或 `pending -> closed` 流转。
-
-## 环境变量
-
-| 环境变量 | 必填 | 说明 |
-| --- | --- | --- |
-| `MOCKPAY_WEBHOOK_SECRET` | 是 | 与 mockpayment 共用的回调 HMAC 密钥 |
-| `PAYMENT_PUBLIC_BASE_URL` | 否 | 本服务公开地址，默认 `http://localhost:$PORT` |
-| `PAYMENT_GATEWAY_BASE_URL` | 否 | MockPay 服务 origin，不包含 `/mockpay/api/v1`；默认同 `PAYMENT_PUBLIC_BASE_URL` |
-| `PAYMENT_NOTIFY_URL` | 否 | 回调地址，默认 `$PAYMENT_PUBLIC_BASE_URL/api/v1/payment/webhook` |
-| `PAYMENT_RETURN_URL_BASE` | 否 | 渠道支付完成后的前端地址，默认 `http://localhost:5173` |
-| `MOCKPAY_NOTIFY_ALLOWED_URLS` | 是 | MockPay 允许投递的回调 URL；必须包含完整的 `PAYMENT_NOTIFY_URL` |
-| `MOCKPAY_AUTH_USERNAME` | 是 | MockPay 运营账号；业务 Gateway 使用同一账号登录 |
-| `MOCKPAY_AUTH_PASSWORD` | 是 | MockPay 运营密码 |
-
-启动前执行 `backend/migrations/20261124130000_create_payments.sql`。
-
-## HTTP API
-
-| 方法 | 路径 | 鉴权 | 说明 |
-| --- | --- | --- | --- |
-| `POST` | `/api/v1/payments` | 买家会话 | 为订单创建或返回已有业务支付单 |
-| `GET` | `/api/v1/payments/:paymentNo` | 买家会话 | 查询自己的支付单 |
-| `POST` | `/api/v1/payments/:paymentNo/pay` | 买家会话 | 创建或复用渠道支付会话，返回 `checkout_url` |
-| `POST` | `/api/v1/payments/:paymentNo/close` | 买家会话 | 关闭待支付支付单，同时取消订单并释放库存 |
-| `POST` | `/api/v1/payment/webhook` | 签名 | 接收 `payment.paid` 回调 |
-
-创建支付单：
-
-```http
-POST /api/v1/payments
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{"order_id": 1}
-```
-
-首次创建返回 `201`；相同订单重复调用返回原支付单和 `200`。
-
-发起支付：
-
-```http
-POST /api/v1/payments/4f2614df-f674-4b5e-a9e4-3fc5e7f62013/pay
-Authorization: Bearer <token>
-```
-
-响应中的 `checkout_url` 交给浏览器完成支付。重复调用使用同一 `payment_no` 请求渠道，不会创建第二张渠道支付单。
-
-关闭支付单：
-
-```http
-POST /api/v1/payments/4f2614df-f674-4b5e-a9e4-3fc5e7f62013/close
-Authorization: Bearer <token>
-```
-
-仅支付单所有者可以关闭。已有渠道流水时先请求 MockPay 关单，成功后在本地事务中取消父订单、取消子订单、释放冻结库存，并将支付单置为 `closed`。重复关闭返回 `closed`；已支付支付单返回 `409`。
+- `payment` 拥有 `payments` 表，每个父订单最多一张业务支付单。
+- `payment_no` 既是业务支付单号，也是向渠道创建支付会话的幂等键。
+- 创建业务支付单只落本地记录；发起支付时才创建或复用渠道支付会话。
+- 支付回调验签、核对金额与渠道流水，并在一个事务内推进支付单、父订单和子订单。
+- 主动关单先完成本地订单取消；渠道关单经过本地 outbox 异步投递。
+- 0 元订单在创建时直接置为 `paid`，子订单置为 `awaiting_shipment`；这类订单不创建支付单，也不调用第三方支付。
 
 ## 状态与一致性
 
 业务支付单状态：
 
 ```text
-pending ──callback──> succeeded
+pending ──payment callback──> succeeded
    │
-   └──close───────> closed
+   └──close─────────────────> closed ──late signed callback──> succeeded
 ```
 
-- 创建支付单时锁定父订单。订单不属于当前买家、已支付、已取消或已过期时拒绝创建。
-- 支付成功回调先锁父订单，再锁支付单。仅 `pending_payment` 订单推进为 `paid`，其子订单推进为 `awaiting_shipment`。
-- 主动关单同样先锁父订单，再锁支付单；只有 `pending_payment` 订单会被取消并释放库存，重复关单保持幂等。
-- 渠道已支付时关单返回 `409`，本地订单不变，支付回调仍可正常结算订单。
-- 相同渠道流水的重复回调直接成功，不重复结算。
-- 回调金额与业务支付单金额不一致、渠道流水与已记录流水不一致时整笔回滚，不改变订单状态。
-- 订单已取消后收到支付成功回调时，只记录支付成功和渠道流水，不恢复订单、不重新冻结库存。
-- 渠道支付成功后由 mockpayment 的 outbox worker 投递通知；失败重试与人工重试由渠道侧负责。
+- 创建支付单时锁定父订单；只有未过期且仍为 `pending_payment` 的订单可以创建。
+- 同一订单重复创建支付单返回已有记录，不会生成第二张业务支付单。
+- 发起支付要求订单剩余有效期不少于 60 秒；重复发起使用同一 `payment_no` 复用渠道支付单。
+- 支付成功回调先锁父订单，再锁支付单。`pending_payment` 订单推进为 `paid`，其子订单推进为 `awaiting_shipment`。
+- 相同渠道流水的重复回调直接成功；金额或渠道流水不一致时整笔回滚。
+- 已关闭的支付单仍可被迟到的签名回调推进为 `succeeded`，因为渠道可能先完成扣款再处理关单。
+- 订单已取消或已过期后收到支付成功回调时，支付单记录成功与渠道流水，但订单不会恢复，库存也不会重新冻结。
+- 过期订单的回调先触发订单过期取消，再重试结算；最终结果是订单保持 `cancelled`，支付单记录 `succeeded`。
+
+## 关单与 Outbox
+
+主动关单和订单过期共用同一条取消链路：
+
+1. 在同一业务事务中锁定订单与支付单。
+2. 取消父订单、取消子订单并释放冻结库存。
+3. 将支付单置为 `closed`。
+4. 如果已经存在渠道支付单，向 `outbox_events` 写入一条 `payment.close_provider` 事件。
+
+渠道关单由后台 worker 异步执行，业务事务不等待渠道响应。outbox 事件使用 `payment.close:<paymentNo>` 作为唯一键；重复取消不会产生重复事件。worker 采用租约领取和至少一次投递，关闭渠道支付单的 handler 必须保持幂等。
+
+worker 启动后立即处理并在之后轮询；失败按退避重试，达到最大次数或遇到永久错误后进入 `dead`。因此本地取消与事件持久化原子提交，渠道关单异步执行；永久失败需要人工处理。
+
+订单另有独立过期 worker：每分钟扫描最多 100 个超过 30 分钟支付期限的订单，并走上述取消链路。
 
 ## 回调协议
 
-回调头与签名原文和 mockpayment 文档一致：
+回调头：
 
 - `X-MockPay-Event-Id`
 - `X-MockPay-Event-Type: payment.paid`
 - `X-MockPay-Timestamp`
 - `X-MockPay-Signature: v1=<hex>`
 
-签名原文为 `timestamp + "." + raw_request_body`。业务侧先使用原始请求体验签，再解析 JSON；默认允许 5 分钟时间偏差。
+签名原文为 `timestamp + "." + raw_request_body`。业务侧使用原始请求体验签，再解析 JSON；默认允许 5 分钟时间偏差。`merchant_order_no` 对应业务支付单号，`payment_no` 对应渠道流水号。
 
-回调中的 `merchant_order_no` 对应业务支付单号，`payment_no` 对应渠道流水号。处理成功返回 `204`。
+## 配置与前端
 
-## 前端
+环境变量见 `backend/.env.example`，数据库迁移见 `backend/migrations`。回调地址必须与 MockPay 的回调白名单完全一致。
 
-买家支付入口位于订单详情页 `/orders/:id`，实现代码在 `frontend/src/features/payment`。
-
-- 待支付订单在右侧显示支付卡片和“立即支付”按钮。
-- 点击后依次调用创建支付单和发起支付接口，取得 `checkout_url` 后跳转 MockPay 收银台。
-- 支付卡片提供“关闭支付并取消订单”；二次确认后先幂等获取支付单，再调用关单接口并刷新订单。
-- 支付完成后回到订单详情页；待支付订单每 3 秒轮询一次，回调结算后自动显示“已支付”。
-- 支付成功或订单已支付时显示支付完成状态；取消订单和后续履约状态不显示支付卡片。
-
-`PAYMENT_RETURN_URL_BASE` 必须与买家访问前端时使用的 origin 完全一致。买家会话保存在 `localStorage`，`localhost` 与 `127.0.0.1` 属于不同 origin，混用会导致支付返回后丢失登录状态。
-
-## 测试
-
-```bash
-cd backend
-go test ./internal/feature/payment/... ./internal/router
-go test -tags integration ./internal/feature/payment/repository
-go test -tags integration ./internal/e2e
-
-cd ../frontend
-npm run test -- src/features/payment
-npm run test:e2e -- e2e/buyer-payment.spec.ts
-npm run lint
-npm run build
-```
-
-`internal/e2e` 使用真实 PostgreSQL 与真实 HTTP 请求覆盖：直接下单、创建业务支付单、调用 MockPay API、收银台支付、签名回调、订单与子订单结算、通知投递完成。该测试中业务支付与 MockPay 仍只通过网络通信。
+前端支付入口位于买家订单详情页。`PAYMENT_RETURN_URL_BASE` 必须与买家实际访问前端时使用的 origin 完全一致，否则支付返回后会因 `localStorage` 的 origin 隔离而丢失登录状态。
