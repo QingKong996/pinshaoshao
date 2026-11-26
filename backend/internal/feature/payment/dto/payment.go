@@ -7,20 +7,20 @@ type CreateOrderPaymentRequest struct {
 }
 
 type OrderPaymentResponse struct {
-	PaymentNo             string          `json:"payment_no" example:"4f2614df-f674-4b5e-a9e4-3fc5e7f62013"`
-	OrderID               int             `json:"order_id" example:"1"`
-	Provider              string          `json:"provider" example:"mockpay"`
-	ProviderTransactionID *string         `json:"provider_transaction_id"`
-	Status                string          `json:"status" example:"pending"`
-	AmountCents           int64           `json:"amount_cents" example:"3998"`
-	CheckoutURL           string          `json:"checkout_url,omitempty"`
-	PaidAt                *time.Time      `json:"paid_at"`
-	CreatedAt             time.Time       `json:"created_at"`
-	UpdatedAt             time.Time       `json:"updated_at"`
-	Refund                *RefundResponse `json:"refund,omitempty"`
+	PaymentNo             string                 `json:"payment_no" example:"4f2614df-f674-4b5e-a9e4-3fc5e7f62013"`
+	OrderID               int                    `json:"order_id" example:"1"`
+	Provider              string                 `json:"provider" example:"mockpay"`
+	ProviderTransactionID *string                `json:"provider_transaction_id"`
+	Status                string                 `json:"status" example:"pending"`
+	AmountCents           int64                  `json:"amount_cents" example:"3998"`
+	CheckoutURL           string                 `json:"checkout_url,omitempty"`
+	PaidAt                *time.Time             `json:"paid_at"`
+	CreatedAt             time.Time              `json:"created_at"`
+	UpdatedAt             time.Time              `json:"updated_at"`
+	Refund                *PaymentRefundResponse `json:"refund,omitempty"`
 }
 
-type RefundResponse struct {
+type PaymentRefundResponse struct {
 	RefundNo         string     `json:"refund_no"`
 	AmountCents      int64      `json:"amount_cents"`
 	Reason           string     `json:"reason"`

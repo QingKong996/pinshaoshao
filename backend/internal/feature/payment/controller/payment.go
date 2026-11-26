@@ -171,7 +171,7 @@ func newOrderPaymentResponse(payment *model.Payment, checkoutURL string) dto.Ord
 		UpdatedAt:             payment.UpdatedAt,
 	}
 	if payment.Refund != nil {
-		response.Refund = &dto.RefundResponse{
+		response.Refund = &dto.PaymentRefundResponse{
 			RefundNo:         payment.Refund.RefundNo,
 			AmountCents:      payment.Refund.AmountCents,
 			Reason:           payment.Refund.Reason,
