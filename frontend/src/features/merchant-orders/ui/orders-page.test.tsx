@@ -11,9 +11,6 @@ const order: MerchantOrder = {
   status: "awaiting_shipment",
   total_amount_cents: 3998,
   item_count: 2,
-  receiver_name: "Receiver",
-  receiver_phone: "1234567890",
-  shipping_address: "Shanghai",
   paid_at: "2026-11-20T12:05:00Z",
   created_at: "2026-11-20T12:00:00Z",
 }
@@ -51,8 +48,8 @@ describe("MerchantOrdersPage", () => {
     expect(screen.getByText("#12")).toBeVisible()
     expect(screen.getByText("Sub-order #4")).toBeVisible()
     expect(screen.getByText("Awaiting shipment")).toBeVisible()
-    expect(screen.getByText("Receiver")).toBeVisible()
-    expect(screen.getByText("Shanghai")).toBeVisible()
+    expect(screen.queryByText("Recipient")).not.toBeInTheDocument()
+    expect(screen.queryByText("Shipping address")).not.toBeInTheDocument()
     expect(mocks.useMerchantOrders).toHaveBeenCalledWith("token", {
       page: 1,
       page_size: 10,

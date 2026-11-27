@@ -3,5 +3,8 @@
 /.idea/
 # Generated OpenAPI document
 /docs/swagger.json
+# Local bug audit notes
+/docs/bugs.md
+/docs/pending_bugs.md
 # Local scratch
 /.tmp/

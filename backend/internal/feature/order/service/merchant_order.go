@@ -33,6 +33,22 @@ func (s *OrderService) GetMerchant(ctx context.Context, shopID int, subOrderID i
 	return order, nil
 }
 
+func (s *OrderService) GetMerchantReceiver(
+	ctx context.Context,
+	shopID int,
+	subOrderID int,
+) (*model.MerchantOrderReceiver, error) {
+	if subOrderID <= 0 {
+		return nil, fmt.Errorf("service.GetMerchantReceiver: %w", apperr.ErrInvalidOrderID)
+	}
+
+	receiver, err := s.orderRepository.GetMerchantReceiver(ctx, shopID, subOrderID)
+	if err != nil {
+		return nil, fmt.Errorf("service.GetMerchantReceiver: %w", err)
+	}
+	return receiver, nil
+}
+
 func normalizeMerchantOrderListFilter(filter model.MerchantOrderListFilter) (model.MerchantOrderListFilter, error) {
 	normalized, err := normalizeOrderListFilter(model.OrderListFilter{
 		Page:     filter.Page,

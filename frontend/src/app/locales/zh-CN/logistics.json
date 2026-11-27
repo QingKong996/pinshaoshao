@@ -44,8 +44,7 @@
   "dispatchForm": {
     "title": "创建发货单",
     "description": "为已支付子订单创建承运物流单，创建后子订单会立即标记为已发货。",
-    "fixedDescription": "子订单 #{{id}}，收货人 {{receiver}}。",
-    "unknownReceiver": "当前收货人",
+    "fixedDescription": "子订单 #{{id}}。",
     "subOrderHint": "可在商户订单列表中查看子订单号。",
     "carrierPlaceholder": "如：顺丰速运",
     "carrierHint": "选填。留空时由物流平台自动选择承运商。",

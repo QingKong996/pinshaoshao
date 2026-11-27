@@ -218,16 +218,23 @@ export function ProductFormDialog({
           </Field>
         </div>
 
-        <Field>
+        <Field data-invalid={errors.description ? true : undefined}>
           <FieldLabel htmlFor="product-form-description">
             {t("productForm.fields.description")}
           </FieldLabel>
           <Textarea
             id="product-form-description"
             rows={3}
+            maxLength={5000}
             placeholder={t("productForm.fields.descriptionPlaceholder")}
+            aria-invalid={errors.description ? true : undefined}
             {...register("description")}
           />
+          {errors.description ? (
+            <FieldError>
+              {translateValidationMessage(errors.description.message, t)}
+            </FieldError>
+          ) : null}
         </Field>
       </FieldGroup>
     </FormDialog>

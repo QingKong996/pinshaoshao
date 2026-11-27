@@ -319,10 +319,11 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run("rejects an invalid payload", func(t *testing.T) {
 		payloads := map[string]string{
-			"missing name":   `{"description":"Cotton T-shirt"}`,
-			"empty name":     `{"name":""}`,
-			"name too long":  fmt.Sprintf(`{"name":%q}`, strings.Repeat("n", 101)),
-			"unknown status": `{"name":"T-shirt","status":"sold_out"}`,
+			"missing name":         `{"description":"Cotton T-shirt"}`,
+			"empty name":           `{"name":""}`,
+			"name too long":        fmt.Sprintf(`{"name":%q}`, strings.Repeat("n", 101)),
+			"description too long": fmt.Sprintf(`{"name":"T-shirt","description":%q}`, strings.Repeat("d", 5001)),
+			"unknown status":       `{"name":"T-shirt","status":"sold_out"}`,
 		}
 		for name, payload := range payloads {
 			t.Run(name, func(t *testing.T) {
@@ -344,6 +345,7 @@ func TestProductCreate(t *testing.T) {
 			wantError    error
 		}{
 			{"invalid category", apperr.ErrInvalidCategoryID, http.StatusBadRequest, apperr.ErrInvalidCategoryID},
+			{"description too long", apperr.ErrInvalidProductDescription, http.StatusBadRequest, apperr.ErrInvalidProductDescription},
 			{"service failure", errors.New("database is down"), http.StatusInternalServerError, apperr.ErrInternalServer},
 		}
 		for _, tt := range tests {
@@ -413,9 +415,10 @@ func TestProductUpdate(t *testing.T) {
 
 	t.Run("rejects an invalid payload", func(t *testing.T) {
 		payloads := map[string]string{
-			"missing name":   `{"status":"off_shelf"}`,
-			"missing status": `{"name":"Hoodie"}`,
-			"unknown status": `{"name":"Hoodie","status":"sold_out"}`,
+			"missing name":         `{"status":"off_shelf"}`,
+			"missing status":       `{"name":"Hoodie"}`,
+			"description too long": fmt.Sprintf(`{"name":"Hoodie","description":%q,"status":"off_shelf"}`, strings.Repeat("d", 5001)),
+			"unknown status":       `{"name":"Hoodie","status":"sold_out"}`,
 		}
 		for name, payload := range payloads {
 			t.Run(name, func(t *testing.T) {
@@ -438,6 +441,7 @@ func TestProductUpdate(t *testing.T) {
 		}{
 			{"unknown or foreign product", apperr.ErrProductNotFound, http.StatusNotFound, apperr.ErrProductNotFound},
 			{"invalid category", apperr.ErrInvalidCategoryID, http.StatusBadRequest, apperr.ErrInvalidCategoryID},
+			{"description too long", apperr.ErrInvalidProductDescription, http.StatusBadRequest, apperr.ErrInvalidProductDescription},
 			{"service failure", errors.New("database is down"), http.StatusInternalServerError, apperr.ErrInternalServer},
 		}
 		for _, tt := range tests {

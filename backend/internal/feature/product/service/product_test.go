@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	inventoryapperr "pinshaoshao/internal/feature/inventory/apperr"
@@ -224,6 +225,16 @@ func TestCreateProduct(t *testing.T) {
 		requireErrorIs(t, err, apperr.ErrInvalidCategoryID)
 	})
 
+	t.Run("rejects a description that is too long", func(t *testing.T) {
+		productService, _, _ := newTestProductService(t)
+
+		_, err := productService.Create(ctx, 1, service.CreateProductInput{
+			Name:        "T-shirt",
+			Description: strings.Repeat("a", 5001),
+		})
+		requireErrorIs(t, err, apperr.ErrInvalidProductDescription)
+	})
+
 	t.Run("repository failure", func(t *testing.T) {
 		productService, productRepository, _ := newTestProductService(t)
 		dbErr := errors.New("database is down")
@@ -290,6 +301,17 @@ func TestUpdateProduct(t *testing.T) {
 			CategoryID: &categoryID,
 		})
 		requireErrorIs(t, err, apperr.ErrInvalidCategoryID)
+	})
+
+	t.Run("rejects a description that is too long", func(t *testing.T) {
+		productService, _, _ := newTestProductService(t)
+
+		_, err := productService.Update(ctx, 1, 2, service.UpdateProductInput{
+			Name:        "Hoodie",
+			Description: strings.Repeat("a", 5001),
+			Status:      model.ProductStatusOnShelf,
+		})
+		requireErrorIs(t, err, apperr.ErrInvalidProductDescription)
 	})
 }
 

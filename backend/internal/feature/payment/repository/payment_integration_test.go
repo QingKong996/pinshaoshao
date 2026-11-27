@@ -280,7 +280,7 @@ func TestPaymentRepositoryRefundsPaymentForCancelledOrder(t *testing.T) {
 	}
 }
 
-func TestPaymentRepositorySettlesExpiredPendingOrder(t *testing.T) {
+func TestPaymentRepositoryRejectsExpiredPendingOrderSettlement(t *testing.T) {
 	resetPaymentDatabase(t)
 	ctx := context.Background()
 	userID := insertUser(t, "buyer01")
@@ -300,7 +300,7 @@ func TestPaymentRepositorySettlesExpiredPendingOrder(t *testing.T) {
 		t.Fatalf("expire order: %v", err)
 	}
 
-	paid, err := repository.ApplyPaidCallback(ctx, model.PaidCallback{
+	_, err = repository.ApplyPaidCallback(ctx, model.PaidCallback{
 		EventID:               uuid.NewString(),
 		EventType:             "payment.paid",
 		ProviderTransactionID: uuid.NewString(),
@@ -309,21 +309,22 @@ func TestPaymentRepositorySettlesExpiredPendingOrder(t *testing.T) {
 		Currency:              model.CurrencyCNY,
 		PaidAt:                time.Now().UTC(),
 	})
-	if err != nil {
-		t.Fatalf("apply callback: %v", err)
+	var expired *paymentport.OrderExpiredError
+	if !errors.As(err, &expired) {
+		t.Fatalf("error = %v, want %T", err, expired)
 	}
-	if paid.Refund != nil {
-		t.Fatalf("refund = %+v, want nil", paid.Refund)
+	if expired.OrderID != orderID {
+		t.Fatalf("expired order = %d, want %d", expired.OrderID, orderID)
 	}
-	requireOrderStatus(t, orderID, "paid", "awaiting_shipment")
+	requireOrderStatus(t, orderID, "pending_payment", "pending_payment")
 	requirePaymentFrozenStock(t, skuID, 2)
 
 	stored, err := repository.GetForUser(ctx, userID, payment.PaymentNo)
 	if err != nil {
 		t.Fatalf("get payment: %v", err)
 	}
-	if stored.Status != model.PaymentStatusSucceeded {
-		t.Fatalf("payment status = %q, want succeeded", stored.Status)
+	if stored.Status != model.PaymentStatusPending {
+		t.Fatalf("payment status = %q, want pending", stored.Status)
 	}
 }
 

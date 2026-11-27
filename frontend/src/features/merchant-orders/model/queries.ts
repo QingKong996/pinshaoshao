@@ -1,5 +1,9 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { getMerchantOrder, listMerchantOrders } from "../api/orders"
+import {
+  getMerchantOrder,
+  getMerchantOrderReceiver,
+  listMerchantOrders,
+} from "../api/orders"
 import type { MerchantOrderListQuery } from "../types"
 import { merchantOrderQueryKeys } from "./query-keys"
 
@@ -19,5 +23,21 @@ export function useMerchantOrder(token: string, subOrderID: number) {
     queryKey: merchantOrderQueryKeys.order(subOrderID),
     queryFn: () => getMerchantOrder(token, subOrderID),
     enabled: token.length > 0 && Number.isInteger(subOrderID) && subOrderID > 0,
+  })
+}
+
+export function useMerchantOrderReceiver(
+  token: string,
+  subOrderID: number,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: merchantOrderQueryKeys.receiver(subOrderID),
+    queryFn: () => getMerchantOrderReceiver(token, subOrderID),
+    enabled:
+      enabled &&
+      token.length > 0 &&
+      Number.isInteger(subOrderID) &&
+      subOrderID > 0,
   })
 }

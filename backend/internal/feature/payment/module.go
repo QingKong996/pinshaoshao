@@ -89,7 +89,7 @@ type PaymentCloser interface {
 func NewModule(
 	pool *pgxpool.Pool,
 	orders paymentport.Lifecycle,
-	orderService paymentservice.OrderCanceller,
+	orderService paymentservice.OrderLifecycle,
 	config Config,
 	outboxWriter paymentrepository.RefundOutboxWriter,
 ) (*Module, error) {
@@ -117,6 +117,7 @@ func NewModule(
 		ReturnURLBase:  config.ReturnURLBase,
 		Gateway:        gateway,
 		OrderCanceller: orderService,
+		OrderExpirer:   orderService,
 	})
 	return &Module{
 		paymentController: paymentcontroller.NewPaymentController(paymentService),

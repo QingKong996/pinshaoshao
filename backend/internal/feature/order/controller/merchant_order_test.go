@@ -3,6 +3,7 @@ package controller_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -36,6 +37,7 @@ func newMerchantOrderRouter(t *testing.T, orderController *controller.OrderContr
 	protected.Use(shopmodule.AuthMiddleware(stubShopAuthenticator{shop: shop}))
 	protected.GET("/orders", orderController.ListMerchant)
 	protected.GET("/orders/:subOrderID", orderController.GetMerchant)
+	protected.GET("/orders/:subOrderID/receiver", orderController.GetMerchantReceiver)
 	return r
 }
 
@@ -59,9 +61,6 @@ func TestMerchantOrderList(t *testing.T) {
 						Status:           model.SubOrderStatusAwaitingShipment,
 						TotalAmountCents: 3998,
 						ItemCount:        2,
-						ReceiverName:     "Alice",
-						ReceiverPhone:    "1234567890",
-						ShippingAddress:  "Shanghai",
 						PaidAt:           &paidAt,
 						CreatedAt:        paidAt.Add(-time.Minute),
 					},
@@ -121,9 +120,6 @@ func TestMerchantOrderDetail(t *testing.T) {
 				Status:           model.SubOrderStatusAwaitingShipment,
 				TotalAmountCents: 3998,
 				ItemCount:        2,
-				ReceiverName:     "Alice",
-				ReceiverPhone:    "1234567890",
-				ShippingAddress:  "Shanghai",
 				PaidAt:           &paidAt,
 				CreatedAt:        paidAt.Add(-time.Minute),
 				UpdatedAt:        paidAt,
@@ -187,6 +183,87 @@ func TestMerchantOrderDetail(t *testing.T) {
 			newMerchantOrderRouter(t, orderController, shop),
 			http.MethodGet,
 			"/merchant/orders/4",
+			"Bearer session-token",
+			"",
+		)
+		requireOrderStatus(t, rec, http.StatusNotFound)
+		requireOrderError(t, rec, apperr.ErrOrderNotFound)
+	})
+}
+
+func TestMerchantOrderReceiver(t *testing.T) {
+	shop := &shopmodel.Shop{ID: 9, Username: "shop01", Status: shopmodel.ShopStatusActive}
+
+	t.Run("returns the receiver", func(t *testing.T) {
+		orderController, orderService := newTestOrderController(t)
+		orderService.EXPECT().
+			GetMerchantReceiver(gomock.Any(), shop.ID, 4).
+			Return(&model.MerchantOrderReceiver{
+				ReceiverName:    "Alice",
+				ReceiverPhone:   "1234567890",
+				ShippingAddress: "Shanghai",
+			}, nil)
+
+		rec := doRequest(
+			newMerchantOrderRouter(t, orderController, shop),
+			http.MethodGet,
+			"/merchant/orders/4/receiver",
+			"Bearer session-token",
+			"",
+		)
+		requireOrderStatus(t, rec, http.StatusOK)
+
+		var body dto.MerchantOrderReceiverResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode merchant receiver: %v", err)
+		}
+		if body.ReceiverName != "Alice" ||
+			body.ReceiverPhone != "1234567890" ||
+			body.ShippingAddress != "Shanghai" {
+			t.Fatalf("receiver = %+v", body)
+		}
+	})
+
+	t.Run("rejects an invalid id", func(t *testing.T) {
+		orderController, _ := newTestOrderController(t)
+		rec := doRequest(
+			newMerchantOrderRouter(t, orderController, shop),
+			http.MethodGet,
+			"/merchant/orders/0/receiver",
+			"Bearer session-token",
+			"",
+		)
+		requireOrderStatus(t, rec, http.StatusBadRequest)
+		requireOrderError(t, rec, apperr.ErrInvalidOrderID)
+	})
+
+	t.Run("rejects an unavailable receiver", func(t *testing.T) {
+		orderController, orderService := newTestOrderController(t)
+		orderService.EXPECT().
+			GetMerchantReceiver(gomock.Any(), shop.ID, 4).
+			Return(nil, fmt.Errorf("service: %w", apperr.ErrReceiverUnavailable))
+
+		rec := doRequest(
+			newMerchantOrderRouter(t, orderController, shop),
+			http.MethodGet,
+			"/merchant/orders/4/receiver",
+			"Bearer session-token",
+			"",
+		)
+		requireOrderStatus(t, rec, http.StatusConflict)
+		requireOrderError(t, rec, apperr.ErrReceiverUnavailable)
+	})
+
+	t.Run("returns not found for another shop's order", func(t *testing.T) {
+		orderController, orderService := newTestOrderController(t)
+		orderService.EXPECT().
+			GetMerchantReceiver(gomock.Any(), shop.ID, 4).
+			Return(nil, apperr.ErrOrderNotFound)
+
+		rec := doRequest(
+			newMerchantOrderRouter(t, orderController, shop),
+			http.MethodGet,
+			"/merchant/orders/4/receiver",
 			"Bearer session-token",
 			"",
 		)

@@ -125,8 +125,6 @@
     "table": {
       "order": "订单",
       "subOrder": "子订单 #{{id}}",
-      "recipient": "收货人",
-      "shippingAddress": "收货地址",
       "status": "状态",
       "items": "商品数",
       "total": "金额",
@@ -312,7 +310,8 @@
     },
     "errors": {
       "nameRequired": "请输入商品名称。",
-      "nameLength": "商品名称不能超过 {{max}} 个字符。"
+      "nameLength": "商品名称不能超过 {{max}} 个字符。",
+      "descriptionLength": "商品描述不能超过 {{max}} 个字符。"
     }
   },
   "productDetail": {

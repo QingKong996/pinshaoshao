@@ -35,14 +35,12 @@ export function ShipmentDispatchDialog({
   open,
   onOpenChange,
   subOrderID,
-  receiverName,
   onCreated,
 }: {
   token: string
   open: boolean
   onOpenChange: (open: boolean) => void
   subOrderID?: number
-  receiverName?: string
   onCreated?: (shipment: Shipment) => void
 }) {
   const { t } = useTranslation("logistics")
@@ -121,11 +119,7 @@ export function ShipmentDispatchDialog({
           <DialogTitle>{t("dispatchForm.title")}</DialogTitle>
           <DialogDescription>
             {isFixedSubOrder
-              ? t("dispatchForm.fixedDescription", {
-                  id: subOrderID,
-                  receiver:
-                    receiverName ?? t("dispatchForm.unknownReceiver"),
-                })
+              ? t("dispatchForm.fixedDescription", { id: subOrderID })
               : t("dispatchForm.description")}
           </DialogDescription>
         </DialogHeader>

@@ -63,12 +63,17 @@ export function createMockAuth(config: MockAuthConfig) {
       }
 
       function handleStorage(event: StorageEvent) {
-        if (
-          event.storageArea === sessionStorage &&
-          event.key === config.storageKey
-        ) {
-          setSession(readMockSession(config.storageKey))
+        try {
+          if (
+            event.storageArea !== sessionStorage ||
+            event.key !== config.storageKey
+          ) {
+            return
+          }
+        } catch {
+          return
         }
+        setSession(readMockSession(config.storageKey))
       }
 
       window.addEventListener(

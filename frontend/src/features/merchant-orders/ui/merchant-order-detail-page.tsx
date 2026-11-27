@@ -17,7 +17,10 @@ import {
 import { PageHeader } from "@/shared/ui/page-header"
 import { Skeleton } from "@/shared/ui/skeleton"
 import { MERCHANT_ORDER_NOT_FOUND_ERROR } from "../model/errors"
-import { useMerchantOrder } from "../model/queries"
+import {
+  useMerchantOrder,
+  useMerchantOrderReceiver,
+} from "../model/queries"
 import type { MerchantOrderDetail, MerchantOrderItem } from "../types"
 import { MerchantOrderStatusBadge } from "./order-status-badge"
 import { QueryError } from "./query-error"
@@ -36,6 +39,14 @@ export default function MerchantOrderDetailPage({
   const { t } = useTranslation("console")
   const validSubOrderID = Number.isInteger(subOrderID) && subOrderID > 0
   const orderQuery = useMerchantOrder(token, subOrderID)
+  const receiverVisible = orderQuery.data
+    ? canViewReceiver(orderQuery.data.status)
+    : false
+  const receiverQuery = useMerchantOrderReceiver(
+    token,
+    subOrderID,
+    receiverVisible,
+  )
 
   useDocumentTitle(
     orderQuery.data
@@ -147,25 +158,42 @@ export default function MerchantOrderDetailPage({
         </Card>
 
         <div className="grid gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("orders.detail.receiver.title")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <DetailItem
-                label={t("orders.detail.receiver.name")}
-                value={order.receiver_name}
-              />
-              <DetailItem
-                label={t("orders.detail.receiver.phone")}
-                value={order.receiver_phone}
-              />
-              <DetailItem
-                label={t("orders.detail.receiver.address")}
-                value={order.shipping_address}
-              />
-            </CardContent>
-          </Card>
+          {receiverVisible ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("orders.detail.receiver.title")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {receiverQuery.error ? (
+                  <QueryError
+                    error={receiverQuery.error}
+                    onRetry={receiverQuery.refetch}
+                  />
+                ) : receiverQuery.isPending || !receiverQuery.data ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ) : (
+                  <>
+                    <DetailItem
+                      label={t("orders.detail.receiver.name")}
+                      value={receiverQuery.data.receiver_name}
+                    />
+                    <DetailItem
+                      label={t("orders.detail.receiver.phone")}
+                      value={receiverQuery.data.receiver_phone}
+                    />
+                    <DetailItem
+                      label={t("orders.detail.receiver.address")}
+                      value={receiverQuery.data.shipping_address}
+                    />
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader>
@@ -189,6 +217,14 @@ export default function MerchantOrderDetailPage({
         </div>
       </div>
     </div>
+  )
+}
+
+function canViewReceiver(status: MerchantOrderDetail["status"]) {
+  return (
+    status === "awaiting_shipment" ||
+    status === "shipped" ||
+    status === "completed"
   )
 }
 

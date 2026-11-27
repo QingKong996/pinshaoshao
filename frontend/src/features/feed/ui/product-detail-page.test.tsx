@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react"
+import { fireEvent, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { HttpResponse, http } from "msw"
 import { describe, expect, it, vi } from "vitest"
@@ -105,25 +105,21 @@ describe("ProductDetailPage", () => {
     ).toBeDisabled()
 
     await user.click(screen.getByRole("radio", { name: "Size: L" }))
-    await user.click(
-      screen.getByRole("button", { name: "Increase quantity" }),
-    )
-    expect(
-      screen.getByRole("button", { name: "Increase quantity" }),
-    ).toBeEnabled()
-    expect(
-      screen.getByRole("spinbutton", { name: "Quantity" }),
-    ).toHaveAttribute("max", "99")
+    const quantityInput = screen.getByRole("spinbutton", {
+      name: "Quantity",
+    })
+    expect(quantityInput).not.toHaveAttribute("max")
+    fireEvent.change(quantityInput, { target: { value: "100" } })
     expect(screen.queryByText("2 available")).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Buy now" })).toHaveAttribute(
       "href",
-      "/checkout?product_id=7&sku_id=8&quantity=2",
+      "/checkout?product_id=7&sku_id=8&quantity=100",
     )
 
     await user.click(screen.getByRole("button", { name: "Add to cart" }))
 
     expect(await screen.findByText("Added to your cart.")).toBeInTheDocument()
-    expect(addToCart).toHaveBeenCalledWith(8, 2)
+    expect(addToCart).toHaveBeenCalledWith(8, 100)
   })
 
   it("shows an out-of-stock selection and disables purchase actions", async () => {

@@ -226,6 +226,48 @@ func TestMockPaymentFlow(t *testing.T) {
 	}
 }
 
+func TestMockPaymentCreateReusesSessionWhenExpiryChanges(t *testing.T) {
+	resetMockPaymentTables(t)
+	paymentService, _, _ := newTestServices()
+	ctx := context.Background()
+
+	input := mockpayservice.CreatePaymentInput{
+		MerchantOrderNo: "expiry-replay-1",
+		AmountCents:     3998,
+		Subject:         "Expiry replay test",
+		NotifyURL:       "http://localhost:8080/webhook",
+		ExpiresIn:       time.Hour,
+	}
+	payment, created, err := paymentService.Create(ctx, input)
+	if err != nil {
+		t.Fatalf("create payment: %v", err)
+	}
+	if !created {
+		t.Fatal("first create should create a payment")
+	}
+
+	input.ExpiresIn = 30 * time.Minute
+	replayed, created, err := paymentService.Create(ctx, input)
+	if err != nil {
+		t.Fatalf("replay payment with shorter expiry: %v", err)
+	}
+	if created || replayed.PaymentNo != payment.PaymentNo {
+		t.Fatalf("replay = %s/%v, want %s/false", replayed.PaymentNo, created, payment.PaymentNo)
+	}
+	if !replayed.ExpiresAt.Equal(payment.ExpiresAt) {
+		t.Fatalf(
+			"replayed expiry = %s, want original %s",
+			replayed.ExpiresAt,
+			payment.ExpiresAt,
+		)
+	}
+
+	input.AmountCents++
+	if _, _, err := paymentService.Create(ctx, input); !errors.Is(err, model.ErrPaymentConflict) {
+		t.Fatalf("conflicting replay error = %v, want payment conflict", err)
+	}
+}
+
 func TestMockPaymentClosesAndExpires(t *testing.T) {
 	resetMockPaymentTables(t)
 	paymentService, _, _ := newTestServices()

@@ -457,7 +457,7 @@ func TestZeroAmountOrderSkipsThirdPartyPayment(t *testing.T) {
 	}
 }
 
-func TestLatePaymentSettlesPendingOrder(t *testing.T) {
+func TestExpiredPaymentIsRefundedAfterSettlementRejected(t *testing.T) {
 	resetDatabase(t)
 	buyerID := insertBuyer(t)
 	skuID, _ := insertSellableSKU(t)
@@ -503,7 +503,7 @@ func TestLatePaymentSettlesPendingOrder(t *testing.T) {
 		t.Fatalf("checkout pay status = %d, want 303, body = %s", response.StatusCode, body)
 	}
 
-	var settled paymentdto.OrderPaymentResponse
+	var refunded paymentdto.OrderPaymentResponse
 	waitFor(t, 10*time.Second, 50*time.Millisecond, func() bool {
 		app.doJSON(
 			t,
@@ -511,28 +511,31 @@ func TestLatePaymentSettlesPendingOrder(t *testing.T) {
 			"/api/v1/payments/"+payment.PaymentNo,
 			nil,
 			http.StatusOK,
-			&settled,
+			&refunded,
 		)
-		return settled.Status == "succeeded"
+		return refunded.Status == "succeeded" &&
+			refunded.Refund != nil &&
+			refunded.Refund.Status == "succeeded"
 	})
+	requireFrozenStock(t, skuID, 0)
+	if refunded.Refund.ProviderRefundNo == nil ||
+		refunded.Refund.RefundedAt == nil {
+		t.Fatalf("refunded payment = %+v", refunded)
+	}
 
-	var paidOrder orderdto.OrderResponse
-	waitFor(t, 5*time.Second, 50*time.Millisecond, func() bool {
-		app.doJSON(
-			t,
-			http.MethodGet,
-			fmt.Sprintf("/api/v1/orders/%d", order.ID),
-			nil,
-			http.StatusOK,
-			&paidOrder,
-		)
-		return paidOrder.Status == "paid" &&
-			len(paidOrder.SubOrders) == 1 &&
-			paidOrder.SubOrders[0].Status == "awaiting_shipment"
-	})
-	requireFrozenStock(t, skuID, 2)
-	if settled.Refund != nil {
-		t.Fatalf("settled payment has unexpected refund: %+v", settled.Refund)
+	var cancelled orderdto.OrderResponse
+	app.doJSON(
+		t,
+		http.MethodGet,
+		fmt.Sprintf("/api/v1/orders/%d", order.ID),
+		nil,
+		http.StatusOK,
+		&cancelled,
+	)
+	if cancelled.Status != "cancelled" ||
+		len(cancelled.SubOrders) != 1 ||
+		cancelled.SubOrders[0].Status != "cancelled" {
+		t.Fatalf("expired order = %+v, want cancelled", cancelled)
 	}
 }
 

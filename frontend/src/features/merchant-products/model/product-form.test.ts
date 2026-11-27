@@ -47,6 +47,16 @@ describe("productFormSchema", () => {
       }).error?.issues[0]?.message,
     ).toBe("productForm.errors.nameLength")
   })
+
+  it("rejects descriptions over 5000 characters", () => {
+    expect(
+      productFormSchema.safeParse({
+        ...INITIAL_VALUES,
+        name: "Cotton T-shirt",
+        description: "x".repeat(5001),
+      }).error?.issues[0]?.message,
+    ).toBe("productForm.errors.descriptionLength")
+  })
 })
 
 describe("product form conversions", () => {
@@ -98,6 +108,12 @@ describe("translateValidationMessage", () => {
     expect(
       translateValidationMessage("productForm.errors.nameRequired", t),
     ).toBe("Enter a product name.")
+    expect(
+      translateValidationMessage(
+        "productForm.errors.descriptionLength",
+        t,
+      ),
+    ).toBe("The product description must be at most 5000 characters.")
     expect(translateValidationMessage(undefined, t)).toBeUndefined()
   })
 })

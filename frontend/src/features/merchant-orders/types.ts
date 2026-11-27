@@ -11,9 +11,6 @@ export type MerchantOrder = {
   status: MerchantOrderStatus
   total_amount_cents: number
   item_count: number
-  receiver_name: string
-  receiver_phone: string
-  shipping_address: string
   paid_at: string | null
   created_at: string
 }
@@ -32,6 +29,12 @@ export type MerchantOrderItem = {
 export type MerchantOrderDetail = MerchantOrder & {
   updated_at: string
   items: MerchantOrderItem[]
+}
+
+export type MerchantOrderReceiver = {
+  receiver_name: string
+  receiver_phone: string
+  shipping_address: string
 }
 
 export type MerchantOrderListQuery = {

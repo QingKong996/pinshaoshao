@@ -23,7 +23,6 @@ export function MerchantOrderDetailRoute() {
           <ShipSubOrderButton
             token={token}
             subOrderID={order.id}
-            receiverName={order.receiver_name}
             onCreated={() => {
               void queryClient.invalidateQueries({
                 queryKey: merchantOrderQueryKeys.orders(),

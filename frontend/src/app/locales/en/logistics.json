@@ -44,8 +44,7 @@
   "dispatchForm": {
     "title": "Create shipment",
     "description": "Create a carrier shipment for a paid sub-order. The sub-order is marked shipped immediately.",
-    "fixedDescription": "Sub-order #{{id}} for {{receiver}}.",
-    "unknownReceiver": "the selected recipient",
+    "fixedDescription": "Sub-order #{{id}}.",
     "subOrderHint": "Use the sub-order ID shown in the merchant order list.",
     "carrierPlaceholder": "e.g. SF Express",
     "carrierHint": "Optional. The provider chooses a carrier when left blank.",

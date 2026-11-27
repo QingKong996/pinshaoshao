@@ -6,4 +6,6 @@ export const merchantOrderQueryKeys = {
     [...merchantOrderQueryKeys.orders(), "list", query] as const,
   order: (subOrderID: number) =>
     [...merchantOrderQueryKeys.orders(), "detail", subOrderID] as const,
+  receiver: (subOrderID: number) =>
+    [...merchantOrderQueryKeys.order(subOrderID), "receiver"] as const,
 }

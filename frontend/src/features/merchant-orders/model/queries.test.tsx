@@ -6,10 +6,12 @@ import { describe, expect, it } from "vitest"
 import {
   useMerchantOrder,
   useMerchantOrders,
+  useMerchantOrderReceiver,
 } from "@/features/merchant-orders/model/queries"
 import type {
   MerchantOrderDetail,
   MerchantOrderListResult,
+  MerchantOrderReceiver,
 } from "@/features/merchant-orders/types"
 import { createTestQueryClient } from "@/test/render"
 import { server } from "@/test/server"
@@ -22,9 +24,6 @@ const orderList: MerchantOrderListResult = {
       status: "shipped",
       total_amount_cents: 3998,
       item_count: 2,
-      receiver_name: "Receiver",
-      receiver_phone: "1234567890",
-      shipping_address: "Shanghai",
       paid_at: "2026-11-20T12:05:00Z",
       created_at: "2026-11-20T12:00:00Z",
     },
@@ -41,9 +40,6 @@ const orderDetail: MerchantOrderDetail = {
   status: "shipped",
   total_amount_cents: 3998,
   item_count: 2,
-  receiver_name: "Receiver",
-  receiver_phone: "1234567890",
-  shipping_address: "Shanghai",
   paid_at: "2026-11-20T12:05:00Z",
   created_at: "2026-11-20T12:00:00Z",
   updated_at: "2026-11-20T12:10:00Z",
@@ -59,6 +55,12 @@ const orderDetail: MerchantOrderDetail = {
       line_amount_cents: 3998,
     },
   ],
+}
+
+const receiver: MerchantOrderReceiver = {
+  receiver_name: "Receiver",
+  receiver_phone: "1234567890",
+  shipping_address: "Shanghai",
 }
 
 describe("merchant order queries", () => {
@@ -134,5 +136,36 @@ describe("merchant order queries", () => {
     })
     expect(authorization).toBe("Bearer merchant-token")
     expect(order.result.current.data).toEqual(orderDetail)
+  })
+
+  it("loads a receiver through the dedicated endpoint", async () => {
+    let authorization: string | null = null
+
+    server.use(
+      http.get("*/api/v1/merchant/orders/4/receiver", ({ request }) => {
+        authorization = request.headers.get("Authorization")
+        return HttpResponse.json(receiver)
+      }),
+    )
+
+    const queryClient = createTestQueryClient()
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      )
+    }
+
+    const result = renderHook(
+      () => useMerchantOrderReceiver("merchant-token", 4),
+      { wrapper: Wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.result.current.isSuccess).toBe(true)
+    })
+    expect(authorization).toBe("Bearer merchant-token")
+    expect(result.result.current.data).toEqual(receiver)
   })
 })

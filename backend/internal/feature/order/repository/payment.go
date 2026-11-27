@@ -59,17 +59,20 @@ func (l *PaymentLifecycle) SettlePayment(
 	orderID int,
 	paidAt time.Time,
 ) (paymentport.OrderStatus, error) {
-	const lockQuery = `SELECT status::text
+	const lockQuery = `SELECT status::text,
+       created_at <= now() - make_interval(secs => $2) AS expired
 FROM orders
 WHERE id = $1
 FOR UPDATE`
 
 	var status string
+	var expired bool
 	if err := db.QueryRow(
 		ctx,
 		lockQuery,
 		orderID,
-	).Scan(&status); err != nil {
+		ordermodel.PendingPaymentTTL.Seconds(),
+	).Scan(&status, &expired); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", apperr.ErrOrderNotFound
 		}
@@ -78,6 +81,9 @@ FOR UPDATE`
 	current := paymentport.OrderStatus(status)
 	if current != paymentport.OrderStatusPendingPayment {
 		return current, nil
+	}
+	if expired {
+		return "", &paymentport.OrderExpiredError{OrderID: orderID}
 	}
 
 	paidAt = paidAt.UTC()

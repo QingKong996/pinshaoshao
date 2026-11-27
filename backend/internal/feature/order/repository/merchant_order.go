@@ -26,7 +26,7 @@ func (r *OrderRepository) ListMerchant(ctx context.Context, shopID int, filter m
 	offsetIndex := len(args) + 2
 	query := fmt.Sprintf(`SELECT so.id, so.order_id, so.status::text, so.total_amount_cents,
        COALESCE(SUM(ois.quantity), 0)::int,
-       o.receiver_name, o.receiver_phone, o.shipping_address, o.paid_at, so.created_at
+       o.paid_at, so.created_at
 FROM sub_orders so
 JOIN orders o ON o.id = so.order_id
 LEFT JOIN order_item_snapshots ois ON ois.sub_order_id = so.id
@@ -52,9 +52,6 @@ LIMIT $%d OFFSET $%d`, where, limitIndex, offsetIndex)
 			&status,
 			&order.TotalAmountCents,
 			&order.ItemCount,
-			&order.ReceiverName,
-			&order.ReceiverPhone,
-			&order.ShippingAddress,
 			&order.PaidAt,
 			&order.CreatedAt,
 		); err != nil {
@@ -97,7 +94,7 @@ func loadMerchantOrder(
 	subOrderID int,
 ) (*model.MerchantOrderDetail, error) {
 	const orderQuery = `SELECT so.id, so.order_id, so.status::text, so.total_amount_cents,
-       o.receiver_name, o.receiver_phone, o.shipping_address, o.paid_at, so.created_at, so.updated_at
+       o.paid_at, so.created_at, so.updated_at
 FROM sub_orders so
 JOIN orders o ON o.id = so.order_id
 WHERE so.id = $1 AND so.shop_id = $2`
@@ -109,9 +106,6 @@ WHERE so.id = $1 AND so.shop_id = $2`
 		&order.OrderID,
 		&status,
 		&order.TotalAmountCents,
-		&order.ReceiverName,
-		&order.ReceiverPhone,
-		&order.ShippingAddress,
 		&order.PaidAt,
 		&order.CreatedAt,
 		&order.UpdatedAt,
@@ -158,6 +152,40 @@ ORDER BY id`
 		return nil, err
 	}
 	return &order, nil
+}
+
+func (r *OrderRepository) GetMerchantReceiver(
+	ctx context.Context,
+	shopID int,
+	subOrderID int,
+) (*model.MerchantOrderReceiver, error) {
+	const query = `SELECT so.status::text, o.receiver_name, o.receiver_phone, o.shipping_address
+FROM sub_orders so
+JOIN orders o ON o.id = so.order_id
+WHERE so.id = $1 AND so.shop_id = $2`
+
+	var status string
+	var receiver model.MerchantOrderReceiver
+	if err := r.pool.QueryRow(ctx, query, subOrderID, shopID).Scan(
+		&status,
+		&receiver.ReceiverName,
+		&receiver.ReceiverPhone,
+		&receiver.ShippingAddress,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperr.ErrOrderNotFound
+		}
+		return nil, fmt.Errorf("repository.GetMerchantReceiver: %w", err)
+	}
+
+	switch model.SubOrderStatus(status) {
+	case model.SubOrderStatusAwaitingShipment,
+		model.SubOrderStatusShipped,
+		model.SubOrderStatusCompleted:
+		return &receiver, nil
+	default:
+		return nil, apperr.ErrReceiverUnavailable
+	}
 }
 
 func merchantOrderFilter(shopID int, filter model.MerchantOrderListFilter) (string, []any) {

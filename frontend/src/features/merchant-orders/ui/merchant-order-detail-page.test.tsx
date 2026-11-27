@@ -10,9 +10,6 @@ const order: MerchantOrderDetail = {
   status: "awaiting_shipment",
   total_amount_cents: 3998,
   item_count: 2,
-  receiver_name: "Receiver",
-  receiver_phone: "1234567890",
-  shipping_address: "Shanghai",
   paid_at: "2026-11-20T12:05:00Z",
   created_at: "2026-11-20T12:00:00Z",
   updated_at: "2026-11-20T12:05:00Z",
@@ -30,12 +27,20 @@ const order: MerchantOrderDetail = {
   ],
 }
 
+const receiver = {
+  receiver_name: "Receiver",
+  receiver_phone: "1234567890",
+  shipping_address: "Shanghai",
+}
+
 const mocks = vi.hoisted(() => ({
   useMerchantOrder: vi.fn(),
+  useMerchantOrderReceiver: vi.fn(),
 }))
 
 vi.mock("@/features/merchant-orders/model/queries", () => ({
   useMerchantOrder: mocks.useMerchantOrder,
+  useMerchantOrderReceiver: mocks.useMerchantOrderReceiver,
 }))
 
 describe("MerchantOrderDetailPage", () => {
@@ -46,9 +51,15 @@ describe("MerchantOrderDetailPage", () => {
       isPending: false,
       refetch: vi.fn(),
     })
+    mocks.useMerchantOrderReceiver.mockReturnValue({
+      data: receiver,
+      error: null,
+      isPending: false,
+      refetch: vi.fn(),
+    })
   })
 
-  it("renders the sub-order, items, and delivery details", () => {
+  it("renders the sub-order, items, and separately loaded delivery details", () => {
     renderWithProviders(
       <MerchantOrderDetailPage
         token="token"
@@ -71,6 +82,35 @@ describe("MerchantOrderDetailPage", () => {
       screen.getByRole("link", { name: "Back to orders" }),
     ).toHaveAttribute("href", "/merchant/orders")
     expect(mocks.useMerchantOrder).toHaveBeenCalledWith("token", 4)
+    expect(mocks.useMerchantOrderReceiver).toHaveBeenCalledWith(
+      "token",
+      4,
+      true,
+    )
+  })
+
+  it("does not load delivery details for an unpaid sub-order", () => {
+    mocks.useMerchantOrder.mockReturnValue({
+      data: { ...order, status: "pending_payment" },
+      error: null,
+      isPending: false,
+      refetch: vi.fn(),
+    })
+
+    renderWithProviders(
+      <MerchantOrderDetailPage
+        token="token"
+        subOrderID={4}
+        backHref="/merchant/orders"
+      />,
+    )
+
+    expect(screen.queryByText("Delivery details")).not.toBeInTheDocument()
+    expect(mocks.useMerchantOrderReceiver).toHaveBeenCalledWith(
+      "token",
+      4,
+      false,
+    )
   })
 
   it("shows an API error and retries the query", async () => {

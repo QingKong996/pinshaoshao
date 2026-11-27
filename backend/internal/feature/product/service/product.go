@@ -10,12 +10,14 @@ import (
 	"pinshaoshao/internal/feature/product/apperr"
 	"pinshaoshao/internal/feature/product/model"
 	"strings"
+	"unicode/utf8"
 )
 
 const (
-	defaultProductPageSize = 10
-	maxProductPageSize     = 100
-	maxProductPage         = 1_000_000
+	defaultProductPageSize      = 10
+	maxProductPageSize          = 100
+	maxProductPage              = 1_000_000
+	maxProductDescriptionLength = 5000
 )
 
 type CreateProductInput struct {
@@ -98,6 +100,9 @@ func (s *ProductService) Get(ctx context.Context, shopID int, productID int) (*m
 
 // Create adds a product to the shop.
 func (s *ProductService) Create(ctx context.Context, shopID int, input CreateProductInput) (*model.ProductSummary, error) {
+	if err := validateProductDescription(input.Description); err != nil {
+		return nil, fmt.Errorf("service.CreateProduct: %w", err)
+	}
 	if err := s.validateCategory(ctx, shopID, input.CategoryID); err != nil {
 		return nil, fmt.Errorf("service.CreateProduct: %w", err)
 	}
@@ -128,6 +133,9 @@ func (s *ProductService) Create(ctx context.Context, shopID int, input CreatePro
 
 // Update replaces the editable fields of a product of the shop.
 func (s *ProductService) Update(ctx context.Context, shopID int, productID int, input UpdateProductInput) (*model.ProductSummary, error) {
+	if err := validateProductDescription(input.Description); err != nil {
+		return nil, fmt.Errorf("service.UpdateProduct: %w", err)
+	}
 	if err := s.validateCategory(ctx, shopID, input.CategoryID); err != nil {
 		return nil, fmt.Errorf("service.UpdateProduct: %w", err)
 	}
@@ -182,6 +190,13 @@ func (s *ProductService) validateCategory(ctx context.Context, shopID int, categ
 			return apperr.ErrInvalidCategoryID
 		}
 		return fmt.Errorf("get category: %w", err)
+	}
+	return nil
+}
+
+func validateProductDescription(description string) error {
+	if utf8.RuneCountInString(description) > maxProductDescriptionLength {
+		return apperr.ErrInvalidProductDescription
 	}
 	return nil
 }

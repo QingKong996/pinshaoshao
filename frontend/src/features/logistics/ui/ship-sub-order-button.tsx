@@ -8,12 +8,10 @@ import { ShipmentDispatchDialog } from "./shipment-dispatch-dialog"
 export function ShipSubOrderButton({
   token,
   subOrderID,
-  receiverName,
   onCreated,
 }: {
   token: string
   subOrderID: number
-  receiverName?: string
   onCreated?: (shipment: Shipment) => void
 }) {
   const { t } = useTranslation("logistics")
@@ -34,7 +32,6 @@ export function ShipSubOrderButton({
         open={open}
         onOpenChange={setOpen}
         subOrderID={subOrderID}
-        receiverName={receiverName}
         onCreated={onCreated}
       />
     </>

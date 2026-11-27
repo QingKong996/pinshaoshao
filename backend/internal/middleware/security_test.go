@@ -38,25 +38,44 @@ func TestNoStoreAPI(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(NoStoreAPI())
-	r.GET("/api/v1/orders", func(c *gin.Context) {
-		c.Status(http.StatusNoContent)
-	})
+	for _, path := range []string{
+		"/api/v1/orders",
+		"/mockpay/api/v1/payments/1",
+		"/mockpay/checkout/1",
+		"/mocklogistics/api/v1/shipments/1",
+	} {
+		r.GET(path, func(c *gin.Context) {
+			c.Status(http.StatusNoContent)
+		})
+	}
 	r.GET("/health", func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
 	})
 
-	apiResponse := httptest.NewRecorder()
-	r.ServeHTTP(apiResponse, httptest.NewRequest(http.MethodGet, "/api/v1/orders", nil))
-	if got := apiResponse.Header().Get("Cache-Control"); got != "no-store" {
-		t.Fatalf("API Cache-Control = %q, want no-store", got)
-	}
-	if got := apiResponse.Header().Get("Pragma"); got != "no-cache" {
-		t.Fatalf("API Pragma = %q, want no-cache", got)
+	for _, path := range []string{
+		"/api/v1/orders",
+		"/mockpay/api/v1/payments/1",
+		"/mockpay/checkout/1",
+		"/mocklogistics/api/v1/shipments/1",
+	} {
+		t.Run(path, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+			if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+				t.Errorf("Cache-Control = %q, want no-store", got)
+			}
+			if got := rec.Header().Get("Pragma"); got != "no-cache" {
+				t.Errorf("Pragma = %q, want no-cache", got)
+			}
+		})
 	}
 
 	otherResponse := httptest.NewRecorder()
 	r.ServeHTTP(otherResponse, httptest.NewRequest(http.MethodGet, "/health", nil))
 	if got := otherResponse.Header().Get("Cache-Control"); got != "" {
-		t.Fatalf("non-API Cache-Control = %q, want empty", got)
+		t.Errorf("health Cache-Control = %q, want empty", got)
+	}
+	if got := otherResponse.Header().Get("Pragma"); got != "" {
+		t.Errorf("health Pragma = %q, want empty", got)
 	}
 }

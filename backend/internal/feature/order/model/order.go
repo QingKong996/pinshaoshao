@@ -105,9 +105,6 @@ type MerchantOrderSummary struct {
 	Status           SubOrderStatus
 	TotalAmountCents int64
 	ItemCount        int
-	ReceiverName     string
-	ReceiverPhone    string
-	ShippingAddress  string
 	PaidAt           *time.Time
 	CreatedAt        time.Time
 }
@@ -118,13 +115,16 @@ type MerchantOrderDetail struct {
 	Status           SubOrderStatus
 	TotalAmountCents int64
 	ItemCount        int
-	ReceiverName     string
-	ReceiverPhone    string
-	ShippingAddress  string
 	PaidAt           *time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	Items            []OrderItem
+}
+
+type MerchantOrderReceiver struct {
+	ReceiverName    string
+	ReceiverPhone   string
+	ShippingAddress string
 }
 
 type MerchantOrderListResult struct {

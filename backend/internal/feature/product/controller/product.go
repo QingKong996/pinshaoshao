@@ -198,6 +198,12 @@ func (c *ProductController) Create(ctx *gin.Context) {
 			})
 			return
 		}
+		if errors.Is(err, apperr.ErrInvalidProductDescription) {
+			ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
+				Error: apperr.ErrInvalidProductDescription.Error(),
+			})
+			return
+		}
 		slog.ErrorContext(ctx.Request.Context(), "create product", "error", err)
 		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error: apperr.ErrInternalServer.Error(),
@@ -262,6 +268,10 @@ func (c *ProductController) Update(ctx *gin.Context) {
 		case errors.Is(err, apperr.ErrInvalidCategoryID):
 			ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
 				Error: apperr.ErrInvalidCategoryID.Error(),
+			})
+		case errors.Is(err, apperr.ErrInvalidProductDescription):
+			ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
+				Error: apperr.ErrInvalidProductDescription.Error(),
 			})
 		default:
 			slog.ErrorContext(ctx.Request.Context(), "update product", "product_id", productID, "error", err)

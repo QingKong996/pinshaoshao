@@ -104,3 +104,33 @@ func TestOrderServiceGetMerchantRejectsInvalidID(t *testing.T) {
 		t.Fatalf("error = %v, want %v", err, apperr.ErrInvalidOrderID)
 	}
 }
+
+func TestOrderServiceGetMerchantReceiver(t *testing.T) {
+	orderService, repository := newTestService(t)
+	receiver := &model.MerchantOrderReceiver{
+		ReceiverName:    "Alice",
+		ReceiverPhone:   "1234567890",
+		ShippingAddress: "Shanghai",
+	}
+
+	repository.EXPECT().
+		GetMerchantReceiver(gomock.Any(), 9, 4).
+		Return(receiver, nil)
+
+	got, err := orderService.GetMerchantReceiver(context.Background(), 9, 4)
+	if err != nil {
+		t.Fatalf("get merchant receiver: %v", err)
+	}
+	if got != receiver {
+		t.Fatalf("receiver = %+v, want %+v", got, receiver)
+	}
+}
+
+func TestOrderServiceGetMerchantReceiverRejectsInvalidID(t *testing.T) {
+	orderService, _ := newTestService(t)
+
+	_, err := orderService.GetMerchantReceiver(context.Background(), 9, 0)
+	if !errors.Is(err, apperr.ErrInvalidOrderID) {
+		t.Fatalf("error = %v, want %v", err, apperr.ErrInvalidOrderID)
+	}
+}
