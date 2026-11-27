@@ -9,6 +9,7 @@ import {
   SUPPORTED_LANGUAGES,
 } from "@/shared/i18n/config"
 import enAuth from "./locales/en/auth.json"
+import enAddress from "./locales/en/address.json"
 import enCart from "./locales/en/cart.json"
 import enCommon from "./locales/en/common.json"
 import enConsole from "./locales/en/console.json"
@@ -18,6 +19,7 @@ import enLogistics from "./locales/en/logistics.json"
 import enOrder from "./locales/en/order.json"
 import enPayment from "./locales/en/payment.json"
 import zhCNAuth from "./locales/zh-CN/auth.json"
+import zhCNAddress from "./locales/zh-CN/address.json"
 import zhCNCart from "./locales/zh-CN/cart.json"
 import zhCNCommon from "./locales/zh-CN/common.json"
 import zhCNConsole from "./locales/zh-CN/console.json"
@@ -32,6 +34,7 @@ import { mockPaymentResources } from "@/mock/payment"
 
 export const NAMESPACES = [
   "common",
+  "address",
   "home",
   "auth",
   "console",
@@ -47,6 +50,7 @@ export const NAMESPACES = [
 export const resources = {
   "zh-CN": {
     common: zhCNCommon,
+    address: zhCNAddress,
     home: zhCNHome,
     auth: zhCNAuth,
     console: zhCNConsole,
@@ -60,6 +64,7 @@ export const resources = {
   },
   en: {
     common: enCommon,
+    address: enAddress,
     home: enHome,
     auth: enAuth,
     console: enConsole,

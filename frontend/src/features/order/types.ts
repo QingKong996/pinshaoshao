@@ -95,3 +95,11 @@ export type CheckoutLine = {
   quantity: number
   line_total_cents: number
 }
+
+export type CheckoutSavedAddress = {
+  id: number
+  receiver_name: string
+  receiver_phone: string
+  shipping_address: string
+  is_default: boolean
+}

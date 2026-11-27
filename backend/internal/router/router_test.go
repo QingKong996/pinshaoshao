@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	addressmodule "pinshaoshao/internal/feature/address"
 	cartmodule "pinshaoshao/internal/feature/cart"
 	feedmodule "pinshaoshao/internal/feature/feed"
 	inventorymodule "pinshaoshao/internal/feature/inventory"
@@ -61,6 +62,11 @@ var routeCases = []routeCase{
 	{method: http.MethodPost, pattern: "/api/v1/cart/items", requestPath: "/api/v1/cart/items", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPatch, pattern: "/api/v1/cart/items/:itemID", requestPath: "/api/v1/cart/items/1", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodDelete, pattern: "/api/v1/cart/items/:itemID", requestPath: "/api/v1/cart/items/1", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodGet, pattern: "/api/v1/addresses", requestPath: "/api/v1/addresses", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/api/v1/addresses", requestPath: "/api/v1/addresses", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodPut, pattern: "/api/v1/addresses/:addressID", requestPath: "/api/v1/addresses/1", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodDelete, pattern: "/api/v1/addresses/:addressID", requestPath: "/api/v1/addresses/1", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodPost, pattern: "/api/v1/addresses/:addressID/default", requestPath: "/api/v1/addresses/1/default", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/orders", requestPath: "/api/v1/orders", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/orders/direct", requestPath: "/api/v1/orders/direct", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/orders", requestPath: "/api/v1/orders", authError: userapperr.ErrInvalidSession.Error()},
@@ -192,6 +198,7 @@ func newTestRouter(t *testing.T) *gin.Engine {
 		Product:           productmodule.NewModule(nil, inventoryModule.Lifecycle()),
 		Inventory:         inventoryModule,
 		Cart:              cartmodule.NewModule(nil),
+		Address:           addressmodule.NewModule(nil),
 		Feed:              feedmodule.NewModule(nil),
 		Order:             orderModule,
 		Payment:           paymentModule,

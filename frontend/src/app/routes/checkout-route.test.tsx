@@ -40,6 +40,9 @@ describe("CheckoutRoute", () => {
       configurable: true,
       value: vi.fn(() => "4f2614df-f674-4b5e-a9e4-3fc5e7f62013"),
     })
+    server.use(
+      http.get("*/api/v1/addresses", () => HttpResponse.json([])),
+    )
   })
 
   it("loads a direct-purchase SKU without requesting the cart", async () => {
@@ -116,6 +119,43 @@ describe("CheckoutRoute", () => {
     expect(
       screen.getByRole("link", { name: "Back to cart" }),
     ).toHaveAttribute("href", "/cart")
+  })
+
+  it("prefills checkout with the default saved address", async () => {
+    server.use(
+      http.get("*/api/v1/cart", () => HttpResponse.json([cartItem])),
+      http.get("*/api/v1/addresses", () =>
+        HttpResponse.json([
+          {
+            id: 9,
+            receiver_name: "Alice",
+            receiver_phone: "2222222222",
+            shipping_address: "Beijing",
+            is_default: true,
+            created_at: "2026-11-27T12:00:00Z",
+            updated_at: "2026-11-27T12:00:00Z",
+          },
+        ]),
+      ),
+    )
+
+    renderCheckoutRoute("/checkout")
+
+    expect(
+      await screen.findByRole("heading", { name: "Confirm order" }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText("Recipient")).toHaveValue(
+      "Alice",
+    )
+    expect(screen.getByLabelText("Phone")).toHaveValue(
+      "2222222222",
+    )
+    expect(screen.getByLabelText("Shipping address")).toHaveValue(
+      "Beijing",
+    )
+    expect(
+      screen.getByLabelText("Use a saved address"),
+    ).toBeInTheDocument()
   })
 
   it("reports a cart load failure", async () => {

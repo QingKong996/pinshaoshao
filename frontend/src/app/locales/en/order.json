@@ -19,6 +19,9 @@
     },
     "form": {
       "title": "Delivery details",
+      "savedAddress": {
+        "label": "Use a saved address"
+      },
       "receiverName": "Recipient",
       "receiverPhone": "Phone",
       "shippingAddress": "Shipping address",

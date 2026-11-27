@@ -132,4 +132,76 @@ describe("CheckoutPage", () => {
       shipping_address: "Shanghai",
     })
   })
+
+  it("prefills the default saved address and submits it as a snapshot", async () => {
+    const user = userEvent.setup()
+    const requestBody = vi.fn<(body: CreateOrderInput) => void>()
+    server.use(
+      http.post("*/api/v1/orders", async ({ request }) => {
+        requestBody((await request.json()) as CreateOrderInput)
+        return HttpResponse.json(
+          {
+            id: 3,
+            status: "pending_payment",
+            total_amount_cents: 3998,
+            receiver_name: "Robert",
+            receiver_phone: "1234567890",
+            shipping_address: "Beijing",
+            expires_at: "2026-11-20T12:30:00Z",
+            paid_at: null,
+            created_at: "2026-11-20T12:00:00Z",
+            updated_at: "2026-11-20T12:00:00Z",
+            sub_orders: [],
+          },
+          { status: 201 },
+        )
+      }),
+    )
+
+    renderWithProviders(
+      <CheckoutPage
+        token="token"
+        items={items}
+        savedAddresses={[
+          {
+            id: 1,
+            receiver_name: "Alice",
+            receiver_phone: "111",
+            shipping_address: "Shanghai",
+            is_default: false,
+          },
+          {
+            id: 2,
+            receiver_name: "Robert",
+            receiver_phone: "1234567890",
+            shipping_address: "Beijing",
+            is_default: true,
+          },
+        ]}
+      />,
+      { initialEntries: ["/checkout"] },
+    )
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Recipient")).toHaveValue("Robert")
+    })
+    expect(screen.getByLabelText("Phone")).toHaveValue("1234567890")
+    expect(screen.getByLabelText("Shipping address")).toHaveValue(
+      "Beijing",
+    )
+    expect(
+      screen.getByLabelText("Use a saved address"),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Place order" }))
+
+    await waitFor(() => {
+      expect(requestBody).toHaveBeenCalledOnce()
+    })
+    expect(requestBody.mock.calls[0][0]).toMatchObject({
+      receiver_name: "Robert",
+      receiver_phone: "1234567890",
+      shipping_address: "Beijing",
+    })
+  })
 })

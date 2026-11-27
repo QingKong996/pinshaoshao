@@ -21,6 +21,13 @@ import { Input } from "@/shared/ui/input"
 import { PageHeader } from "@/shared/ui/page-header"
 import { QueryError } from "@/shared/ui/query-error"
 import { Textarea } from "@/shared/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select"
 import { formatPriceCents } from "@/shared/lib/format"
 import { useDocumentTitle } from "@/shared/hooks/use-document-title"
 import { describeCheckoutError } from "../model/errors"
@@ -31,7 +38,7 @@ import {
   type CheckoutFormValues,
 } from "../model/checkout-form"
 import { useCreateDirectOrder, useCreateOrder } from "../model/mutations"
-import type { CheckoutLine } from "../types"
+import type { CheckoutLine, CheckoutSavedAddress } from "../types"
 import { formatOrderSpecs } from "./format-specs"
 
 type CheckoutAttempt = {
@@ -49,12 +56,14 @@ export function CheckoutPage({
   token,
   items,
   mode = CART_MODE,
+  savedAddresses = [],
   backHref,
   onOrderCreated,
 }: {
   token: string
   items: CheckoutLine[]
   mode?: CheckoutMode
+  savedAddresses?: CheckoutSavedAddress[]
   backHref?: string
   onOrderCreated?: () => void
 }) {
@@ -71,14 +80,37 @@ export function CheckoutPage({
     signature: "",
     key: "",
   })
+  const initialAddress =
+    savedAddresses.find((candidate) => candidate.is_default) ??
+    savedAddresses[0]
+  const [selectedAddressID, setSelectedAddressID] = useState<number | null>(
+    () => initialAddress?.id ?? null,
+  )
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
-    defaultValues: INITIAL_CHECKOUT_VALUES,
+    defaultValues: initialAddress
+      ? savedAddressFormValues(initialAddress)
+      : INITIAL_CHECKOUT_VALUES,
   })
+
+  function selectSavedAddress(value: string | null) {
+    if (value === null) {
+      return
+    }
+    const address = savedAddresses.find(
+      (candidate) => candidate.id === Number(value),
+    )
+    if (!address) {
+      return
+    }
+    setSelectedAddressID(address.id)
+    reset(savedAddressFormValues(address))
+  }
 
   const totalCents = items.reduce(
     (total, item) => total + item.line_total_cents,
@@ -189,6 +221,45 @@ export function CheckoutPage({
                 className="flex flex-col gap-5"
               >
                 <FieldGroup>
+                  {savedAddresses.length > 0 ? (
+                    <Field>
+                      <FieldLabel htmlFor="checkout-saved-address">
+                        {t("checkout.form.savedAddress.label")}
+                      </FieldLabel>
+                      <Select
+                        items={savedAddresses.map((address) => ({
+                          value: String(address.id),
+                          label: `${address.receiver_name} · ${address.shipping_address}`,
+                        }))}
+                        value={
+                          selectedAddressID === null
+                            ? null
+                            : String(selectedAddressID)
+                        }
+                        onValueChange={selectSavedAddress}
+                      >
+                        <SelectTrigger
+                          id="checkout-saved-address"
+                          className="w-full"
+                          aria-label={t("checkout.form.savedAddress.label")}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {savedAddresses.map((address) => (
+                            <SelectItem
+                              key={address.id}
+                              value={String(address.id)}
+                            >
+                              {address.receiver_name} ·{" "}
+                              {address.shipping_address}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  ) : null}
+
                   <Field data-invalid={errors.receiver_name ? true : undefined}>
                     <FieldLabel htmlFor="checkout-receiver-name">
                       {t("checkout.form.receiverName")}
@@ -326,4 +397,14 @@ export function CheckoutPage({
       )}
     </div>
   )
+}
+
+function savedAddressFormValues(
+  address: CheckoutSavedAddress,
+): CheckoutFormValues {
+  return {
+    receiver_name: address.receiver_name,
+    receiver_phone: address.receiver_phone,
+    shipping_address: address.shipping_address,
+  }
 }
