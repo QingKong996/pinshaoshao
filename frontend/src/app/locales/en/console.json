@@ -125,8 +125,6 @@
     "table": {
       "order": "Order",
       "subOrder": "Sub-order #{{id}}",
-      "recipient": "Recipient",
-      "shippingAddress": "Shipping address",
       "status": "Status",
       "items": "Items",
       "total": "Total",
@@ -312,7 +310,8 @@
     },
     "errors": {
       "nameRequired": "Enter a product name.",
-      "nameLength": "The product name must be at most {{max}} characters."
+      "nameLength": "The product name must be at most {{max}} characters.",
+      "descriptionLength": "The product description must be at most {{max}} characters."
     }
   },
   "productDetail": {

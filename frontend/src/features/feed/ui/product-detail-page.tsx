@@ -44,8 +44,6 @@ import type { ProductDetail, ProductSKU } from "../types"
 import { formatProductSpecs } from "./format-specs"
 import { ProductSKUPicker } from "./product-sku-picker"
 
-const MAX_ORDER_QUANTITY = 99
-
 export function ProductDetailPage({
   token,
   productID,
@@ -333,7 +331,6 @@ function ProductDetailContent({
                 <Input
                   type="number"
                   min={1}
-                  max={MAX_ORDER_QUANTITY}
                   value={quantity}
                   aria-label={t("detail.quantity")}
                   disabled={!purchasable || isAdding}
@@ -341,7 +338,7 @@ function ProductDetailContent({
                   onChange={(event) => {
                     const next = Number(event.target.value)
                     if (Number.isInteger(next) && next >= 1) {
-                      onQuantityChange(Math.min(next, MAX_ORDER_QUANTITY))
+                      onQuantityChange(next)
                     }
                   }}
                 />
@@ -350,9 +347,7 @@ function ProductDetailContent({
                   size="icon-sm"
                   aria-label={t("detail.increase")}
                   disabled={
-                    !purchasable ||
-                    isAdding ||
-                    quantity >= MAX_ORDER_QUANTITY
+                    !purchasable || isAdding
                   }
                   onClick={() => onQuantityChange(quantity + 1)}
                 >

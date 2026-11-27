@@ -36,11 +36,15 @@ function readStoredSession(): UserSession | null {
 }
 
 function writeStoredSession(session: UserSession | null) {
-  if (session) {
-    localStorage.setItem(USER_SESSION_STORAGE_KEY, JSON.stringify(session))
-    return
+  try {
+    if (session) {
+      localStorage.setItem(USER_SESSION_STORAGE_KEY, JSON.stringify(session))
+      return
+    }
+    localStorage.removeItem(USER_SESSION_STORAGE_KEY)
+  } catch {
+    // Keep the in-memory session when persistent storage is unavailable.
   }
-  localStorage.removeItem(USER_SESSION_STORAGE_KEY)
 }
 
 export function UserAuthProvider({

@@ -104,6 +104,21 @@ func (mr *MockOrderRepositoryMockRecorder) GetMerchant(ctx, shopID, subOrderID a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMerchant", reflect.TypeOf((*MockOrderRepository)(nil).GetMerchant), ctx, shopID, subOrderID)
 }
 
+// GetMerchantReceiver mocks base method.
+func (m *MockOrderRepository) GetMerchantReceiver(ctx context.Context, shopID, subOrderID int) (*model.MerchantOrderReceiver, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMerchantReceiver", ctx, shopID, subOrderID)
+	ret0, _ := ret[0].(*model.MerchantOrderReceiver)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMerchantReceiver indicates an expected call of GetMerchantReceiver.
+func (mr *MockOrderRepositoryMockRecorder) GetMerchantReceiver(ctx, shopID, subOrderID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMerchantReceiver", reflect.TypeOf((*MockOrderRepository)(nil).GetMerchantReceiver), ctx, shopID, subOrderID)
+}
+
 // List mocks base method.
 func (m *MockOrderRepository) List(ctx context.Context, userID int, filter model.OrderListFilter) (*model.OrderListResult, error) {
 	m.ctrl.T.Helper()

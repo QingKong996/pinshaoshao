@@ -93,9 +93,6 @@ type MerchantOrderSummaryResponse struct {
 	Status           string     `json:"status" example:"awaiting_shipment"`
 	TotalAmountCents int64      `json:"total_amount_cents" example:"3998"`
 	ItemCount        int        `json:"item_count" example:"2"`
-	ReceiverName     string     `json:"receiver_name" example:"张三"`
-	ReceiverPhone    string     `json:"receiver_phone" example:"13800138000"`
-	ShippingAddress  string     `json:"shipping_address" example:"上海市浦东新区世纪大道 100 号"`
 	PaidAt           *time.Time `json:"paid_at"`
 	CreatedAt        time.Time  `json:"created_at" example:"2026-11-20T12:00:00Z"`
 }
@@ -114,11 +111,14 @@ type MerchantOrderDetailResponse struct {
 	Status           string              `json:"status" example:"awaiting_shipment"`
 	TotalAmountCents int64               `json:"total_amount_cents" example:"3998"`
 	ItemCount        int                 `json:"item_count" example:"2"`
-	ReceiverName     string              `json:"receiver_name" example:"张三"`
-	ReceiverPhone    string              `json:"receiver_phone" example:"13800138000"`
-	ShippingAddress  string              `json:"shipping_address" example:"上海市浦东新区世纪大道 100 号"`
 	PaidAt           *time.Time          `json:"paid_at"`
 	CreatedAt        time.Time           `json:"created_at" example:"2026-11-20T12:00:00Z"`
 	UpdatedAt        time.Time           `json:"updated_at" example:"2026-11-20T12:05:00Z"`
 	Items            []OrderItemResponse `json:"items"`
+}
+
+type MerchantOrderReceiverResponse struct {
+	ReceiverName    string `json:"receiver_name" example:"张三"`
+	ReceiverPhone   string `json:"receiver_phone" example:"13800138000"`
+	ShippingAddress string `json:"shipping_address" example:"上海市浦东新区世纪大道 100 号"`
 }

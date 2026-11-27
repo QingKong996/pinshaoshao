@@ -3,11 +3,13 @@ import { z } from "zod"
 import type { Product, ProductInput } from "../types"
 
 const PRODUCT_NAME_MAX = 100
+const PRODUCT_DESCRIPTION_MAX = 5000
 export const UNCATEGORIZED = "none"
 
 const VALIDATION_MESSAGES = {
   nameRequired: "productForm.errors.nameRequired",
   nameLength: "productForm.errors.nameLength",
+  descriptionLength: "productForm.errors.descriptionLength",
 } as const
 
 export const productFormSchema = z.object({
@@ -16,7 +18,9 @@ export const productFormSchema = z.object({
     .trim()
     .min(1, VALIDATION_MESSAGES.nameRequired)
     .max(PRODUCT_NAME_MAX, VALIDATION_MESSAGES.nameLength),
-  description: z.string(),
+  description: z
+    .string()
+    .max(PRODUCT_DESCRIPTION_MAX, VALIDATION_MESSAGES.descriptionLength),
   categoryId: z.string(),
   status: z.enum(["on_shelf", "off_shelf"]),
 })
@@ -57,7 +61,15 @@ export function translateValidationMessage(
   if (!message) {
     return undefined
   }
-  return message === VALIDATION_MESSAGES.nameLength
-    ? translate(message as ParseKeys<"console">, { max: PRODUCT_NAME_MAX })
-    : translate(message as ParseKeys<"console">)
+  if (message === VALIDATION_MESSAGES.nameLength) {
+    return translate(message as ParseKeys<"console">, {
+      max: PRODUCT_NAME_MAX,
+    })
+  }
+  if (message === VALIDATION_MESSAGES.descriptionLength) {
+    return translate(message as ParseKeys<"console">, {
+      max: PRODUCT_DESCRIPTION_MAX,
+    })
+  }
+  return translate(message as ParseKeys<"console">)
 }

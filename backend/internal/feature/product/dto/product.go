@@ -4,14 +4,14 @@ import "time"
 
 type CreateProductRequest struct {
 	Name        string `json:"name" binding:"required,min=1,max=100" example:"纯棉T恤"`
-	Description string `json:"description" example:"柔软透气的纯棉T恤"`
+	Description string `json:"description" binding:"max=5000" example:"柔软透气的纯棉T恤"`
 	CategoryID  *int   `json:"category_id" example:"2"`
 	Status      string `json:"status" binding:"omitempty,oneof=on_shelf off_shelf" example:"off_shelf"`
 }
 
 type UpdateProductRequest struct {
 	Name        string `json:"name" binding:"required,min=1,max=100" example:"纯棉T恤"`
-	Description string `json:"description" example:"柔软透气的纯棉T恤"`
+	Description string `json:"description" binding:"max=5000" example:"柔软透气的纯棉T恤"`
 	CategoryID  *int   `json:"category_id" example:"2"`
 	Status      string `json:"status" binding:"required,oneof=on_shelf off_shelf" example:"on_shelf"`
 }

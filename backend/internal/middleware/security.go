@@ -11,6 +11,13 @@ const contentSecurityPolicy = "default-src 'none'; base-uri 'none'; " +
 
 const strictTransportSecurity = "max-age=31536000"
 
+var noStorePathPrefixes = []string{
+	"/api/",
+	"/mockpay/api/",
+	"/mockpay/checkout/",
+	"/mocklogistics/api/",
+}
+
 // SecurityHeaders applies browser security defaults to every response.
 func SecurityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -26,10 +33,19 @@ func SecurityHeaders() gin.HandlerFunc {
 
 func NoStoreAPI() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+		if hasPathPrefix(c.Request.URL.Path, noStorePathPrefixes) {
 			c.Header("Cache-Control", "no-store")
 			c.Header("Pragma", "no-cache")
 		}
 		c.Next()
 	}
+}
+
+func hasPathPrefix(path string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(path, prefix) {
+			return true
+		}
+	}
+	return false
 }

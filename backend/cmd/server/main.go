@@ -131,6 +131,7 @@ func main() {
 	}()
 	r.Use(middleware.CORS(corsOrigins, ratelimit.PreflightMiddleware(rateLimiter)))
 	r.Use(ratelimit.APIEntryMiddleware(rateLimiter, router.IsPublicAPI))
+	r.Use(middleware.RequestBodyLimit(middleware.DefaultRequestBodyLimit))
 
 	userModule := usermodule.NewModule(pool)
 	shopModule := shopmodule.NewModule(pool)

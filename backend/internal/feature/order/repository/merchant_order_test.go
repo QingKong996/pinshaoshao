@@ -66,11 +66,33 @@ func TestOrderRepositoryListMerchantFiltersByShopAndStatus(t *testing.T) {
 	if got.ID != firstSubOrderID || got.OrderID != first.ID || got.TotalAmountCents != 1999 || got.ItemCount != 1 {
 		t.Fatalf("awaiting order = %+v", got)
 	}
-	if got.ReceiverName != "Alice" || got.ReceiverPhone != "13800138000" || got.ShippingAddress != "Shanghai" {
-		t.Fatalf("receiver = %q/%q/%q", got.ReceiverName, got.ReceiverPhone, got.ShippingAddress)
-	}
 	if got.PaidAt == nil {
 		t.Fatal("paid_at = nil, want a timestamp")
+	}
+
+	receiver, err := repository.GetMerchantReceiver(ctx, firstShop.ID, firstSubOrderID)
+	if err != nil {
+		t.Fatalf("get merchant receiver: %v", err)
+	}
+	if receiver.ReceiverName != "Alice" ||
+		receiver.ReceiverPhone != "13800138000" ||
+		receiver.ShippingAddress != "Shanghai" {
+		t.Fatalf("receiver = %+v", receiver)
+	}
+
+	if _, err := repository.GetMerchantReceiver(
+		ctx,
+		secondShop.ID,
+		firstSubOrderID,
+	); !errors.Is(err, apperr.ErrOrderNotFound) {
+		t.Fatalf("other shop receiver error = %v, want %v", err, apperr.ErrOrderNotFound)
+	}
+	if _, err := repository.GetMerchantReceiver(
+		ctx,
+		firstShop.ID,
+		second.SubOrders[0].ID,
+	); !errors.Is(err, apperr.ErrReceiverUnavailable) {
+		t.Fatalf("pending receiver error = %v, want %v", err, apperr.ErrReceiverUnavailable)
 	}
 
 	firstPage, err := repository.ListMerchant(ctx, firstShop.ID, model.MerchantOrderListFilter{Page: 1, PageSize: 1})

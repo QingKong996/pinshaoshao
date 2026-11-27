@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"pinshaoshao/internal/feature/order/paymentport"
 	"pinshaoshao/internal/feature/payment/apperr"
 	"pinshaoshao/internal/feature/payment/model"
 	"pinshaoshao/internal/feature/payment/service"
@@ -90,6 +91,14 @@ type orderCancellerStub struct {
 
 func (s orderCancellerStub) CancelForPayment(ctx context.Context, userID int, orderID int) error {
 	return s.cancel(ctx, userID, orderID)
+}
+
+type orderExpirerStub struct {
+	expire func(context.Context, int) error
+}
+
+func (s orderExpirerStub) Expire(ctx context.Context, orderID int) error {
+	return s.expire(ctx, orderID)
 }
 
 func TestPaymentServiceCreateUsesSinglePaymentPerOrder(t *testing.T) {
@@ -570,6 +579,41 @@ func TestPaymentServiceHandlePaidCallbackAppliesRepositoryOnce(t *testing.T) {
 	}
 	if got != paid || applyCalls != 1 {
 		t.Fatalf("payment/calls = %+v/%d, want %+v/1", got, applyCalls, paid)
+	}
+}
+
+func TestPaymentServiceHandlePaidCallbackExpiresOrderAndRetries(t *testing.T) {
+	paid := &model.Payment{PaymentNo: testPaymentNo, Status: model.PaymentStatusSucceeded}
+	applyCalls := 0
+	repository := &repositoryStub{
+		applyPaidCallback: func(context.Context, model.PaidCallback) (*model.Payment, error) {
+			applyCalls++
+			if applyCalls == 1 {
+				return nil, &paymentport.OrderExpiredError{OrderID: 7}
+			}
+			return paid, nil
+		},
+	}
+	expiredOrderID := 0
+	paymentService := service.NewPaymentService(repository, service.Config{
+		OrderExpirer: orderExpirerStub{expire: func(_ context.Context, orderID int) error {
+			expiredOrderID = orderID
+			return nil
+		}},
+	})
+
+	got, err := paymentService.HandlePaidCallback(context.Background(), validPaidCallback())
+	if err != nil {
+		t.Fatalf("handle expired callback: %v", err)
+	}
+	if got != paid || applyCalls != 2 || expiredOrderID != 7 {
+		t.Fatalf(
+			"payment/calls/order = %+v/%d/%d, want %+v/2/7",
+			got,
+			applyCalls,
+			expiredOrderID,
+			paid,
+		)
 	}
 }
 

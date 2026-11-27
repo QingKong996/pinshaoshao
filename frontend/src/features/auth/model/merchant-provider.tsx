@@ -36,14 +36,18 @@ function readStoredSession(): MerchantSession | null {
 }
 
 function writeStoredSession(session: MerchantSession | null) {
-  if (session) {
-    localStorage.setItem(
-      MERCHANT_SESSION_STORAGE_KEY,
-      JSON.stringify(session),
-    )
-    return
+  try {
+    if (session) {
+      localStorage.setItem(
+        MERCHANT_SESSION_STORAGE_KEY,
+        JSON.stringify(session),
+      )
+      return
+    }
+    localStorage.removeItem(MERCHANT_SESSION_STORAGE_KEY)
+  } catch {
+    // Keep the in-memory session when persistent storage is unavailable.
   }
-  localStorage.removeItem(MERCHANT_SESSION_STORAGE_KEY)
 }
 
 export function MerchantAuthProvider({

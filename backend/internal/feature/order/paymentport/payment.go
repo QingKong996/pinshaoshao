@@ -2,6 +2,7 @@ package paymentport
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"pinshaoshao/internal/database"
@@ -30,6 +31,14 @@ type CloseResult struct {
 	ProviderTransactionID *string
 	Closed                bool
 	AlreadySettled        bool
+}
+
+type OrderExpiredError struct {
+	OrderID int
+}
+
+func (e *OrderExpiredError) Error() string {
+	return fmt.Sprintf("order %d expired before payment settlement", e.OrderID)
 }
 
 // Lifecycle exposes the order state changes needed by the payment feature.

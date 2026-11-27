@@ -37,11 +37,15 @@ export function writeMockSession(
   storageKey: string,
   session: MockSession | null,
 ) {
-  if (session) {
-    sessionStorage.setItem(storageKey, JSON.stringify(session))
+  try {
+    if (session) {
+      sessionStorage.setItem(storageKey, JSON.stringify(session))
+      return
+    }
+    sessionStorage.removeItem(storageKey)
+  } catch {
     return
   }
-  sessionStorage.removeItem(storageKey)
 }
 
 export function createMockApiClient(baseURL: string, storageKey: string) {

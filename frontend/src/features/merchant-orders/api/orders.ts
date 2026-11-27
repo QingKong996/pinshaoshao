@@ -4,6 +4,7 @@ import type {
   MerchantOrderDetail,
   MerchantOrderListQuery,
   MerchantOrderListResult,
+  MerchantOrderReceiver,
 } from "../types"
 
 export async function listMerchantOrders(
@@ -23,6 +24,17 @@ export async function getMerchantOrder(
 ) {
   const { data } = await apiClient.get<MerchantOrderDetail>(
     `/merchant/orders/${subOrderID}`,
+    authorized(token),
+  )
+  return data
+}
+
+export async function getMerchantOrderReceiver(
+  token: string,
+  subOrderID: number,
+) {
+  const { data } = await apiClient.get<MerchantOrderReceiver>(
+    `/merchant/orders/${subOrderID}/receiver`,
     authorized(token),
   )
   return data

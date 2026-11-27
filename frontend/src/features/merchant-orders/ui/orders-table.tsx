@@ -108,15 +108,6 @@ function OrdersTableSkeleton() {
             </div>
           </TableCell>
           <TableCell className="px-4 py-3">
-            <div className="flex flex-col gap-1.5">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-28" />
-            </div>
-          </TableCell>
-          <TableCell className="px-4 py-3">
-            <Skeleton className="h-4 w-48" />
-          </TableCell>
-          <TableCell className="px-4 py-3">
             <Skeleton className="h-5 w-24" />
           </TableCell>
           <TableCell className="px-4 py-3">

@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { HttpResponse, http } from "msw"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { MerchantAuthProvider } from "@/features/auth/model/merchant-provider"
 import { useMerchantAuth } from "@/features/auth/model/merchant-context"
 import { UserAuthProvider } from "@/features/auth/model/user-provider"
@@ -103,6 +103,10 @@ function renderUserHarness() {
 }
 
 describe("UserAuthProvider", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it("persists sessions, restores valid sessions, and ignores corrupt storage", async () => {
     const user = userEvent.setup()
     server.use(
@@ -169,9 +173,55 @@ describe("UserAuthProvider", () => {
     expect(rendered.onBeforeSessionChange).toHaveBeenCalledTimes(2)
     expect(localStorage.length).toBe(0)
   })
+
+  it("keeps a user session in memory when storage writes fail", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("storage disabled", "SecurityError")
+    })
+    const removeItem = vi
+      .spyOn(Storage.prototype, "removeItem")
+      .mockImplementation(() => {
+        throw new DOMException("storage disabled", "SecurityError")
+      })
+    let logoutAuthorization: string | null = null
+
+    server.use(
+      http.post("*/api/v1/login", () =>
+        HttpResponse.json({ token: "in-memory-user-token" }),
+      ),
+      http.post("*/api/v1/logout", ({ request }) => {
+        logoutAuthorization = request.headers.get("Authorization")
+        return HttpResponse.json({})
+      }),
+    )
+
+    const rendered = renderUserHarness()
+    await user.click(screen.getByRole("button", { name: "Sign in" }))
+
+    expect(await screen.findByLabelText("user session")).toHaveTextContent(
+      "shopper",
+    )
+    expect(localStorage.length).toBe(0)
+
+    await user.click(screen.getByRole("button", { name: "Sign out" }))
+
+    expect(screen.getByLabelText("user session")).toHaveTextContent(
+      "anonymous",
+    )
+    expect(removeItem).toHaveBeenCalled()
+    expect(rendered.onBeforeSessionChange).toHaveBeenCalledTimes(2)
+    await waitFor(() => {
+      expect(logoutAuthorization).toBe("Bearer in-memory-user-token")
+    })
+  })
 })
 
 describe("MerchantAuthProvider", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it("restores a merchant session and notifies before session changes", async () => {
     const user = userEvent.setup()
     server.use(
@@ -216,5 +266,51 @@ describe("MerchantAuthProvider", () => {
     )
     expect(restored.onBeforeSessionChange).toHaveBeenCalledOnce()
     expect(localStorage.length).toBe(0)
+  })
+
+  it("keeps a merchant session in memory when storage writes fail", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("storage disabled", "SecurityError")
+    })
+    const removeItem = vi
+      .spyOn(Storage.prototype, "removeItem")
+      .mockImplementation(() => {
+        throw new DOMException("storage disabled", "SecurityError")
+      })
+    let logoutAuthorization: string | null = null
+
+    server.use(
+      http.post("*/api/v1/merchant/login", () =>
+        HttpResponse.json({ token: merchantAuthToken }),
+      ),
+      http.post("*/api/v1/merchant/logout", ({ request }) => {
+        logoutAuthorization = request.headers.get("Authorization")
+        return HttpResponse.json({})
+      }),
+    )
+
+    const rendered = renderMerchantHarness()
+    await user.click(
+      screen.getByRole("button", { name: "Merchant sign in" }),
+    )
+
+    expect(await screen.findByLabelText("merchant session")).toHaveTextContent(
+      "merchant",
+    )
+    expect(localStorage.length).toBe(0)
+
+    await user.click(
+      screen.getByRole("button", { name: "Merchant sign out" }),
+    )
+
+    expect(screen.getByLabelText("merchant session")).toHaveTextContent(
+      "anonymous",
+    )
+    expect(removeItem).toHaveBeenCalled()
+    expect(rendered.onBeforeSessionChange).toHaveBeenCalledTimes(2)
+    await waitFor(() => {
+      expect(logoutAuthorization).toBe(`Bearer ${merchantAuthToken}`)
+    })
   })
 })

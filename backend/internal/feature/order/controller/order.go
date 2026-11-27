@@ -22,6 +22,7 @@ type OrderService interface {
 	List(ctx context.Context, userID int, filter model.OrderListFilter) (*model.OrderListResult, error)
 	ListMerchant(ctx context.Context, shopID int, filter model.MerchantOrderListFilter) (*model.MerchantOrderListResult, error)
 	GetMerchant(ctx context.Context, shopID int, subOrderID int) (*model.MerchantOrderDetail, error)
+	GetMerchantReceiver(ctx context.Context, shopID int, subOrderID int) (*model.MerchantOrderReceiver, error)
 	Get(ctx context.Context, userID int, orderID int) (*model.Order, error)
 	Cancel(ctx context.Context, userID int, orderID int) (*model.Order, error)
 }
@@ -263,6 +264,8 @@ func (c *OrderController) writeError(ctx *gin.Context, operation string, err err
 		ctx.JSON(http.StatusNotFound, httpx.ErrorResponse{Error: apperr.ErrOrderNotFound.Error()})
 	case errors.Is(err, apperr.ErrOrderCannotCancel):
 		ctx.JSON(http.StatusConflict, httpx.ErrorResponse{Error: apperr.ErrOrderCannotCancel.Error()})
+	case errors.Is(err, apperr.ErrReceiverUnavailable):
+		ctx.JSON(http.StatusConflict, httpx.ErrorResponse{Error: apperr.ErrReceiverUnavailable.Error()})
 	case errors.Is(err, apperr.ErrOrderAmountInvalid):
 		ctx.JSON(http.StatusBadRequest, httpx.ErrorResponse{Error: apperr.ErrOrderAmountInvalid.Error()})
 	default:

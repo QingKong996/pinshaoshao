@@ -40,6 +40,7 @@ type OrderRepository interface {
 	List(ctx context.Context, userID int, filter model.OrderListFilter) (*model.OrderListResult, error)
 	ListMerchant(ctx context.Context, shopID int, filter model.MerchantOrderListFilter) (*model.MerchantOrderListResult, error)
 	GetMerchant(ctx context.Context, shopID int, subOrderID int) (*model.MerchantOrderDetail, error)
+	GetMerchantReceiver(ctx context.Context, shopID int, subOrderID int) (*model.MerchantOrderReceiver, error)
 	Get(ctx context.Context, userID int, orderID int) (*model.Order, error)
 	LockForCancel(ctx context.Context, db database.DBTX, userID int, orderID int) (*model.CancelTarget, error)
 	LockDueForCancel(ctx context.Context, db database.DBTX, orderID int) (*model.CancelTarget, error)

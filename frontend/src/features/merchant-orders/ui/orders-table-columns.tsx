@@ -28,7 +28,7 @@ export function useMerchantOrderColumns(
 
   return useMemo(
     () => {
-      const columns = [
+      return merchantOrderColumnHelper.columns([
         merchantOrderColumnHelper.accessor("order_id", {
           header: t("orders.table.order"),
           cell: ({ row }) => (
@@ -43,32 +43,6 @@ export function useMerchantOrderColumns(
                 {t("orders.table.subOrder", { id: row.original.id })}
               </span>
             </div>
-          ),
-        }),
-        merchantOrderColumnHelper.display({
-          id: "recipient",
-          header: t("orders.table.recipient"),
-          cell: ({ row }) => (
-            <div className="flex flex-col gap-0.5">
-              <span className="font-medium">
-                {row.original.receiver_name}
-              </span>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {row.original.receiver_phone}
-              </span>
-            </div>
-          ),
-        }),
-        merchantOrderColumnHelper.accessor("shipping_address", {
-          header: t("orders.table.shippingAddress"),
-          meta: { cellClassName: "whitespace-normal" },
-          cell: ({ getValue }) => (
-            <span
-              className="block max-w-64 truncate"
-              title={getValue()}
-            >
-              {getValue()}
-            </span>
           ),
         }),
         merchantOrderColumnHelper.accessor("status", {
@@ -93,17 +67,16 @@ export function useMerchantOrderColumns(
           },
           cell: ({ getValue }) => formatDateTimeSeconds(getValue()),
         }),
-      ]
-      if (renderRowActions) {
-        columns.push(
-          merchantOrderColumnHelper.display({
-            id: "actions",
-            header: t("orders.table.actions"),
-            cell: ({ row }) => renderRowActions(row.original),
-          }),
-        )
-      }
-      return merchantOrderColumnHelper.columns(columns)
+        ...(renderRowActions
+          ? [
+              merchantOrderColumnHelper.display({
+                id: "actions",
+                header: t("orders.table.actions"),
+                cell: ({ row }) => renderRowActions(row.original),
+              }),
+            ]
+          : []),
+      ])
     },
     [renderRowActions, t],
   )

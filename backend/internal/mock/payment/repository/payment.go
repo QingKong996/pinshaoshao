@@ -73,9 +73,20 @@ RETURNING ` + paymentColumns
 		return nil, false, err
 	}
 	if existing.RequestHash != payment.RequestHash {
-		return nil, false, model.ErrPaymentConflict
+		if !samePaymentRequest(existing, payment) {
+			return nil, false, model.ErrPaymentConflict
+		}
 	}
 	return existing, false, nil
+}
+
+func samePaymentRequest(existing *model.Payment, incoming *model.Payment) bool {
+	return existing.MerchantOrderNo == incoming.MerchantOrderNo &&
+		existing.AmountCents == incoming.AmountCents &&
+		existing.Currency == incoming.Currency &&
+		existing.Subject == incoming.Subject &&
+		existing.NotifyURL == incoming.NotifyURL &&
+		existing.ReturnURL == incoming.ReturnURL
 }
 
 func (r *PaymentRepository) Get(ctx context.Context, paymentNo string) (*model.Payment, error) {
