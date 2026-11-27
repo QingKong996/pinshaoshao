@@ -3,6 +3,7 @@ import {
   MerchantConsoleLayout,
   type MerchantConsoleRouteHandle,
 } from "./layouts/merchant-console-layout"
+import { BuyerSessionLayout } from "./layouts/buyer-session-layout"
 import { RootLayout } from "./layouts/root-layout"
 import {
   MERCHANT_CONSOLE_BASE_PATH,
@@ -58,12 +59,17 @@ export const router = createBrowserRouter([
       { path: "/", element: <HomePage /> },
       { path: "/signin", element: <SignInPage /> },
       { path: "/signup", element: <SignUpPage /> },
-      { path: "/cart", element: <CartRoute /> },
-      { path: "/checkout", element: <CheckoutRoute /> },
-      { path: "/products/:productID", element: <ProductDetailRoute /> },
-      { path: "/orders", element: <OrdersRoute /> },
-      { path: "/orders/:orderID", element: <OrderDetailRoute /> },
-      { path: "/shipments/:shipmentNo", element: <ShipmentDetailRoute /> },
+      {
+        element: <BuyerSessionLayout />,
+        children: [
+          { path: "/cart", element: <CartRoute /> },
+          { path: "/checkout", element: <CheckoutRoute /> },
+          { path: "/products/:productID", element: <ProductDetailRoute /> },
+          { path: "/orders", element: <OrdersRoute /> },
+          { path: "/orders/:orderID", element: <OrderDetailRoute /> },
+          { path: "/shipments/:shipmentNo", element: <ShipmentDetailRoute /> },
+        ],
+      },
       {
         path: MOCK_PAYMENT_ROUTE_PATHS.signIn,
         element: <MockPaymentSignInPage />,

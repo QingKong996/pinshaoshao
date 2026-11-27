@@ -179,7 +179,6 @@ func newOrderPaymentResponse(payment *model.Payment, checkoutURL string) dto.Ord
 			ProviderRefundNo: payment.Refund.ProviderRefundNo,
 			RefundedAt:       payment.Refund.RefundedAt,
 			FailedAt:         payment.Refund.FailedAt,
-			LastError:        payment.Refund.LastError,
 			CreatedAt:        payment.Refund.CreatedAt,
 			UpdatedAt:        payment.Refund.UpdatedAt,
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -130,16 +131,19 @@ func TestProviderRefundHandlerMarksPermanentFailure(t *testing.T) {
 		},
 	}
 	handler := &providerRefundHandler{
-		store:   store,
-		gateway: &refundGatewayStub{err: apperr.ErrPaymentProviderInvalid},
+		store: store,
+		gateway: &refundGatewayStub{err: fmt.Errorf(
+			"%w: provider response contained internal data",
+			apperr.ErrPaymentProviderInvalid,
+		)},
 	}
 
 	err := handler.Handle(context.Background(), refundEvent(t, "refund-1"))
 	if !outbox.IsPermanent(err) {
 		t.Fatalf("error = %v, want permanent", err)
 	}
-	if store.failedCause == "" {
-		t.Fatal("permanent failure was not recorded")
+	if store.failedCause != "payment provider rejected the refund" {
+		t.Fatalf("failed cause = %q, want a sanitized summary", store.failedCause)
 	}
 }
 

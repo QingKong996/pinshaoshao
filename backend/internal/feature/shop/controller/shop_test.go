@@ -160,7 +160,7 @@ func TestShopRegister(t *testing.T) {
 		shopController.Register(ctx)
 
 		requireStatus(t, rec, http.StatusConflict)
-		requireError(t, rec, apperr.ErrShopUsernameTaken)
+		requireError(t, rec, apperr.ErrShopRegistrationConflict)
 	})
 
 	t.Run("rejects a taken email", func(t *testing.T) {
@@ -174,7 +174,7 @@ func TestShopRegister(t *testing.T) {
 		shopController.Register(ctx)
 
 		requireStatus(t, rec, http.StatusConflict)
-		requireError(t, rec, apperr.ErrShopEmailTaken)
+		requireError(t, rec, apperr.ErrShopRegistrationConflict)
 	})
 
 	t.Run("rejects malformed json", func(t *testing.T) {

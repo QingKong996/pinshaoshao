@@ -82,15 +82,10 @@ func (c *UserController) Register(ctx *gin.Context) {
 		Email:    req.Email,
 	})
 	if err != nil {
-		if errors.Is(err, apperr.ErrUsernameTaken) {
+		if errors.Is(err, apperr.ErrUsernameTaken) ||
+			errors.Is(err, apperr.ErrEmailTaken) {
 			ctx.JSON(http.StatusConflict, dto.ErrorResponse{
-				Error: apperr.ErrUsernameTaken.Error(),
-			})
-			return
-		}
-		if errors.Is(err, apperr.ErrEmailTaken) {
-			ctx.JSON(http.StatusConflict, dto.ErrorResponse{
-				Error: apperr.ErrEmailTaken.Error(),
+				Error: apperr.ErrRegistrationConflict.Error(),
 			})
 			return
 		}

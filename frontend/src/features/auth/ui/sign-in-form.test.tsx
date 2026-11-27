@@ -18,7 +18,7 @@ function SessionProbe() {
 function renderSignInForm() {
   return render(
     <MemoryRouter initialEntries={["/signin"]}>
-      <UserAuthProvider>
+      <UserAuthProvider onBeforeSessionChange={() => undefined}>
         <SessionProbe />
         <Routes>
           <Route path="/signin" element={<SignInForm />} />

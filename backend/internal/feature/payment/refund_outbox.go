@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -79,7 +80,8 @@ func (h *providerRefundHandler) Handle(ctx context.Context, event outbox.Event) 
 	)
 	if err != nil {
 		if isPermanentRefundError(err) {
-			return h.failPermanently(ctx, refundNo, err.Error())
+			slog.ErrorContext(ctx, "refund rejected by payment provider", "refund_no", refundNo, "error", err)
+			return h.failPermanently(ctx, refundNo, "payment provider rejected the refund")
 		}
 		return err
 	}

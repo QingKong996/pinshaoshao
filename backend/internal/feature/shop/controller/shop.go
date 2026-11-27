@@ -65,7 +65,7 @@ func (c *ShopController) Login(ctx *gin.Context) {
 // @Param       request body dto.ShopRegisterRequest true "Registration details"
 // @Success     201 {object} httpx.TokenResponse
 // @Failure     400 {object} httpx.ErrorResponse
-// @Failure     409 {object} httpx.ErrorResponse "Shop username or email already exists"
+// @Failure     409 {object} httpx.ErrorResponse "Username or email already exists"
 // @Failure     500 {object} httpx.ErrorResponse
 // @Router      /merchant/register [post]
 func (c *ShopController) Register(ctx *gin.Context) {
@@ -88,13 +88,10 @@ func (c *ShopController) Register(ctx *gin.Context) {
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, apperr.ErrShopUsernameTaken):
+		case errors.Is(err, apperr.ErrShopUsernameTaken),
+			errors.Is(err, apperr.ErrShopEmailTaken):
 			ctx.JSON(http.StatusConflict, dto.ErrorResponse{
-				Error: apperr.ErrShopUsernameTaken.Error(),
-			})
-		case errors.Is(err, apperr.ErrShopEmailTaken):
-			ctx.JSON(http.StatusConflict, dto.ErrorResponse{
-				Error: apperr.ErrShopEmailTaken.Error(),
+				Error: apperr.ErrShopRegistrationConflict.Error(),
 			})
 		default:
 			ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{

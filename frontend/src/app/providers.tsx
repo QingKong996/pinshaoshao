@@ -15,7 +15,7 @@ function clearSessionCache() {
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <UserAuthProvider>
+      <UserAuthProvider onBeforeSessionChange={clearSessionCache}>
         <MerchantAuthProvider onBeforeSessionChange={clearSessionCache}>
           <MockPaymentAuthProvider onSessionChange={clearSessionCache}>
             <MockLogisticsAuthProvider onSessionChange={clearSessionCache}>

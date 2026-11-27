@@ -28,7 +28,6 @@ type PaymentRefundResponse struct {
 	ProviderRefundNo *string    `json:"provider_refund_no"`
 	RefundedAt       *time.Time `json:"refunded_at"`
 	FailedAt         *time.Time `json:"failed_at"`
-	LastError        *string    `json:"last_error"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 }

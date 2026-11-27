@@ -72,6 +72,7 @@ func main() {
 	r.Use(accessLogger.Middleware())
 	r.Use(gin.Recovery())
 	r.Use(middleware.SecurityHeaders())
+	r.Use(middleware.NoStoreAPI())
 	if err := configureTrustedProxies(r); err != nil {
 		fatal("configure trusted proxies", "error", err)
 	}

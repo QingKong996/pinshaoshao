@@ -149,7 +149,7 @@ func TestUserRegister(t *testing.T) {
 		userController.Register(ctx)
 
 		requireStatus(t, rec, http.StatusConflict)
-		requireError(t, rec, apperr.ErrUsernameTaken)
+		requireError(t, rec, apperr.ErrRegistrationConflict)
 	})
 
 	t.Run("rejects a taken email", func(t *testing.T) {
@@ -163,7 +163,7 @@ func TestUserRegister(t *testing.T) {
 		userController.Register(ctx)
 
 		requireStatus(t, rec, http.StatusConflict)
-		requireError(t, rec, apperr.ErrEmailTaken)
+		requireError(t, rec, apperr.ErrRegistrationConflict)
 	})
 
 	t.Run("rejects malformed json", func(t *testing.T) {
