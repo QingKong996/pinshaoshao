@@ -1,0 +1,58 @@
+{
+  "documentTitle": "Addresses · {{brand}}",
+  "title": "Saved addresses",
+  "description": "Save delivery details for quick checkout later.",
+  "signedOut": {
+    "title": "Sign in to manage addresses",
+    "description": "Your address book is linked to your buyer account. Sign in to save and manage delivery addresses.",
+    "action": "Sign in"
+  },
+  "new": "Add address",
+  "defaultBadge": "Default",
+  "empty": {
+    "title": "No saved addresses",
+    "description": "Add a delivery address and select it during checkout."
+  },
+  "actions": {
+    "setDefault": "Set default",
+    "edit": "Edit the address for {{name}}",
+    "delete": "Delete the address for {{name}}"
+  },
+  "form": {
+    "createTitle": "Add delivery address",
+    "editTitle": "Edit delivery address",
+    "description": "Saved addresses only fill checkout fields. Each order keeps its own delivery snapshot.",
+    "receiverName": "Recipient",
+    "receiverPhone": "Phone",
+    "shippingAddress": "Full address",
+    "default": "Make this the default address",
+    "defaultHint": "This address is filled in first during checkout.",
+    "cancel": "Cancel",
+    "create": "Save address",
+    "save": "Save changes"
+  },
+  "deleteDialog": {
+    "title": "Delete this address?",
+    "description": "The address for {{name}} will be removed permanently. Delivery snapshots in existing orders will not change.",
+    "cancel": "Keep address",
+    "confirm": "Delete address"
+  },
+  "errors": {
+    "unknown": "Something went wrong. Please try again.",
+    "network": "Unable to reach the server. Check your connection and retry.",
+    "unauthorized": "Your session has expired. Please sign in again.",
+    "invalid": "Check that the address details are valid.",
+    "notFound": "The address does not exist or belongs to another account.",
+    "server": "The server cannot process the request right now. Try again later.",
+    "loadTitle": "Could not load addresses",
+    "saveTitle": "Could not save the address",
+    "defaultTitle": "Could not set the default address",
+    "retry": "Try again",
+    "receiverNameRequired": "Enter the recipient name",
+    "receiverNameLength": "Recipient name must be 50 characters or fewer",
+    "receiverPhoneRequired": "Enter a phone number",
+    "receiverPhoneLength": "Phone number must be 32 characters or fewer",
+    "shippingAddressRequired": "Enter the full address",
+    "shippingAddressLength": "The full address must be 1000 characters or fewer"
+  }
+}

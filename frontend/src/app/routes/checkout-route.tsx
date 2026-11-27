@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { Link, useSearchParams } from "react-router"
 import { useAuth } from "@/features/auth"
+import { useAddresses } from "@/features/address"
 import {
   cartQueryKeys,
   describeCartError,
@@ -45,6 +46,7 @@ export function CheckoutRoute() {
     directQuantity !== null
 
   const cartQuery = useCart(session?.token ?? "", !isDirect)
+  const addressesQuery = useAddresses(session?.token ?? "")
   const productQuery = useProductDetail(
     session?.token ?? "",
     directProductID ?? 0,
@@ -139,6 +141,8 @@ export function CheckoutRoute() {
             }
           />
         )
+      } else if (addressesQuery.isPending) {
+        content = <Skeleton className="h-96 rounded-xl" />
       } else {
         const items: CheckoutLine[] = [
           {
@@ -154,6 +158,7 @@ export function CheckoutRoute() {
           <CheckoutPage
             token={session.token}
             items={items}
+            savedAddresses={addressesQuery.data}
             mode={{ type: "direct", skuID: directSKUID }}
             backHref={`/products/${directProductID}`}
             onOrderCreated={() => {
@@ -176,11 +181,14 @@ export function CheckoutRoute() {
     )
   } else if (cartQuery.isPending) {
     content = <Skeleton className="h-96 rounded-xl" />
+  } else if (addressesQuery.isPending) {
+    content = <Skeleton className="h-96 rounded-xl" />
   } else {
     content = (
       <CheckoutPage
         token={session.token}
         items={cartItems}
+        savedAddresses={addressesQuery.data}
         onOrderCreated={() => {
           void queryClient.invalidateQueries({
             queryKey: cartQueryKeys.cart(session.token),

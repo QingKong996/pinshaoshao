@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	addressmodule "pinshaoshao/internal/feature/address"
 	cartmodule "pinshaoshao/internal/feature/cart"
 	feedmodule "pinshaoshao/internal/feature/feed"
 	inventorymodule "pinshaoshao/internal/feature/inventory"
@@ -138,6 +139,7 @@ func main() {
 	inventoryModule := inventorymodule.NewModule(pool)
 	productModule := productmodule.NewModule(pool, inventoryModule.Lifecycle())
 	cartModule := cartmodule.NewModule(pool)
+	addressModule := addressmodule.NewModule(pool)
 	feedModule := feedmodule.NewModule(pool)
 	outboxWriter := outbox.NewWriter()
 	orderModule := ordermodule.NewModule(pool, inventoryModule.Reservation(), outboxWriter)
@@ -201,6 +203,7 @@ func main() {
 		Product:       productModule,
 		Inventory:     inventoryModule,
 		Cart:          cartModule,
+		Address:       addressModule,
 		Feed:          feedModule,
 		Order:         orderModule,
 		Payment:       paymentModule,

@@ -15,6 +15,7 @@ import MerchantHomePage from "./pages/merchant-home/merchant-home-page"
 import NotFoundPage from "./pages/not-found"
 import { CartRoute } from "./routes/cart-route"
 import { CheckoutRoute } from "./routes/checkout-route"
+import { AddressesRoute } from "./routes/addresses-route"
 import { MerchantCategoriesRoute } from "./routes/merchant-categories-route"
 import { MerchantDashboardRoute } from "./routes/merchant-dashboard-route"
 import { MerchantInventoryRoute } from "./routes/merchant-inventory-route"
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
         element: <BuyerSessionLayout />,
         children: [
           { path: "/cart", element: <CartRoute /> },
+          { path: "/addresses", element: <AddressesRoute /> },
           { path: "/checkout", element: <CheckoutRoute /> },
           { path: "/products/:productID", element: <ProductDetailRoute /> },
           { path: "/orders", element: <OrdersRoute /> },

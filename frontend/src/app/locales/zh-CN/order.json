@@ -19,6 +19,9 @@
     },
     "form": {
       "title": "收货信息",
+      "savedAddress": {
+        "label": "使用已保存地址"
+      },
       "receiverName": "收货人",
       "receiverPhone": "联系电话",
       "shippingAddress": "收货地址",

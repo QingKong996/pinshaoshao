@@ -1,10 +1,12 @@
-import { LogOut, User as UserIcon } from "lucide-react"
+import { LogOut, MapPin, User as UserIcon } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router"
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 import type { UserSession } from "../types"
@@ -50,6 +52,11 @@ export function UserMenu({
         sideOffset={8}
         className="w-44"
       >
+        <DropdownMenuItem render={<Link to="/addresses" />}>
+          <MapPin aria-hidden />
+          {t("common:nav.addresses")}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => void signOut()}>
           <LogOut aria-hidden />
           {t("common:auth.signOut")}
