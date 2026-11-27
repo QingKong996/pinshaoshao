@@ -16,7 +16,7 @@ export function useOrderShipments(
   enabled = true,
 ) {
   return useQuery({
-    queryKey: shipmentQueryKeys.orderShipments(orderID),
+    queryKey: shipmentQueryKeys.orderShipments(token, orderID),
     queryFn: () => listOrderShipments(token, orderID),
     enabled: enabled && Number.isInteger(orderID) && orderID > 0,
     refetchInterval: TRACKING_REFRESH_INTERVAL,
@@ -29,7 +29,7 @@ export function useBuyerShipment(
   enabled = true,
 ) {
   return useQuery({
-    queryKey: shipmentQueryKeys.buyerShipment(shipmentNo),
+    queryKey: shipmentQueryKeys.buyerShipment(token, shipmentNo),
     queryFn: () => getBuyerShipment(token, shipmentNo),
     enabled: enabled && shipmentNo !== "",
     refetchInterval: TRACKING_REFRESH_INTERVAL,

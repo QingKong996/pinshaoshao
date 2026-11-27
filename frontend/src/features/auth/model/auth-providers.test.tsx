@@ -92,6 +92,16 @@ function renderMerchantHarness() {
   return { ...result, onBeforeSessionChange }
 }
 
+function renderUserHarness() {
+  const onBeforeSessionChange = vi.fn()
+  const result = render(
+    <UserAuthProvider onBeforeSessionChange={onBeforeSessionChange}>
+      <UserHarness />
+    </UserAuthProvider>,
+  )
+  return { ...result, onBeforeSessionChange }
+}
+
 describe("UserAuthProvider", () => {
   it("persists sessions, restores valid sessions, and ignores corrupt storage", async () => {
     const user = userEvent.setup()
@@ -105,33 +115,22 @@ describe("UserAuthProvider", () => {
       }),
     )
 
-    const first = render(
-      <UserAuthProvider>
-        <UserHarness />
-      </UserAuthProvider>,
-    )
+    const first = renderUserHarness()
     await user.click(screen.getByRole("button", { name: "Sign in" }))
 
     expect(await screen.findByLabelText("user session")).toHaveTextContent(
       "shopper",
     )
+    expect(first.onBeforeSessionChange).toHaveBeenCalledOnce()
     expect(localStorage.length).toBe(1)
 
     first.unmount()
-    const restored = render(
-      <UserAuthProvider>
-        <UserHarness />
-      </UserAuthProvider>,
-    )
+    const restored = renderUserHarness()
     expect(screen.getByLabelText("user session")).toHaveTextContent("shopper")
 
     localStorage.setItem(localStorage.key(0)!, "not-json")
     restored.unmount()
-    render(
-      <UserAuthProvider>
-        <UserHarness />
-      </UserAuthProvider>,
-    )
+    renderUserHarness()
     expect(screen.getByLabelText("user session")).toHaveTextContent(
       "anonymous",
     )
@@ -156,11 +155,7 @@ describe("UserAuthProvider", () => {
       }),
     )
 
-    render(
-      <UserAuthProvider>
-        <UserHarness />
-      </UserAuthProvider>,
-    )
+    const rendered = renderUserHarness()
     await user.click(screen.getByRole("button", { name: "Sign up" }))
     expect(await screen.findByLabelText("user session")).toHaveTextContent(
       "new-shopper",
@@ -171,6 +166,7 @@ describe("UserAuthProvider", () => {
     expect(screen.getByLabelText("user session")).toHaveTextContent(
       "anonymous",
     )
+    expect(rendered.onBeforeSessionChange).toHaveBeenCalledTimes(2)
     expect(localStorage.length).toBe(0)
   })
 })

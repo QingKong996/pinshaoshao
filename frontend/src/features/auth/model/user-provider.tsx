@@ -43,25 +43,34 @@ function writeStoredSession(session: UserSession | null) {
   localStorage.removeItem(USER_SESSION_STORAGE_KEY)
 }
 
-export function UserAuthProvider({ children }: { children: ReactNode }) {
+export function UserAuthProvider({
+  children,
+  onBeforeSessionChange,
+}: {
+  children: ReactNode
+  onBeforeSessionChange: () => void
+}) {
   const [session, setSession] = useState<UserSession | null>(readStoredSession)
 
   const signIn = useCallback(async (credentials: LoginRequest) => {
     const { token } = await userLogin(credentials)
     const next: UserSession = { token, username: credentials.username }
+    onBeforeSessionChange()
     writeStoredSession(next)
     setSession(next)
-  }, [])
+  }, [onBeforeSessionChange])
 
   const signUp = useCallback(async (details: RegisterRequest) => {
     const { token } = await userRegister(details)
     const next: UserSession = { token, username: details.username }
+    onBeforeSessionChange()
     writeStoredSession(next)
     setSession(next)
-  }, [])
+  }, [onBeforeSessionChange])
 
   const signOut = useCallback(async () => {
     const token = session?.token
+    onBeforeSessionChange()
     writeStoredSession(null)
     setSession(null)
     if (!token) {
@@ -72,7 +81,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // the local session is already cleared
     }
-  }, [session])
+  }, [onBeforeSessionChange, session])
 
   const value = useMemo<UserAuthContextValue>(
     () => ({ session, signIn, signUp, signOut }),

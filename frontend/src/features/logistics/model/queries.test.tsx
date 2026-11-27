@@ -11,6 +11,7 @@ import { createTestQueryClient } from "@/test/render"
 import { server } from "@/test/server"
 import { useCreateShipment } from "./mutations"
 import { useOrderShipments } from "./queries"
+import { shipmentQueryKeys } from "./query-keys"
 
 const shipmentSummary = {
   shipment_no: "4f2614df-f674-4b5e-a9e4-3fc5e7f62013",
@@ -38,6 +39,15 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 describe("logistics queries", () => {
+  it("separates buyer logistics cache entries by session token", () => {
+    expect(
+      shipmentQueryKeys.buyerShipment("buyer-a", "shipment-1"),
+    ).not.toEqual(shipmentQueryKeys.buyerShipment("buyer-b", "shipment-1"))
+    expect(
+      shipmentQueryKeys.orderShipments("buyer-a", 12),
+    ).not.toEqual(shipmentQueryKeys.orderShipments("buyer-b", 12))
+  })
+
   it("loads buyer shipments for an order", async () => {
     let orderID: string | null = null
     let authorization: string | null = null

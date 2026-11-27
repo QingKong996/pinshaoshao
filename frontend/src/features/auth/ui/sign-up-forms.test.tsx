@@ -25,7 +25,7 @@ describe("SignUpForm", () => {
     )
     render(
       <MemoryRouter initialEntries={["/signup"]}>
-        <UserAuthProvider>
+        <UserAuthProvider onBeforeSessionChange={() => undefined}>
           <Routes>
             <Route path="/signup" element={<SignUpForm />} />
             <Route path="/" element={<h1>Account home</h1>} />
