@@ -123,6 +123,33 @@ func (r *PaymentRepository) GetForUser(
 	return result, nil
 }
 
+func (r *PaymentRepository) GetForOrder(
+	ctx context.Context,
+	userID int,
+	orderID int,
+) (*model.Payment, error) {
+	const query = `SELECT ` + paymentColumns + `
+FROM payments
+WHERE order_id = $1
+  AND EXISTS (
+      SELECT 1
+      FROM orders
+      WHERE id = $1 AND user_id = $2
+  )`
+
+	payment, err := scanPayment(r.pool.QueryRow(ctx, query, orderID, userID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, apperr.ErrPaymentNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("repository.GetPaymentForOrder: %w", err)
+	}
+	if err := r.attachRefund(ctx, r.pool, payment); err != nil {
+		return nil, fmt.Errorf("repository.GetPaymentForOrder: %w", err)
+	}
+	return payment, nil
+}
+
 func (r *PaymentRepository) GetForPayment(
 	ctx context.Context,
 	userID int,

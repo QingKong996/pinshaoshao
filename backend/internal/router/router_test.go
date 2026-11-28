@@ -71,6 +71,7 @@ var routeCases = []routeCase{
 	{method: http.MethodPost, pattern: "/api/v1/orders/direct", requestPath: "/api/v1/orders/direct", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/orders", requestPath: "/api/v1/orders", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/orders/:orderID", requestPath: "/api/v1/orders/1", authError: userapperr.ErrInvalidSession.Error()},
+	{method: http.MethodGet, pattern: "/api/v1/orders/:orderID/payment", requestPath: "/api/v1/orders/1/payment", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodPost, pattern: "/api/v1/orders/:orderID/cancel", requestPath: "/api/v1/orders/1/cancel", authError: userapperr.ErrInvalidSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/merchant/orders", requestPath: "/api/v1/merchant/orders", authError: shopapperr.ErrInvalidShopSession.Error()},
 	{method: http.MethodGet, pattern: "/api/v1/merchant/orders/:subOrderID", requestPath: "/api/v1/merchant/orders/1", authError: shopapperr.ErrInvalidShopSession.Error()},

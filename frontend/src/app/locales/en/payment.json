@@ -25,6 +25,17 @@
     "paid": "Paid",
     "cancelled": "Cancelled"
   },
+  "refund": {
+    "title": "Refund",
+    "amount": "Refund amount",
+    "status": {
+      "pending": "Refund in progress",
+      "succeeded": "Refunded",
+      "failed": "Refund failed"
+    },
+    "refundedAt": "Refunded {{date}}",
+    "failedAt": "Failed {{date}}"
+  },
   "actions": {
     "dismiss": "Dismiss"
   },
