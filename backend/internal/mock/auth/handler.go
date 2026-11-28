@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 
@@ -20,6 +21,21 @@ type authService interface {
 
 type Handler struct {
 	service authService
+}
+
+func LocalIPOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ip := net.ParseIP(c.RemoteIP())
+		headers := c.Request.Header
+		if ip == nil || !ip.IsLoopback() || len(headers.Values("Forwarded")) != 0 ||
+			len(headers.Values("X-Forwarded-For")) != 0 || len(headers.Values("X-Real-IP")) != 0 {
+			c.AbortWithStatusJSON(http.StatusForbidden, errorResponse{
+				Error: "login is only available from localhost",
+			})
+			return
+		}
+		c.Next()
+	}
 }
 
 func NewHandler(service authService) *Handler {

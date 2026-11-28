@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from "react"
+import { Fragment, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import {
   Link,
@@ -49,23 +49,16 @@ export type MerchantConsoleRouteHandle = {
 
 export function MerchantConsoleLayout() {
   const { t } = useTranslation()
-  const { session, signOut } = useMerchantAuth()
+  const { session, signOut, expireSession } = useMerchantAuth()
   const navigate = useNavigate()
-  const handlingUnauthorized = useRef(false)
 
   useEffect(() => {
-    if (!session) {
-      return
-    }
-    return onUnauthorized(() => {
-      if (handlingUnauthorized.current) {
-        return
+    return onUnauthorized((token) => {
+      if (expireSession(token)) {
+        navigate("/merchant/signin", { replace: true })
       }
-      handlingUnauthorized.current = true
-      void signOut()
-      navigate("/merchant/signin", { replace: true })
     })
-  }, [navigate, session, signOut])
+  }, [expireSession, navigate])
 
   if (!session) {
     return <Navigate to="/merchant/signin" replace />

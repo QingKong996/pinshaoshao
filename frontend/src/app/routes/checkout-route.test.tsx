@@ -1,12 +1,16 @@
-import { screen, waitFor } from "@testing-library/react"
+import { act, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { createHash, webcrypto } from "node:crypto"
 import { HttpResponse, http } from "msw"
+import type { InitialEntry } from "react-router"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   UserAuthContext,
   type UserAuthContextValue,
 } from "@/features/auth"
+import { cartQueryKeys } from "@/features/cart"
 import { feedQueryKeys } from "@/features/feed"
+import { directCheckoutAttemptKey } from "@/features/order"
 import { createTestQueryClient, renderWithProviders } from "@/test/render"
 import { server } from "@/test/server"
 import { CheckoutRoute } from "./checkout-route"
@@ -36,6 +40,10 @@ const cartItem = {
 
 describe("CheckoutRoute", () => {
   beforeEach(() => {
+    Object.defineProperty(globalThis.crypto, "subtle", {
+      configurable: true,
+      value: webcrypto.subtle,
+    })
     Object.defineProperty(globalThis.crypto, "randomUUID", {
       configurable: true,
       value: vi.fn(() => "4f2614df-f674-4b5e-a9e4-3fc5e7f62013"),
@@ -93,6 +101,81 @@ describe("CheckoutRoute", () => {
     ).toHaveAttribute("href", "/products/7")
   })
 
+  it("allows a pending direct purchase to retry after its stock is reserved", async () => {
+    const user = userEvent.setup()
+    const checkoutKey = "4f2614df-f674-4b5e-a9e4-3fc5e7f62013"
+    const attemptStorageKey = directCheckoutAttemptKey("alice", 5, 2)
+    const payload = {
+      sku_id: 5,
+      quantity: 2,
+      receiver_name: "Alice",
+      receiver_phone: "1234567890",
+      shipping_address: "Shanghai",
+    }
+    const signature = createHash("sha256")
+      .update(JSON.stringify(payload))
+      .digest("hex")
+    sessionStorage.setItem(
+      attemptStorageKey,
+      JSON.stringify({ signature, key: checkoutKey }),
+    )
+    server.use(
+      http.get("*/api/v1/products/7", () =>
+        HttpResponse.json({
+          ...product,
+          skus: [
+            {
+              id: 5,
+              specs: { Color: "Black" },
+              price_cents: 1999,
+              is_enabled: true,
+              in_stock: false,
+            },
+          ],
+        }),
+      ),
+      http.post("*/api/v1/orders/direct", async ({ request }) => {
+        expect(await request.json()).toMatchObject({
+          checkout_key: checkoutKey,
+        })
+        return HttpResponse.json(
+          {
+            id: 6,
+            status: "pending_payment",
+            total_amount_cents: 3998,
+            receiver_name: "Alice",
+            receiver_phone: "1234567890",
+            shipping_address: "Shanghai",
+            expires_at: "2026-11-20T12:30:00Z",
+            paid_at: null,
+            created_at: "2026-11-20T12:00:00Z",
+            updated_at: "2026-11-20T12:00:00Z",
+            sub_orders: [],
+          },
+          { status: 200 },
+        )
+      }),
+    )
+
+    renderCheckoutRoute("/checkout?product_id=7&sku_id=5&quantity=2")
+
+    expect(
+      await screen.findByText("An unfinished purchase attempt was found"),
+    ).toBeVisible()
+    expect(screen.queryByRole("button", { name: /start a new purchase/i }))
+      .not.toBeInTheDocument()
+    await user.type(screen.getByLabelText("Recipient"), payload.receiver_name)
+    await user.type(screen.getByLabelText("Phone"), payload.receiver_phone)
+    await user.type(screen.getByLabelText("Shipping address"), payload.shipping_address)
+    await user.click(
+      screen.getByRole("button", { name: "Retry previous attempt" }),
+    )
+
+    await waitFor(() => {
+      expect(sessionStorage.getItem(attemptStorageKey)).toBeNull()
+    })
+  })
+
   it("requires a session before loading checkout", () => {
     renderCheckoutRoute(
       "/checkout?product_id=7&sku_id=5&quantity=2",
@@ -119,6 +202,82 @@ describe("CheckoutRoute", () => {
     expect(
       screen.getByRole("link", { name: "Back to cart" }),
     ).toHaveAttribute("href", "/cart")
+  })
+
+  it("requires confirmation when selected cart quantities change", async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get("*/api/v1/cart", () =>
+        HttpResponse.json([{ ...cartItem, quantity: 3, line_total_cents: 5997 }]),
+      ),
+    )
+
+    renderCheckoutRoute({
+      pathname: "/checkout",
+      search: "?items=1",
+      state: { cartSelectionSnapshot: JSON.stringify([[1, 5, 2, 1999]]) },
+    })
+
+    expect(
+      await screen.findByText("Your selected cart items changed"),
+    ).toBeVisible()
+    expect(screen.getByText("3 item(s)")).toBeVisible()
+    expect(screen.getByRole("button", { name: "Place order" })).toBeDisabled()
+
+    await user.click(
+      screen.getByRole("button", { name: "Confirm updated selection" }),
+    )
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Place order" })).toBeEnabled()
+  })
+
+  it("requires another confirmation if an available item disappears after review", async () => {
+    const user = userEvent.setup()
+    const queryClient = createTestQueryClient()
+    const secondItem = { ...cartItem, id: 2, sku_id: 6, product_name: "Canvas Bag" }
+    server.use(
+      http.get("*/api/v1/cart", () => HttpResponse.json([cartItem, secondItem])),
+    )
+    renderCheckoutRoute("/checkout?items=1,2,3", queryClient)
+
+    await user.click(
+      await screen.findByRole("button", { name: "Confirm updated selection" }),
+    )
+    expect(screen.getByRole("button", { name: "Place order" })).toBeEnabled()
+
+    act(() => {
+      queryClient.setQueryData(cartQueryKeys.cart("token"), [cartItem])
+    })
+
+    expect(await screen.findByText("Your selected cart items changed")).toBeVisible()
+    expect(screen.queryByText("Canvas Bag")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Place order" })).toBeDisabled()
+  })
+
+  it("refreshes the cart and requests confirmation after a checkout conflict", async () => {
+    const user = userEvent.setup()
+    let items = [cartItem, { ...cartItem, id: 2, sku_id: 6 }]
+    server.use(
+      http.get("*/api/v1/cart", () => HttpResponse.json(items)),
+      http.post("*/api/v1/orders", () => {
+        items = [cartItem]
+        return HttpResponse.json(
+          { error: "selected cart items changed" },
+          { status: 409 },
+        )
+      }),
+    )
+    renderCheckoutRoute("/checkout?items=1,2")
+
+    await user.type(await screen.findByLabelText("Recipient"), "Receiver")
+    await user.type(screen.getByLabelText("Phone"), "1234567890")
+    await user.type(screen.getByLabelText("Shipping address"), "Shanghai")
+    await user.click(screen.getByRole("button", { name: "Place order" }))
+
+    expect(await screen.findByText("Your selected cart items changed")).toBeVisible()
+    expect(screen.getByRole("button", { name: "Place order" })).toBeDisabled()
+    expect(screen.getByLabelText("Recipient")).toHaveValue("Receiver")
   })
 
   it("prefills checkout with the default saved address", async () => {
@@ -291,7 +450,7 @@ describe("CheckoutRoute", () => {
 })
 
 function renderCheckoutRoute(
-  path: string,
+  entry: InitialEntry,
   queryClient?: ReturnType<typeof createTestQueryClient>,
   session: UserAuthContextValue["session"] = {
     token: "token",
@@ -305,10 +464,11 @@ function renderCheckoutRoute(
         signIn: vi.fn(async () => undefined),
         signUp: vi.fn(async () => undefined),
         signOut: vi.fn(async () => undefined),
+        expireSession: vi.fn(() => false),
       }}
     >
       <CheckoutRoute />
     </UserAuthContext.Provider>,
-    { queryClient, initialEntries: [path] },
+    { queryClient, initialEntries: [entry] },
   )
 }

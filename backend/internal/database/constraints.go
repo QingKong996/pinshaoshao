@@ -1,3 +1,6 @@
 package database
 
-const UniqueViolationCode = "23505"
+const (
+	UniqueViolationCode        = "23505"
+	NumericValueOutOfRangeCode = "22003"
+)

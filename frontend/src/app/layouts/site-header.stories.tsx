@@ -13,6 +13,7 @@ const MOCK_AUTH: UserAuthContextValue = {
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
+  expireSession: () => false,
 }
 
 const meta = {

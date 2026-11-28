@@ -524,13 +524,7 @@ func TestMockPaymentRetriesCallback(t *testing.T) {
 		t.Fatalf("first attempt = %+v, want pending with one failed attempt", first)
 	}
 
-	if _, err := testPool.Exec(
-		ctx,
-		`UPDATE mock_payment_notifications SET next_attempt_at = now() - interval '1 second' WHERE id = $1`,
-		first.ID,
-	); err != nil {
-		t.Fatalf("make retry due: %v", err)
-	}
+	makeNotificationDue(t, first.ID)
 	failing.Store(false)
 	if err := notificationService.DeliverDue(ctx, 10); err != nil {
 		t.Fatalf("retry callback: %v", err)
@@ -548,9 +542,10 @@ func TestMockPaymentRetriesCallback(t *testing.T) {
 		ctx,
 		`UPDATE mock_payment_notifications
 SET status = 'delivering', attempt_count = max_attempts,
-    delivered_at = NULL, locked_until = now() - interval '1 second'
+    delivered_at = NULL, locked_until = $2
 WHERE id = $1`,
 		notifications[0].ID,
+		time.Now().UTC().Add(-time.Second),
 	); err != nil {
 		t.Fatalf("simulate interrupted final delivery: %v", err)
 	}
@@ -654,10 +649,9 @@ func makeNotificationDue(t *testing.T, id int64) {
 	t.Helper()
 	if _, err := testPool.Exec(
 		context.Background(),
-		`UPDATE mock_payment_notifications
-SET next_attempt_at = now() - interval '1 second'
-WHERE id = $1`,
+		`UPDATE mock_payment_notifications SET next_attempt_at = $2 WHERE id = $1`,
 		id,
+		time.Now().UTC().Add(-time.Second),
 	); err != nil {
 		t.Fatalf("make notification due: %v", err)
 	}

@@ -304,8 +304,23 @@ func TestProtectedRoutesRejectInvalidSessions(t *testing.T) {
 	}
 }
 
+func TestMockLoginRoutesRejectRemoteClients(t *testing.T) {
+	router := newTestRouter(t)
+	for _, path := range []string{"/mockpay/api/v1/auth/login", "/mocklogistics/api/v1/auth/login"} {
+		t.Run(path, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{bad`))
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			if response.Code != http.StatusForbidden {
+				t.Fatalf("status = %d, want %d", response.Code, http.StatusForbidden)
+			}
+		})
+	}
+}
+
 func doRouterRequest(r http.Handler, method, path, authorization, body string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req.RemoteAddr = "127.0.0.1:1234"
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}

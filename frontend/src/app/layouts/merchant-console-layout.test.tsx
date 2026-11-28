@@ -8,6 +8,7 @@ import { server } from "@/test/server"
 const auth = vi.hoisted(() => ({
   session: null as { token: string; username: string } | null,
   signOut: vi.fn().mockResolvedValue(undefined),
+  expireSession: vi.fn((token: string): boolean => auth.session?.token === token),
 }))
 
 vi.mock("@/features/auth", () => ({
@@ -41,6 +42,7 @@ describe("MerchantConsoleLayout", () => {
   beforeEach(() => {
     auth.session = null
     auth.signOut.mockClear()
+    auth.expireSession.mockClear()
   })
 
   it("redirects unauthenticated visitors to merchant sign in", async () => {
@@ -67,9 +69,29 @@ describe("MerchantConsoleLayout", () => {
     )
     renderLayout()
 
-    await apiClient.get("/expired").catch(() => undefined)
+    await apiClient
+      .get("/expired", { headers: { Authorization: "Bearer token" } })
+      .catch(() => undefined)
 
     expect(await screen.findByText("Merchant sign in")).toBeVisible()
-    expect(auth.signOut).toHaveBeenCalledOnce()
+    expect(auth.expireSession).toHaveBeenCalledExactlyOnceWith("token")
+    expect(auth.signOut).not.toHaveBeenCalled()
+  })
+
+  it("ignores an unauthorized response from a previous merchant token", async () => {
+    auth.session = { token: "current-token", username: "merchant" }
+    server.use(
+      http.get("*/api/v1/expired", () =>
+        HttpResponse.json({ error: "expired" }, { status: 401 }),
+      ),
+    )
+    renderLayout()
+
+    await apiClient
+      .get("/expired", { headers: { Authorization: "Bearer previous-token" } })
+      .catch(() => undefined)
+
+    expect(screen.getByText("Console home")).toBeVisible()
+    expect(auth.signOut).not.toHaveBeenCalled()
   })
 })

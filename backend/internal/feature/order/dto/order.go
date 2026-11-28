@@ -73,7 +73,7 @@ type OrderSummaryResponse struct {
 	ID               int       `json:"id" example:"1"`
 	Status           string    `json:"status" example:"pending_payment"`
 	TotalAmountCents int64     `json:"total_amount_cents" example:"3998"`
-	ItemCount        int       `json:"item_count" example:"2"`
+	ItemCount        int64     `json:"item_count" example:"2"`
 	ShopCount        int       `json:"shop_count" example:"1"`
 	ExpiresAt        time.Time `json:"expires_at" example:"2026-11-20T12:30:00Z"`
 	CreatedAt        time.Time `json:"created_at" example:"2026-11-20T12:00:00Z"`
@@ -92,7 +92,7 @@ type MerchantOrderSummaryResponse struct {
 	OrderID          int        `json:"order_id" example:"12"`
 	Status           string     `json:"status" example:"awaiting_shipment"`
 	TotalAmountCents int64      `json:"total_amount_cents" example:"3998"`
-	ItemCount        int        `json:"item_count" example:"2"`
+	ItemCount        int64      `json:"item_count" example:"2"`
 	PaidAt           *time.Time `json:"paid_at"`
 	CreatedAt        time.Time  `json:"created_at" example:"2026-11-20T12:00:00Z"`
 }
@@ -110,7 +110,7 @@ type MerchantOrderDetailResponse struct {
 	OrderID          int                 `json:"order_id" example:"12"`
 	Status           string              `json:"status" example:"awaiting_shipment"`
 	TotalAmountCents int64               `json:"total_amount_cents" example:"3998"`
-	ItemCount        int                 `json:"item_count" example:"2"`
+	ItemCount        int64               `json:"item_count" example:"2"`
 	PaidAt           *time.Time          `json:"paid_at"`
 	CreatedAt        time.Time           `json:"created_at" example:"2026-11-20T12:00:00Z"`
 	UpdatedAt        time.Time           `json:"updated_at" example:"2026-11-20T12:05:00Z"`

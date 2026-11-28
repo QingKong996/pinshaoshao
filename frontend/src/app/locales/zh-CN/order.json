@@ -11,11 +11,24 @@
     "description": "填写收货信息并提交。未支付订单将在 30 分钟后失效。",
     "backToCart": "返回购物车",
     "backToProduct": "返回商品详情",
+    "cartChanged": {
+      "title": "所选购物车商品已变化",
+      "description": "请检查更新后的商品、数量和可售状态。不可售商品不会加入订单；确认更新后的选择后才能提交。",
+      "confirm": "确认更新后的选择"
+    },
     "direct": {
       "invalidTitle": "直接购买链接无效",
       "invalidDescription": "请返回商品详情页，重新选择可购买的规格。",
       "unavailableTitle": "该规格暂不可购买",
       "unavailableDescription": "该规格已停用或库存不足，请返回商品详情页选择其他规格。"
+    },
+    "directAttempt": {
+      "title": "发现未完成的购买尝试",
+      "description": "上次请求可能已生成订单。请查看订单，或使用相同的收货信息重试。",
+      "mismatch": "收货信息与上次尝试不同。请恢复上次填写的信息后重试，或明确开始一笔新购买。",
+      "retry": "重试上次尝试",
+      "startNew": "使用当前信息开始新购买",
+      "viewOrders": "查看我的订单"
     },
     "form": {
       "title": "收货信息",

@@ -25,7 +25,7 @@ func (r *OrderRepository) ListMerchant(ctx context.Context, shopID int, filter m
 	limitIndex := len(args) + 1
 	offsetIndex := len(args) + 2
 	query := fmt.Sprintf(`SELECT so.id, so.order_id, so.status::text, so.total_amount_cents,
-       COALESCE(SUM(ois.quantity), 0)::int,
+       COALESCE(SUM(ois.quantity), 0),
        o.paid_at, so.created_at
 FROM sub_orders so
 JOIN orders o ON o.id = so.order_id
@@ -145,7 +145,7 @@ ORDER BY id`
 		); err != nil {
 			return nil, err
 		}
-		order.ItemCount += item.Quantity
+		order.ItemCount += int64(item.Quantity)
 		order.Items = append(order.Items, item)
 	}
 	if err := rows.Err(); err != nil {

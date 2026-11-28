@@ -35,6 +35,7 @@ export type UserAuthContextValue = {
   signIn: (credentials: LoginRequest) => Promise<void>
   signUp: (details: RegisterRequest) => Promise<void>
   signOut: () => Promise<void>
+  expireSession: (token: string) => boolean
 }
 
 export type MerchantAuthContextValue = {
@@ -42,4 +43,5 @@ export type MerchantAuthContextValue = {
   signIn: (credentials: LoginRequest) => Promise<void>
   signUp: (details: MerchantRegisterRequest) => Promise<void>
   signOut: () => Promise<void>
+  expireSession: (token: string) => boolean
 }

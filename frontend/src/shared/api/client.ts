@@ -16,7 +16,7 @@ export class ApiError extends Error {
   }
 }
 
-type UnauthorizedListener = () => void
+type UnauthorizedListener = (token: string) => void
 
 const unauthorizedListeners = new Set<UnauthorizedListener>()
 
@@ -51,8 +51,18 @@ apiClient.interceptors.response.use(
     }
 
     if (status === 401) {
-      for (const listener of unauthorizedListeners) {
-        listener()
+      const authorization = axios.AxiosHeaders.from(
+        error.config?.headers,
+      ).get("Authorization")
+      const token =
+        typeof authorization === "string"
+          ? /^Bearer\s+(.+)$/i.exec(authorization.trim())?.[1]
+          : undefined
+
+      if (token) {
+        for (const listener of unauthorizedListeners) {
+          listener(token)
+        }
       }
     }
 
