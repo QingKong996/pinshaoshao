@@ -24,6 +24,7 @@ const (
 type PaymentRepository interface {
 	CreateForOrder(ctx context.Context, userID int, orderID int, paymentNo string) (*model.Payment, bool, error)
 	GetForUser(ctx context.Context, userID int, paymentNo string) (*model.Payment, error)
+	GetForOrder(ctx context.Context, userID int, orderID int) (*model.Payment, error)
 	GetForPayment(ctx context.Context, userID int, paymentNo string) (*model.Payment, error)
 	SetProviderTransaction(ctx context.Context, paymentNo string, providerTransactionID string) error
 	ApplyPaidCallback(ctx context.Context, callback model.PaidCallback) (*model.Payment, error)
@@ -109,6 +110,22 @@ func (s *PaymentService) Get(
 	payment, err := s.repository.GetForUser(ctx, userID, normalized)
 	if err != nil {
 		return nil, fmt.Errorf("service.GetPayment: %w", err)
+	}
+	return payment, nil
+}
+
+func (s *PaymentService) GetForOrder(
+	ctx context.Context,
+	userID int,
+	orderID int,
+) (*model.Payment, error) {
+	if orderID <= 0 {
+		return nil, apperr.ErrInvalidOrderID
+	}
+
+	payment, err := s.repository.GetForOrder(ctx, userID, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("service.GetOrderPayment: %w", err)
 	}
 	return payment, nil
 }

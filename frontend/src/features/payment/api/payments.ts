@@ -17,6 +17,14 @@ export async function createOrderPayment(token: string, orderID: number) {
   return data
 }
 
+export async function getOrderPayment(token: string, orderID: number) {
+  const { data } = await apiClient.get<OrderPayment>(
+    `/orders/${orderID}/payment`,
+    authorized(token),
+  )
+  return data
+}
+
 export async function payOrderPayment(token: string, paymentNo: string) {
   const { data } = await apiClient.post<OrderPayment>(
     `${paymentPath(paymentNo)}/pay`,

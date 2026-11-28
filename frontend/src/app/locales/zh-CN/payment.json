@@ -25,6 +25,17 @@
     "paid": "已支付",
     "cancelled": "已取消"
   },
+  "refund": {
+    "title": "退款",
+    "amount": "退款金额",
+    "status": {
+      "pending": "退款处理中",
+      "succeeded": "已退款",
+      "failed": "退款失败"
+    },
+    "refundedAt": "退款于 {{date}}",
+    "failedAt": "失败于 {{date}}"
+  },
   "actions": {
     "dismiss": "关闭"
   },

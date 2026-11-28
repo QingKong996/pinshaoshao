@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"pinshaoshao/internal/feature/payment/apperr"
 	"pinshaoshao/internal/feature/payment/dto"
@@ -19,6 +20,7 @@ import (
 type PaymentService interface {
 	Create(ctx context.Context, userID int, orderID int) (*model.Payment, bool, error)
 	Get(ctx context.Context, userID int, paymentNo string) (*model.Payment, error)
+	GetForOrder(ctx context.Context, userID int, orderID int) (*model.Payment, error)
 	Pay(ctx context.Context, userID int, paymentNo string) (*service.PaymentSession, error)
 	Close(ctx context.Context, userID int, paymentNo string) (*model.Payment, error)
 }
@@ -94,6 +96,39 @@ func (c *PaymentController) Get(ctx *gin.Context) {
 	)
 	if err != nil {
 		writePaymentError(ctx, "get payment", err)
+		return
+	}
+	ctx.JSON(http.StatusOK, newOrderPaymentResponse(payment, ""))
+}
+
+// GetForOrder returns the payment and refund state for an owned order.
+//
+// @Summary     Get an order payment
+// @Description Get the payment and refund state for an owned order.
+// @Tags        Payments
+// @Produce     json
+// @Param       orderID path int true "Order ID"
+// @Success     200 {object} dto.OrderPaymentResponse
+// @Failure     400 {object} httpx.ErrorResponse
+// @Failure     401 {object} httpx.ErrorResponse
+// @Failure     404 {object} httpx.ErrorResponse
+// @Failure     500 {object} httpx.ErrorResponse
+// @Security    BearerAuth
+// @Router      /orders/{orderID}/payment [get]
+func (c *PaymentController) GetForOrder(ctx *gin.Context) {
+	orderID, err := strconv.Atoi(ctx.Param("orderID"))
+	if err != nil || orderID <= 0 {
+		ctx.JSON(http.StatusBadRequest, httpx.ErrorResponse{Error: apperr.ErrInvalidOrderID.Error()})
+		return
+	}
+
+	payment, err := c.paymentService.GetForOrder(
+		ctx.Request.Context(),
+		authctx.MustUserID(ctx),
+		orderID,
+	)
+	if err != nil {
+		writePaymentError(ctx, "get order payment", err)
 		return
 	}
 	ctx.JSON(http.StatusOK, newOrderPaymentResponse(payment, ""))

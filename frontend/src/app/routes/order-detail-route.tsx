@@ -6,7 +6,7 @@ import {
   orderQueryKeys,
 } from "@/features/order"
 import { OrderShipmentPanel } from "@/features/logistics"
-import { OrderPaymentPanel } from "@/features/payment"
+import { OrderPaymentPanel, OrderRefundPanel } from "@/features/payment"
 import { SiteFooter } from "../layouts/site-footer"
 import { SiteHeader } from "../layouts/site-header"
 import { useParams } from "react-router"
@@ -25,6 +25,14 @@ export function OrderDetailRoute() {
             token={session.token}
             orderID={Number(orderID)}
             renderSidebar={(order) => {
+              if (order.status === "cancelled") {
+                return (
+                  <OrderRefundPanel
+                    token={session.token}
+                    orderID={order.id}
+                  />
+                )
+              }
               if (
                 order.status !== "pending_payment" &&
                 order.status !== "paid"
@@ -45,6 +53,9 @@ export function OrderDetailRoute() {
                         session.token,
                         order.id,
                       ),
+                    })
+                    void queryClient.invalidateQueries({
+                      queryKey: orderQueryKeys.orders(session.token),
                     })
                   }}
                   onOrderCancelled={() => {

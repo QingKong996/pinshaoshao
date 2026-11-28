@@ -278,6 +278,22 @@ func TestPaymentRepositoryRefundsPaymentForCancelledOrder(t *testing.T) {
 	if stored.Refund == nil || stored.Refund.RefundNo != paid.Refund.RefundNo {
 		t.Fatalf("stored refund = %+v, want %q", stored.Refund, paid.Refund.RefundNo)
 	}
+
+	byOrder, err := repository.GetForOrder(ctx, userID, orderID)
+	if err != nil {
+		t.Fatalf("get payment by order: %v", err)
+	}
+	if byOrder.PaymentNo != payment.PaymentNo ||
+		byOrder.Refund == nil ||
+		byOrder.Refund.RefundNo != paid.Refund.RefundNo {
+		t.Fatalf("payment by order = %+v, want payment %q with refund %q", byOrder, payment.PaymentNo, paid.Refund.RefundNo)
+	}
+
+	otherID := insertUser(t, "buyer02")
+	_, err = repository.GetForOrder(ctx, otherID, orderID)
+	if !errors.Is(err, apperr.ErrPaymentNotFound) {
+		t.Fatalf("other user error = %v, want %v", err, apperr.ErrPaymentNotFound)
+	}
 }
 
 func TestPaymentRepositoryRejectsExpiredPendingOrderSettlement(t *testing.T) {

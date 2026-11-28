@@ -24,6 +24,7 @@ const (
 type repositoryStub struct {
 	createForOrder         func(context.Context, int, int, string) (*model.Payment, bool, error)
 	getForUser             func(context.Context, int, string) (*model.Payment, error)
+	getForOrder            func(context.Context, int, int) (*model.Payment, error)
 	getForPayment          func(context.Context, int, string) (*model.Payment, error)
 	setProviderTransaction func(context.Context, string, string) error
 	applyPaidCallback      func(context.Context, model.PaidCallback) (*model.Payment, error)
@@ -44,6 +45,14 @@ func (s *repositoryStub) GetForUser(
 	paymentNo string,
 ) (*model.Payment, error) {
 	return s.getForUser(ctx, userID, paymentNo)
+}
+
+func (s *repositoryStub) GetForOrder(
+	ctx context.Context,
+	userID int,
+	orderID int,
+) (*model.Payment, error) {
+	return s.getForOrder(ctx, userID, orderID)
 }
 
 func (s *repositoryStub) GetForPayment(
