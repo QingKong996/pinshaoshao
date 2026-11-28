@@ -26,6 +26,10 @@ export function describeCheckoutError(
   }
 }
 
+export function isCheckoutConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409
+}
+
 export function describeOrderError(
   error: unknown,
   t: TFunction<"order">,

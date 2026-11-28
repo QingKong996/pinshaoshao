@@ -148,7 +148,7 @@ func (m *Module) AuthMiddleware() gin.HandlerFunc {
 }
 
 func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
-	r.POST("/mockpay/api/v1/auth/login", m.authHandler.Login)
+	r.POST("/mockpay/api/v1/auth/login", mockauth.LocalIPOnly(), m.authHandler.Login)
 	r.POST("/mockpay/api/v1/auth/logout", authMiddleware, m.authHandler.Logout)
 
 	api := r.Group("/mockpay/api/v1/payments")

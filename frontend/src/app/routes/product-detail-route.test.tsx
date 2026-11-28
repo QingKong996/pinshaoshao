@@ -36,6 +36,7 @@ describe("ProductDetailRoute", () => {
           signIn: vi.fn(async () => undefined),
           signUp: vi.fn(async () => undefined),
           signOut: vi.fn(async () => undefined),
+          expireSession: vi.fn(() => false),
         }}
       >
         <Routes>
@@ -77,6 +78,7 @@ describe("ProductDetailRoute", () => {
           signIn: vi.fn(async () => undefined),
           signUp: vi.fn(async () => undefined),
           signOut: vi.fn(async () => undefined),
+          expireSession: vi.fn(() => false),
         }}
       >
         <Routes>

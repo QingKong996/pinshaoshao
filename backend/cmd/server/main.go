@@ -69,9 +69,10 @@ func main() {
 		}
 	}()
 
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(accessLogger.Middleware())
-	r.Use(gin.Recovery())
+	r.Use(middleware.Recovery(slog.Default()))
 	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.NoStoreAPI())
 	if err := configureTrustedProxies(r); err != nil {

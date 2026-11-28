@@ -1,5 +1,15 @@
 import type { CartItem } from "../types"
 
+export function cartSelectionSnapshot(items: readonly CartItem[]): string {
+  return JSON.stringify(
+    [...items]
+      .sort((left, right) => left.id - right.id)
+      .map(({ id, sku_id, quantity, unit_price_cents }) => [
+        id, sku_id, quantity, unit_price_cents,
+      ]),
+  )
+}
+
 export function formatCartSpecs(
   specs: Record<string, string>,
   emptyLabel: string,

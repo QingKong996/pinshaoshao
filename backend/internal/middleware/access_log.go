@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
 	"sync"
@@ -59,11 +60,12 @@ func (l *AccessLogger) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		started := time.Now()
 		c.Next()
+		route := c.FullPath()
 
 		entry := accessLogEntry{
 			method:    c.Request.Method,
-			path:      c.Request.URL.Path,
-			route:     c.FullPath(),
+			path:      cmp.Or(route, "<unmatched>"),
+			route:     route,
 			clientIP:  c.ClientIP(),
 			userAgent: c.Request.UserAgent(),
 			status:    c.Writer.Status(),

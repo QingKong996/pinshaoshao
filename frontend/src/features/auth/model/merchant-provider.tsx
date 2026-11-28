@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   merchantLogin,
   merchantLogout,
@@ -60,28 +60,28 @@ export function MerchantAuthProvider({
   const [session, setSession] = useState<MerchantSession | null>(
     readStoredSession,
   )
+  const currentSession = useRef(session)
+
+  const replaceSession = useCallback((next: MerchantSession | null) => {
+    currentSession.current = next
+    onBeforeSessionChange()
+    writeStoredSession(next)
+    setSession(next)
+  }, [onBeforeSessionChange])
 
   const signIn = useCallback(async (credentials: LoginRequest) => {
     const { token } = await merchantLogin(credentials)
-    const next: MerchantSession = { token, username: credentials.username }
-    onBeforeSessionChange()
-    writeStoredSession(next)
-    setSession(next)
-  }, [onBeforeSessionChange])
+    replaceSession({ token, username: credentials.username })
+  }, [replaceSession])
 
   const signUp = useCallback(async (details: MerchantRegisterRequest) => {
     const { token } = await merchantRegister(details)
-    const next: MerchantSession = { token, username: details.username }
-    onBeforeSessionChange()
-    writeStoredSession(next)
-    setSession(next)
-  }, [onBeforeSessionChange])
+    replaceSession({ token, username: details.username })
+  }, [replaceSession])
 
   const signOut = useCallback(async () => {
-    const token = session?.token
-    onBeforeSessionChange()
-    writeStoredSession(null)
-    setSession(null)
+    const token = currentSession.current?.token
+    replaceSession(null)
     if (!token) {
       return
     }
@@ -90,11 +90,19 @@ export function MerchantAuthProvider({
     } catch {
       // the local session is already cleared
     }
-  }, [session, onBeforeSessionChange])
+  }, [replaceSession])
+
+  const expireSession = useCallback((token: string) => {
+    if (currentSession.current?.token !== token) {
+      return false
+    }
+    replaceSession(null)
+    return true
+  }, [replaceSession])
 
   const value = useMemo<MerchantAuthContextValue>(
-    () => ({ session, signIn, signUp, signOut }),
-    [session, signIn, signUp, signOut],
+    () => ({ session, signIn, signUp, signOut, expireSession }),
+    [session, signIn, signUp, signOut, expireSession],
   )
 
   return (

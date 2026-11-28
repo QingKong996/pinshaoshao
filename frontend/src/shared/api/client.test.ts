@@ -47,17 +47,37 @@ describe("apiClient", () => {
       ),
     )
 
-    await expect(apiClient.get("/protected")).rejects.toMatchObject({
-      status: 401,
-      message: "expired",
-    })
-    expect(listener).toHaveBeenCalledOnce()
+    await expect(
+      apiClient.get("/protected", {
+        headers: { Authorization: "Bearer current-token" },
+      }),
+    ).rejects.toMatchObject({ status: 401, message: "expired" })
+    expect(listener).toHaveBeenCalledExactlyOnceWith("current-token")
 
     unsubscribe()
-    await expect(apiClient.get("/protected")).rejects.toMatchObject({
+    await expect(
+      apiClient.get("/protected", {
+        headers: { Authorization: "Bearer current-token" },
+      }),
+    ).rejects.toMatchObject({ status: 401 })
+    expect(listener).toHaveBeenCalledExactlyOnceWith("current-token")
+  })
+
+  it("does not notify session listeners for unauthenticated 401 responses", async () => {
+    const listener = vi.fn()
+    const unsubscribe = onUnauthorized(listener)
+    server.use(
+      http.post("*/api/v1/login", () =>
+        HttpResponse.json({ error: "invalid credentials" }, { status: 401 }),
+      ),
+    )
+
+    await expect(apiClient.post("/login", {})).rejects.toMatchObject({
       status: 401,
     })
-    expect(listener).toHaveBeenCalledOnce()
+
+    expect(listener).not.toHaveBeenCalled()
+    unsubscribe()
   })
 
   it("falls back to the status when the response body has no error", async () => {

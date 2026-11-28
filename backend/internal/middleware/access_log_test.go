@@ -43,6 +43,7 @@ func TestAccessLogger(t *testing.T) {
 	}
 	if entry["msg"] != "http request" ||
 		entry["method"] != http.MethodGet ||
+		entry["path"] != "/orders/:orderID" ||
 		entry["route"] != "/orders/:orderID" ||
 		entry["status"] != float64(http.StatusCreated) ||
 		entry["client_ip"] != "192.0.2.10" ||

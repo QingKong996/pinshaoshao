@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"pinshaoshao/internal/database"
 	"pinshaoshao/internal/feature/cart/apperr"
 	"pinshaoshao/internal/feature/cart/model"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -86,6 +88,10 @@ LEFT JOIN inventory_items ii ON ii.sku_id = u.sku_id`
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, r.addItemError(ctx, skuID)
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == database.NumericValueOutOfRangeCode {
+			return nil, fmt.Errorf("repository.AddItem: %w", apperr.ErrInvalidCartQuantity)
 		}
 		return nil, fmt.Errorf("repository.AddItem: %w", err)
 	}

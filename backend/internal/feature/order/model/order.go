@@ -72,7 +72,7 @@ type OrderSummary struct {
 	ID               int
 	Status           OrderStatus
 	TotalAmountCents int64
-	ItemCount        int
+	ItemCount        int64
 	ShopCount        int
 	CreatedAt        time.Time
 }
@@ -104,7 +104,7 @@ type MerchantOrderSummary struct {
 	OrderID          int
 	Status           SubOrderStatus
 	TotalAmountCents int64
-	ItemCount        int
+	ItemCount        int64
 	PaidAt           *time.Time
 	CreatedAt        time.Time
 }
@@ -114,7 +114,7 @@ type MerchantOrderDetail struct {
 	OrderID          int
 	Status           SubOrderStatus
 	TotalAmountCents int64
-	ItemCount        int
+	ItemCount        int64
 	PaidAt           *time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { HttpResponse, http } from "msw"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -105,6 +105,38 @@ function renderUserHarness() {
 describe("UserAuthProvider", () => {
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it("expires only the current token and clears it locally", async () => {
+    const logout = vi.fn(() => new HttpResponse(null, { status: 204 }))
+    let nextToken = "previous-token"
+    server.use(
+      http.post("*/api/v1/login", () => HttpResponse.json({ token: nextToken })),
+      http.post("*/api/v1/logout", logout),
+    )
+    const { result } = renderHook(useAuth, {
+      wrapper: ({ children }) => (
+        <UserAuthProvider onBeforeSessionChange={() => undefined}>
+          {children}
+        </UserAuthProvider>
+      ),
+    })
+
+    await act(() => result.current.signIn({ username: "shopper", password }))
+    nextToken = "current-token"
+    await act(async () => {
+      await result.current.signIn({ username: "shopper", password })
+      expect(result.current.expireSession("previous-token")).toBe(false)
+    })
+    expect(result.current.session?.token).toBe("current-token")
+
+    act(() => {
+      expect(result.current.expireSession("current-token")).toBe(true)
+      expect(result.current.expireSession("current-token")).toBe(false)
+    })
+    expect(result.current.session).toBeNull()
+    expect(localStorage.length).toBe(0)
+    expect(logout).not.toHaveBeenCalled()
   })
 
   it("persists sessions, restores valid sessions, and ignores corrupt storage", async () => {

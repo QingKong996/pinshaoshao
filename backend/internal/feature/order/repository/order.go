@@ -121,7 +121,7 @@ func (r *OrderRepository) List(ctx context.Context, userID int, filter model.Ord
 		}
 
 		const query = `SELECT o.id, o.status::text, o.total_amount_cents,
-       COALESCE(SUM(ois.quantity), 0)::int,
+       COALESCE(SUM(ois.quantity), 0),
        COUNT(DISTINCT so.id)::int,
        o.created_at
 FROM orders o

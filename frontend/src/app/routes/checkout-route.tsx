@@ -1,11 +1,12 @@
-import { useMemo } from "react"
+import { useMemo, useState, type ComponentProps } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { Link, useSearchParams } from "react-router"
+import { Link, useLocation, useSearchParams } from "react-router"
 import { useAuth } from "@/features/auth"
 import { useAddresses } from "@/features/address"
 import {
   cartQueryKeys,
+  cartSelectionSnapshot,
   describeCartError,
   useCart,
 } from "@/features/cart"
@@ -18,6 +19,8 @@ import {
 import {
   CheckoutPage,
   OrderSignedOut,
+  directCheckoutAttemptKey,
+  readDirectCheckoutAttempt,
   type CheckoutLine,
 } from "@/features/order"
 import { buttonVariants } from "@/shared/ui/button"
@@ -32,7 +35,9 @@ export function CheckoutRoute() {
   const { t: cartT } = useTranslation("cart")
   const { t: feedT } = useTranslation("feed")
   const queryClient = useQueryClient()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
+  const cartSelectionBaseline = readCartSelectionSnapshot(location.state)
 
   const isDirect = ["product_id", "sku_id", "quantity"].some((key) =>
     searchParams.has(key),
@@ -65,21 +70,6 @@ export function CheckoutRoute() {
     )
   }, [selectedParam])
 
-  const cartItems = (cartQuery.data ?? [])
-    .filter(
-      (item) =>
-        item.availability === "available" &&
-        (selectedIDs === null || selectedIDs.has(item.id)),
-    )
-    .map((item) => ({
-      id: item.id,
-      product_name: item.product_name,
-      sku_specs: item.sku_specs,
-      unit_price_cents: item.unit_price_cents,
-      quantity: item.quantity,
-      line_total_cents: item.line_total_cents,
-    }))
-
   let content
   if (!session) {
     content = <OrderSignedOut />
@@ -107,23 +97,33 @@ export function CheckoutRoute() {
           }
         />
       )
-    } else if (productQuery.error) {
-      content = (
-        <QueryError
-          title={feedT("errors.productLoadTitle")}
-          description={describeProductError(productQuery.error, feedT)}
-          retryLabel={feedT("errors.retry")}
-          onRetry={productQuery.refetch}
-        />
-      )
-    } else if (productQuery.isPending || !productQuery.data) {
+    } else if (productQuery.isPending) {
       content = <Skeleton className="h-96 rounded-xl" />
     } else {
-      const sku = productQuery.data.skus.find(
+      const product = productQuery.data
+      const sku = product?.skus.find(
         (candidate) => candidate.id === directSKUID,
       )
+      const attemptStorageKey = directCheckoutAttemptKey(
+        session.username,
+        directSKUID,
+        directQuantity,
+      )
+      const hasPendingAttempt =
+        readDirectCheckoutAttempt(attemptStorageKey) !== null
+      const canStartNew =
+        !productQuery.error && sku !== undefined && isSKUPurchasable(sku)
 
-      if (!sku || !isSKUPurchasable(sku)) {
+      if (productQuery.error && !hasPendingAttempt) {
+        content = (
+          <QueryError
+            title={feedT("errors.productLoadTitle")}
+            description={describeProductError(productQuery.error, feedT)}
+            retryLabel={feedT("errors.retry")}
+            onRetry={productQuery.refetch}
+          />
+        )
+      } else if (!canStartNew && !hasPendingAttempt) {
         content = (
           <QueryError
             title={t("checkout.direct.unavailableTitle")}
@@ -144,22 +144,31 @@ export function CheckoutRoute() {
       } else if (addressesQuery.isPending) {
         content = <Skeleton className="h-96 rounded-xl" />
       } else {
-        const items: CheckoutLine[] = [
-          {
-            id: sku.id,
-            product_name: productQuery.data.name,
-            sku_specs: sku.specs,
-            unit_price_cents: sku.price_cents,
-            quantity: directQuantity,
-            line_total_cents: sku.price_cents * directQuantity,
-          },
-        ]
+        const items: CheckoutLine[] = product && sku
+          ? [
+              {
+                id: sku.id,
+                product_name: product.name,
+                sku_specs: sku.specs,
+                unit_price_cents: sku.price_cents,
+                quantity: directQuantity,
+                line_total_cents: sku.price_cents * directQuantity,
+              },
+            ]
+          : []
         content = (
           <CheckoutPage
+            key={attemptStorageKey}
             token={session.token}
             items={items}
             savedAddresses={addressesQuery.data}
-            mode={{ type: "direct", skuID: directSKUID }}
+            mode={{
+              type: "direct",
+              skuID: directSKUID,
+              quantity: directQuantity,
+              attemptStorageKey,
+              canStartNew,
+            }}
             backHref={`/products/${directProductID}`}
             onOrderCreated={() => {
               void queryClient.invalidateQueries({
@@ -184,11 +193,27 @@ export function CheckoutRoute() {
   } else if (addressesQuery.isPending) {
     content = <Skeleton className="h-96 rounded-xl" />
   } else {
+    const cartItems = (cartQuery.data ?? []).filter(
+      (item) =>
+        item.availability === "available" &&
+        (selectedIDs === null || selectedIDs.has(item.id)),
+    )
+    const snapshot = cartSelectionSnapshot(cartItems)
+    const initiallyChanged =
+      (selectedIDs !== null && cartItems.length !== selectedIDs.size) ||
+      (cartSelectionBaseline !== null && cartSelectionBaseline !== snapshot)
+
     content = (
-      <CheckoutPage
+      <CartCheckout
+        key={`${location.key}:${session.token}`}
         token={session.token}
         items={cartItems}
         savedAddresses={addressesQuery.data}
+        snapshot={snapshot}
+        initiallyChanged={initiallyChanged}
+        onCartConflict={async () => {
+          await cartQuery.refetch()
+        }}
         onOrderCreated={() => {
           void queryClient.invalidateQueries({
             queryKey: cartQueryKeys.cart(session.token),
@@ -207,6 +232,42 @@ export function CheckoutRoute() {
       <SiteFooter />
     </div>
   )
+}
+
+function CartCheckout({
+  snapshot,
+  initiallyChanged,
+  ...checkoutProps
+}: ComponentProps<typeof CheckoutPage> & {
+  snapshot: string
+  initiallyChanged: boolean
+}) {
+  const [review, setReview] = useState(() => ({
+    snapshot,
+    needsConfirmation: initiallyChanged,
+  }))
+  if (review.snapshot !== snapshot) {
+    setReview({ snapshot, needsConfirmation: true })
+  }
+
+  return (
+    <CheckoutPage
+      {...checkoutProps}
+      cartChangeNeedsConfirmation={review.needsConfirmation}
+      onConfirmCartChanges={() =>
+        setReview({ snapshot, needsConfirmation: false })
+      }
+    />
+  )
+}
+
+function readCartSelectionSnapshot(state: unknown): string | null {
+  if (state === null || typeof state !== "object") {
+    return null
+  }
+  const value = (state as { cartSelectionSnapshot?: unknown })
+    .cartSelectionSnapshot
+  return typeof value === "string" ? value : null
 }
 
 function positiveInteger(value: string | null) {

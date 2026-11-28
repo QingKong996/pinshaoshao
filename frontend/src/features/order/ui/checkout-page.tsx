@@ -1,9 +1,10 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { LoaderCircle, ShoppingBag } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { Link, useNavigate } from "react-router"
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button, buttonVariants } from "@/shared/ui/button"
 import {
   Card,
@@ -30,7 +31,12 @@ import {
 } from "@/shared/ui/select"
 import { formatPriceCents } from "@/shared/lib/format"
 import { useDocumentTitle } from "@/shared/hooks/use-document-title"
-import { describeCheckoutError } from "../model/errors"
+import { describeCheckoutError, isCheckoutConflict } from "../model/errors"
+import {
+  directCheckoutSignature,
+  readDirectCheckoutAttempt,
+  saveDirectCheckoutAttempt,
+} from "../model/direct-checkout-attempt"
 import {
   INITIAL_CHECKOUT_VALUES,
   checkoutFormSchema,
@@ -48,7 +54,13 @@ type CheckoutAttempt = {
 
 export type CheckoutMode =
   | { type: "cart" }
-  | { type: "direct"; skuID: number }
+  | {
+      type: "direct"
+      skuID: number
+      quantity: number
+      attemptStorageKey: string
+      canStartNew: boolean
+    }
 
 const CART_MODE: CheckoutMode = { type: "cart" }
 
@@ -58,6 +70,9 @@ export function CheckoutPage({
   mode = CART_MODE,
   savedAddresses = [],
   backHref,
+  cartChangeNeedsConfirmation = false,
+  onConfirmCartChanges,
+  onCartConflict,
   onOrderCreated,
 }: {
   token: string
@@ -65,6 +80,9 @@ export function CheckoutPage({
   mode?: CheckoutMode
   savedAddresses?: CheckoutSavedAddress[]
   backHref?: string
+  cartChangeNeedsConfirmation?: boolean
+  onConfirmCartChanges?: () => void
+  onCartConflict?: () => Promise<void>
   onOrderCreated?: () => void
 }) {
   const { t } = useTranslation("order")
@@ -76,10 +94,12 @@ export function CheckoutPage({
   const directMode = mode.type === "direct" ? mode : null
   const activeOrder = directMode ? createDirectOrder : createOrder
   const resolvedBackHref = backHref ?? (directMode ? "/" : "/cart")
-  const [attempt, setAttempt] = useState<CheckoutAttempt>({
-    signature: "",
-    key: "",
-  })
+  const cartAttempt = useRef<CheckoutAttempt | null>(null)
+  const [directAttempt, setDirectAttempt] = useState(() =>
+    directMode ? readDirectCheckoutAttempt(directMode.attemptStorageKey) : null,
+  )
+  const [directAttemptMismatch, setDirectAttemptMismatch] = useState(false)
+  const submittingDirectOrder = useRef(false)
   const initialAddress =
     savedAddresses.find((candidate) => candidate.is_default) ??
     savedAddresses[0]
@@ -118,45 +138,84 @@ export function CheckoutPage({
   )
 
   async function onSubmit(values: CheckoutFormValues) {
-    const payload = directMode
-      ? {
-          sku_id: directMode.skuID,
-          quantity: items[0]?.quantity ?? 0,
-          ...values,
-        }
-      : {
-          items: items.map((item) => ({
-            cart_item_id: item.id,
-            quantity: item.quantity,
-          })),
-          ...values,
-        }
+    if (directMode) {
+      await submitDirectOrder(values)
+      return
+    }
+    if (cartChangeNeedsConfirmation || items.length === 0) {
+      return
+    }
+    const payload = {
+      items: items.map((item) => ({
+        cart_item_id: item.id,
+        quantity: item.quantity,
+      })),
+      ...values,
+    }
     const signature = JSON.stringify(payload)
     const checkoutKey =
-      attempt.signature === signature ? attempt.key : crypto.randomUUID()
-    if (checkoutKey !== attempt.key) {
-      setAttempt({ signature, key: checkoutKey })
-    }
+      cartAttempt.current?.signature === signature
+        ? cartAttempt.current.key
+        : crypto.randomUUID()
+    cartAttempt.current = { signature, key: checkoutKey }
 
     try {
-      const order = directMode
-        ? await createDirectOrder.mutateAsync({
-            checkout_key: checkoutKey,
-            sku_id: directMode.skuID,
-            quantity: items[0]?.quantity ?? 0,
-            ...values,
-          })
-        : await createOrder.mutateAsync({
-            checkout_key: checkoutKey,
-            items: items.map((item) => ({
-              cart_item_id: item.id,
-              quantity: item.quantity,
-            })),
-            ...values,
-          })
+      const order = await createOrder.mutateAsync({
+        checkout_key: checkoutKey,
+        ...payload,
+      })
       navigate(`/orders/${order.id}`, { replace: true })
-    } catch {
-      // the mutation state renders the error
+    } catch (error) {
+      if (isCheckoutConflict(error)) {
+        await onCartConflict?.()
+      }
+    }
+  }
+
+  async function submitDirectOrder(
+    values: CheckoutFormValues,
+    startNew = false,
+  ) {
+    if (!directMode || submittingDirectOrder.current) {
+      return
+    }
+    const { attemptStorageKey, canStartNew, quantity, skuID } = directMode
+    submittingDirectOrder.current = true
+    try {
+      const payload = { sku_id: skuID, quantity, ...values }
+      const signature = await directCheckoutSignature(payload)
+      const pendingAttempt =
+        readDirectCheckoutAttempt(attemptStorageKey) ?? directAttempt
+      if (!canStartNew && (startNew || !pendingAttempt)) {
+        return
+      }
+      if (!startNew && pendingAttempt && pendingAttempt.signature !== signature) {
+        setDirectAttempt(pendingAttempt)
+        setDirectAttemptMismatch(true)
+        return
+      }
+
+      const checkoutKey =
+        (!startNew && pendingAttempt?.key) || crypto.randomUUID()
+      const nextAttempt = { signature, key: checkoutKey }
+      setDirectAttemptMismatch(false)
+      saveDirectCheckoutAttempt(attemptStorageKey, nextAttempt)
+      const order = await createDirectOrder
+        .mutateAsync({
+          checkout_key: checkoutKey,
+          ...payload,
+        })
+        .catch(() => null)
+      if (!order) {
+        setDirectAttempt(nextAttempt)
+        return
+      }
+      if (readDirectCheckoutAttempt(attemptStorageKey)?.key === checkoutKey) {
+        saveDirectCheckoutAttempt(attemptStorageKey, null)
+      }
+      navigate(`/orders/${order.id}`, { replace: true })
+    } finally {
+      submittingDirectOrder.current = false
     }
   }
 
@@ -186,7 +245,39 @@ export function CheckoutPage({
         />
       ) : null}
 
-      {items.length === 0 ? (
+      {cartChangeNeedsConfirmation ? (
+        <Alert>
+          <AlertTitle>{t("checkout.cartChanged.title")}</AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-3">
+            <span>{t("checkout.cartChanged.description")}</span>
+            {items.length > 0 ? (
+              <Button type="button" onClick={onConfirmCartChanges}>
+                {t("checkout.cartChanged.confirm")}
+              </Button>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {directMode && directAttempt ? (
+        <Alert>
+          <AlertTitle>{t("checkout.directAttempt.title")}</AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-3">
+            <span>
+              {t(
+                directAttemptMismatch
+                  ? "checkout.directAttempt.mismatch"
+                  : "checkout.directAttempt.description",
+              )}
+            </span>
+            <Link to="/orders" className="underline">
+              {t("checkout.directAttempt.viewOrders")}
+            </Link>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {items.length === 0 && !directAttempt ? (
         <Card className="items-center gap-3 px-6 py-14 text-center">
           <ShoppingBag
             className="size-10 text-muted-foreground"
@@ -217,7 +308,7 @@ export function CheckoutPage({
             <CardContent>
               <form
                 id="checkout-form"
-                onSubmit={handleSubmit(onSubmit)}
+                onSubmit={(event) => handleSubmit(onSubmit)(event)}
                 className="flex flex-col gap-5"
               >
                 <FieldGroup>
@@ -332,67 +423,89 @@ export function CheckoutPage({
                   </Field>
                 </FieldGroup>
 
-                <div className="flex justify-end border-t pt-4">
+                <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+                  {directMode?.canStartNew && directAttempt ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={(event) =>
+                        handleSubmit((values) => submitDirectOrder(values, true))(
+                          event,
+                        )
+                      }
+                      disabled={isSubmitting || activeOrder.isPending}
+                    >
+                      {t("checkout.directAttempt.startNew")}
+                    </Button>
+                  ) : null}
                   <Button
                     type="submit"
-                    disabled={isSubmitting || activeOrder.isPending}
+                    disabled={
+                      cartChangeNeedsConfirmation ||
+                      isSubmitting ||
+                      activeOrder.isPending
+                    }
                   >
                     {isSubmitting || activeOrder.isPending ? (
                       <LoaderCircle className="animate-spin" aria-hidden />
                     ) : null}
-                    {t("checkout.form.submit")}
+                    {directAttempt
+                      ? t("checkout.directAttempt.retry")
+                      : t("checkout.form.submit")}
                   </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
 
-          <Card className="gap-4 lg:sticky lg:top-24">
-            <CardHeader>
-              <CardTitle>{t("checkout.summary.title")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ul className="divide-y">
-                {items.map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium">{item.product_name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatOrderSpecs(
-                          item.sku_specs,
-                          t("checkout.summary.noSpecs"),
-                        )}
+          {items.length > 0 ? (
+            <Card className="gap-4 lg:sticky lg:top-24">
+              <CardHeader>
+                <CardTitle>{t("checkout.summary.title")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="divide-y">
+                  {items.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium">{item.product_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatOrderSpecs(
+                            item.sku_specs,
+                            t("checkout.summary.noSpecs"),
+                          )}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {t("checkout.summary.quantity", {
+                            count: item.quantity,
+                          })}
+                        </p>
+                      </div>
+                      <p className="shrink-0 font-medium tabular-nums">
+                        {formatPriceCents(item.line_total_cents)}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {t("checkout.summary.quantity", {
-                          count: item.quantity,
-                        })}
-                      </p>
-                    </div>
-                    <p className="shrink-0 font-medium tabular-nums">
-                      {formatPriceCents(item.line_total_cents)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex items-center justify-between gap-4 border-t pt-4">
-                <span className="font-medium">
-                  {t("checkout.summary.total")}
-                </span>
-                <span className="font-heading text-lg font-semibold tabular-nums">
-                  {formatPriceCents(totalCents)}
-                </span>
-              </div>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {directMode
-                  ? t("checkout.summary.directNotice")
-                  : t("checkout.summary.notice")}
-              </p>
-            </CardContent>
-          </Card>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-center justify-between gap-4 border-t pt-4">
+                  <span className="font-medium">
+                    {t("checkout.summary.total")}
+                  </span>
+                  <span className="font-heading text-lg font-semibold tabular-nums">
+                    {formatPriceCents(totalCents)}
+                  </span>
+                </div>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {directMode
+                    ? t("checkout.summary.directNotice")
+                    : t("checkout.summary.notice")}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       )}
     </div>

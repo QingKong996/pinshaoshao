@@ -14,7 +14,11 @@ import { Skeleton } from "@/shared/ui/skeleton"
 import { formatPriceCents } from "@/shared/lib/format"
 import { useDocumentTitle } from "@/shared/hooks/use-document-title"
 import type { CartItem } from "../types"
-import { formatCartSpecs, summarizeSelection } from "../model/cart"
+import {
+  cartSelectionSnapshot,
+  formatCartSpecs,
+  summarizeSelection,
+} from "../model/cart"
 import { describeCartError } from "../model/errors"
 import {
   useRemoveCartItem,
@@ -53,6 +57,16 @@ export function CartPage({ token }: { token: string }) {
     () => summarizeSelection(items, selectedIDs),
     [items, selectedIDs],
   )
+
+  function checkout() {
+    const selectedItems = items.filter(
+      (item) => item.availability === "available" && selectedIDs.has(item.id),
+    )
+    const ids = selectedItems.map((item) => item.id).join(",")
+    navigate(`/checkout?items=${ids}`, {
+      state: { cartSelectionSnapshot: cartSelectionSnapshot(selectedItems) },
+    })
+  }
 
   function toggleItem(item: CartItem) {
     const next = new Set(selectedIDs)
@@ -187,11 +201,7 @@ export function CartPage({ token }: { token: string }) {
             <Button
               className="w-full"
               disabled={summary.count === 0}
-              onClick={() =>
-                navigate(
-                  `/checkout?items=${Array.from(selectedIDs).join(",")}`,
-                )
-              }
+              onClick={checkout}
             >
               {t("summary.checkout")}
             </Button>

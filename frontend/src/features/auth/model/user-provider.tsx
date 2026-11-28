@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   login as userLogin,
   logout as userLogout,
@@ -55,28 +55,28 @@ export function UserAuthProvider({
   onBeforeSessionChange: () => void
 }) {
   const [session, setSession] = useState<UserSession | null>(readStoredSession)
+  const currentSession = useRef(session)
+
+  const replaceSession = useCallback((next: UserSession | null) => {
+    currentSession.current = next
+    onBeforeSessionChange()
+    writeStoredSession(next)
+    setSession(next)
+  }, [onBeforeSessionChange])
 
   const signIn = useCallback(async (credentials: LoginRequest) => {
     const { token } = await userLogin(credentials)
-    const next: UserSession = { token, username: credentials.username }
-    onBeforeSessionChange()
-    writeStoredSession(next)
-    setSession(next)
-  }, [onBeforeSessionChange])
+    replaceSession({ token, username: credentials.username })
+  }, [replaceSession])
 
   const signUp = useCallback(async (details: RegisterRequest) => {
     const { token } = await userRegister(details)
-    const next: UserSession = { token, username: details.username }
-    onBeforeSessionChange()
-    writeStoredSession(next)
-    setSession(next)
-  }, [onBeforeSessionChange])
+    replaceSession({ token, username: details.username })
+  }, [replaceSession])
 
   const signOut = useCallback(async () => {
-    const token = session?.token
-    onBeforeSessionChange()
-    writeStoredSession(null)
-    setSession(null)
+    const token = currentSession.current?.token
+    replaceSession(null)
     if (!token) {
       return
     }
@@ -85,11 +85,19 @@ export function UserAuthProvider({
     } catch {
       // the local session is already cleared
     }
-  }, [onBeforeSessionChange, session])
+  }, [replaceSession])
+
+  const expireSession = useCallback((token: string) => {
+    if (currentSession.current?.token !== token) {
+      return false
+    }
+    replaceSession(null)
+    return true
+  }, [replaceSession])
 
   const value = useMemo<UserAuthContextValue>(
-    () => ({ session, signIn, signUp, signOut }),
-    [session, signIn, signUp, signOut],
+    () => ({ session, signIn, signUp, signOut, expireSession }),
+    [session, signIn, signUp, signOut, expireSession],
   )
 
   return (

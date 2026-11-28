@@ -5,12 +5,64 @@ package repository_test
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 
 	"pinshaoshao/internal/feature/order/apperr"
 	"pinshaoshao/internal/feature/order/model"
 	productmodel "pinshaoshao/internal/feature/product/model"
 )
+
+func TestOrderRepositoryListsLargeItemCounts(t *testing.T) {
+	ctx := context.Background()
+	resetDatabase(t)
+	user := insertBuyer(t, "buyer01")
+	shop, product, firstSKU := insertCatalogSKU(t, "shop01", "Shop", productmodel.ProductStatusOnShelf, true, 1, math.MaxInt32)
+	const insertSKU = `WITH sku AS (
+    INSERT INTO product_skus (product_id, specs, price_cents)
+    VALUES ($1, '{"color": "white"}', 1) RETURNING id
+)
+INSERT INTO inventory_items (sku_id, total_stock)
+SELECT id, 1 FROM sku RETURNING sku_id`
+	var secondSKUID int
+	if err := testPool.QueryRow(ctx, insertSKU, product.ID).Scan(&secondSKUID); err != nil {
+		t.Fatalf("create second SKU: %v", err)
+	}
+	firstItem := addCartItem(t, user.ID, firstSKU.ID, math.MaxInt32)
+	secondItem := addCartItem(t, user.ID, secondSKUID, 1)
+	repository := newTestOrderRepository()
+	order, err := repository.Create(ctx, user.ID, testOrderInput(
+		[]int{firstItem.ID, secondItem.ID},
+		[]int{math.MaxInt32, 1},
+		testRequestHash("a"),
+	))
+	if err != nil {
+		t.Fatalf("create large order: %v", err)
+	}
+
+	const wantItemCount int64 = math.MaxInt32 + 1
+	buyer, err := repository.List(ctx, user.ID, model.OrderListFilter{Page: 1, PageSize: 10})
+	if err != nil {
+		t.Fatalf("list buyer orders: %v", err)
+	}
+	if len(buyer.Orders) != 1 || buyer.Orders[0].ItemCount != wantItemCount {
+		t.Fatalf("buyer orders = %+v, want one order with %d items", buyer.Orders, wantItemCount)
+	}
+	merchant, err := repository.ListMerchant(ctx, shop.ID, model.MerchantOrderListFilter{Page: 1, PageSize: 10})
+	if err != nil {
+		t.Fatalf("list merchant orders: %v", err)
+	}
+	if len(merchant.Orders) != 1 || merchant.Orders[0].ItemCount != wantItemCount {
+		t.Fatalf("merchant orders = %+v, want one order with %d items", merchant.Orders, wantItemCount)
+	}
+	detail, err := repository.GetMerchant(ctx, shop.ID, order.SubOrders[0].ID)
+	if err != nil {
+		t.Fatalf("get merchant order: %v", err)
+	}
+	if detail.ItemCount != wantItemCount {
+		t.Fatalf("merchant item count = %d, want %d", detail.ItemCount, wantItemCount)
+	}
+}
 
 func TestOrderRepositoryListMerchantFiltersByShopAndStatus(t *testing.T) {
 	ctx := context.Background()

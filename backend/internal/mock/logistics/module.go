@@ -188,7 +188,7 @@ func (m *Module) AuthMiddleware() gin.HandlerFunc {
 }
 
 func (m *Module) Register(r *gin.Engine, authMiddleware gin.HandlerFunc) {
-	r.POST("/mocklogistics/api/v1/auth/login", m.authHandler.Login)
+	r.POST("/mocklogistics/api/v1/auth/login", mockauth.LocalIPOnly(), m.authHandler.Login)
 	r.POST("/mocklogistics/api/v1/auth/logout", authMiddleware, m.authHandler.Logout)
 
 	api := r.Group("/mocklogistics/api/v1/shipments")

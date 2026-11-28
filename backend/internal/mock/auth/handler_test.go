@@ -95,3 +95,37 @@ func TestLoginRejectsInvalidJSON(t *testing.T) {
 		t.Fatalf("status = %d, want 400", response.Code)
 	}
 }
+
+func TestLocalIPOnlyBlocksRemoteMockLogins(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.POST("/login", LocalIPOnly(), NewHandler(stubAuthService{}).Login)
+
+	for _, test := range []struct {
+		name       string
+		remoteAddr string
+		forwarded  string
+		wantStatus int
+	}{
+		{name: "IPv4 loopback", remoteAddr: "127.0.0.1:1234", wantStatus: http.StatusOK},
+		{name: "IPv6 loopback", remoteAddr: "[::1]:1234", wantStatus: http.StatusOK},
+		{name: "remote address", remoteAddr: "192.0.2.10:1234", wantStatus: http.StatusForbidden},
+		{name: "spoofed forwarded address", remoteAddr: "192.0.2.10:1234", forwarded: "127.0.0.1", wantStatus: http.StatusForbidden},
+		{name: "loopback proxy", remoteAddr: "127.0.0.1:1234", forwarded: "192.0.2.10", wantStatus: http.StatusForbidden},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"username":"operator"}`))
+			request.RemoteAddr = test.remoteAddr
+			request.Header.Set("Content-Type", "application/json")
+			if test.forwarded != "" {
+				request.Header.Set("X-Forwarded-For", test.forwarded)
+			}
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+
+			if response.Code != test.wantStatus {
+				t.Fatalf("status = %d, want %d", response.Code, test.wantStatus)
+			}
+		})
+	}
+}

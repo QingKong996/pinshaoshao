@@ -11,11 +11,24 @@
     "description": "Enter delivery details and submit. Unpaid orders expire after 30 minutes.",
     "backToCart": "Back to cart",
     "backToProduct": "Back to product",
+    "cartChanged": {
+      "title": "Your selected cart items changed",
+      "description": "Review the updated items, quantities, and availability. Unavailable items are excluded. Confirm the updated selection before placing your order.",
+      "confirm": "Confirm updated selection"
+    },
     "direct": {
       "invalidTitle": "Invalid direct purchase link",
       "invalidDescription": "Return to the product page and choose an available option.",
       "unavailableTitle": "This option is unavailable",
       "unavailableDescription": "The option is disabled or no longer has enough stock. Choose another option on the product page."
+    },
+    "directAttempt": {
+      "title": "An unfinished purchase attempt was found",
+      "description": "Your previous request may have created an order. Check your orders or retry with the same delivery details.",
+      "mismatch": "The delivery details differ from the previous attempt. Restore the previous details to retry, or explicitly start a new purchase.",
+      "retry": "Retry previous attempt",
+      "startNew": "Start a new purchase with these details",
+      "viewOrders": "View my orders"
     },
     "form": {
       "title": "Delivery details",

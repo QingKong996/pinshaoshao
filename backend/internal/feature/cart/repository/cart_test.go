@@ -4,6 +4,7 @@ package repository_test
 
 import (
 	"context"
+	"math"
 	"sync"
 	"testing"
 
@@ -52,6 +53,26 @@ func TestCartRepositoryAddAndList(t *testing.T) {
 		}
 		if len(items) != 1 || items[0].ID != first.ID {
 			t.Fatalf("items = %+v, want one cart item", items)
+		}
+	})
+
+	t.Run("rejects quantity overflow without changing the cart", func(t *testing.T) {
+		resetDatabase(t)
+		user := insertUser(t, "buyer01")
+		_, sku := insertCatalogSKU(t, productmodel.ProductStatusOnShelf, true, math.MaxInt32)
+
+		if _, err := cartRepository.AddItem(ctx, user.ID, sku.ID, math.MaxInt32); err != nil {
+			t.Fatalf("add cart item: %v", err)
+		}
+		_, err := cartRepository.AddItem(ctx, user.ID, sku.ID, 1)
+		requireErrorIs(t, err, apperr.ErrInvalidCartQuantity)
+
+		items, err := cartRepository.ListByUserID(ctx, user.ID)
+		if err != nil {
+			t.Fatalf("list cart: %v", err)
+		}
+		if len(items) != 1 || items[0].Quantity != math.MaxInt32 {
+			t.Fatalf("items = %+v, want one item at the quantity limit", items)
 		}
 	})
 
