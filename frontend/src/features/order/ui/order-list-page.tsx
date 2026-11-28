@@ -22,6 +22,15 @@ export function OrderListPage({ token }: { token: string }) {
   const [page, setPage] = useState(1)
   const ordersQuery = useOrders(token, page, PAGE_SIZE)
   const result = ordersQuery.data
+  const lastPage = Math.max(1, result?.total_pages ?? 0)
+  const pageOutOfRange =
+    result !== undefined && result.page === page && page > lastPage
+  const placeholderHasNoItems =
+    result !== undefined && result.page !== page && result.items.length === 0
+
+  if (pageOutOfRange) {
+    setPage(lastPage)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -29,6 +38,15 @@ export function OrderListPage({ token }: { token: string }) {
         title={t("list.title")}
         description={t("list.description")}
       />
+
+      {ordersQuery.error && result ? (
+        <QueryError
+          title={t("errors.loadTitle")}
+          description={describeOrderError(ordersQuery.error, t)}
+          retryLabel={t("errors.retry")}
+          onRetry={ordersQuery.refetch}
+        />
+      ) : null}
 
       {ordersQuery.error && !result ? (
         <QueryError
@@ -39,7 +57,9 @@ export function OrderListPage({ token }: { token: string }) {
         />
       ) : ordersQuery.isPending && !result ? (
         <OrderListSkeleton />
-      ) : !result || result.items.length === 0 ? (
+      ) : pageOutOfRange || placeholderHasNoItems ? (
+        <OrderListSkeleton />
+      ) : !result || result.total === 0 ? (
         <Card className="items-center gap-3 px-6 py-14 text-center">
           <Package className="size-10 text-muted-foreground" aria-hidden />
           <div className="space-y-1">

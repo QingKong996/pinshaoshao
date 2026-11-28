@@ -109,6 +109,10 @@ export default function MerchantOrderDetailPage({
         }
       />
 
+      {orderQuery.error ? (
+        <QueryError error={orderQuery.error} onRetry={orderQuery.refetch} />
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>{t("orders.detail.summary.title")}</CardTitle>

@@ -45,6 +45,9 @@ export function useCancelOrder(token: string, orderID: number) {
     onSuccess: (order) => {
       queryClient.setQueryData(orderQueryKeys.order(token, orderID), order)
       void queryClient.invalidateQueries({
+        queryKey: orderQueryKeys.order(token, orderID),
+      })
+      void queryClient.invalidateQueries({
         queryKey: orderQueryKeys.orders(token),
       })
     },

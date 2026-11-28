@@ -14,17 +14,22 @@ import (
 )
 
 func (r *OrderRepository) ListMerchant(ctx context.Context, shopID int, filter model.MerchantOrderListFilter) (*model.MerchantOrderListResult, error) {
-	where, args := merchantOrderFilter(shopID, filter)
+	var result *model.MerchantOrderListResult
+	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{
+		IsoLevel:   pgx.RepeatableRead,
+		AccessMode: pgx.ReadOnly,
+	}, func(tx pgx.Tx) error {
+		where, args := merchantOrderFilter(shopID, filter)
 
-	var total int64
-	countQuery := `SELECT COUNT(*) FROM sub_orders so ` + where
-	if err := r.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, fmt.Errorf("repository.ListMerchantOrders: count: %w", err)
-	}
+		var total int64
+		countQuery := `SELECT COUNT(*) FROM sub_orders so ` + where
+		if err := tx.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+			return fmt.Errorf("count: %w", err)
+		}
 
-	limitIndex := len(args) + 1
-	offsetIndex := len(args) + 2
-	query := fmt.Sprintf(`SELECT so.id, so.order_id, so.status::text, so.total_amount_cents,
+		limitIndex := len(args) + 1
+		offsetIndex := len(args) + 2
+		query := fmt.Sprintf(`SELECT so.id, so.order_id, so.status::text, so.total_amount_cents,
        COALESCE(SUM(ois.quantity), 0),
        o.paid_at, so.created_at
 FROM sub_orders so
@@ -34,41 +39,47 @@ LEFT JOIN order_item_snapshots ois ON ois.sub_order_id = so.id
 GROUP BY so.id, o.id
 ORDER BY so.created_at DESC, so.id DESC
 LIMIT $%d OFFSET $%d`, where, limitIndex, offsetIndex)
-	listArgs := append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
+		listArgs := append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
 
-	rows, err := r.pool.Query(ctx, query, listArgs...)
+		rows, err := tx.Query(ctx, query, listArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		orders := make([]model.MerchantOrderSummary, 0)
+		for rows.Next() {
+			var order model.MerchantOrderSummary
+			var status string
+			if err := rows.Scan(
+				&order.ID,
+				&order.OrderID,
+				&status,
+				&order.TotalAmountCents,
+				&order.ItemCount,
+				&order.PaidAt,
+				&order.CreatedAt,
+			); err != nil {
+				return err
+			}
+			order.Status = model.SubOrderStatus(status)
+			orders = append(orders, order)
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		result = &model.MerchantOrderListResult{
+			Orders:   orders,
+			Page:     filter.Page,
+			PageSize: filter.PageSize,
+			Total:    total,
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("repository.ListMerchantOrders: %w", err)
 	}
-	defer rows.Close()
-
-	orders := make([]model.MerchantOrderSummary, 0)
-	for rows.Next() {
-		var order model.MerchantOrderSummary
-		var status string
-		if err := rows.Scan(
-			&order.ID,
-			&order.OrderID,
-			&status,
-			&order.TotalAmountCents,
-			&order.ItemCount,
-			&order.PaidAt,
-			&order.CreatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("repository.ListMerchantOrders: %w", err)
-		}
-		order.Status = model.SubOrderStatus(status)
-		orders = append(orders, order)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("repository.ListMerchantOrders: %w", err)
-	}
-	return &model.MerchantOrderListResult{
-		Orders:   orders,
-		Page:     filter.Page,
-		PageSize: filter.PageSize,
-		Total:    total,
-	}, nil
+	return result, nil
 }
 
 func (r *OrderRepository) GetMerchant(ctx context.Context, shopID int, subOrderID int) (*model.MerchantOrderDetail, error) {

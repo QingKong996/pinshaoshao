@@ -123,6 +123,15 @@ export function OrderDetailPage({
         }
       />
 
+      {orderQuery.error ? (
+        <QueryError
+          title={t("errors.loadTitle")}
+          description={describeOrderError(orderQuery.error, t)}
+          retryLabel={t("errors.retry")}
+          onRetry={orderQuery.refetch}
+        />
+      ) : null}
+
       {cancelOrder.error ? (
         <QueryError
           title={t("errors.cancelTitle")}
@@ -137,15 +146,23 @@ export function OrderDetailPage({
           <CardTitle>{t("detail.summary.title")}</CardTitle>
           <OrderStatusBadge status={order.status} />
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-3">
+        <CardContent
+          className={
+            order.status === "pending_payment"
+              ? "grid gap-4 sm:grid-cols-3"
+              : "grid gap-4 sm:grid-cols-2"
+          }
+        >
           <SummaryItem
             label={t("detail.summary.total")}
             value={formatPriceCents(order.total_amount_cents)}
           />
-          <SummaryItem
-            label={t("detail.summary.expiresAt")}
-            value={formatDateTime(order.expires_at)}
-          />
+          {order.status === "pending_payment" ? (
+            <SummaryItem
+              label={t("detail.summary.expiresAt")}
+              value={formatDateTime(order.expires_at)}
+            />
+          ) : null}
           <SummaryItem
             label={t("detail.summary.status")}
             value={t(`status.${order.status}`)}
