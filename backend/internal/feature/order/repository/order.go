@@ -212,7 +212,10 @@ func (r *OrderRepository) fillCartOrder(
 	reservations := make(map[int]int, len(cartItems))
 	for _, item := range cartItems {
 		sku, ok := catalog[item.SKUID]
-		if !ok || sku.Status != "on_shelf" || !sku.Enabled {
+		if !ok ||
+			sku.Status != "on_shelf" ||
+			sku.ShopStatus != "active" ||
+			!sku.Enabled {
 			return apperr.ErrProductUnavailable
 		}
 		reservations[item.SKUID] += item.Quantity
@@ -293,7 +296,10 @@ func (r *OrderRepository) fillDirectOrder(
 		return err
 	}
 	sku, ok := catalog[skuID]
-	if !ok || sku.Status != "on_shelf" || !sku.Enabled {
+	if !ok ||
+		sku.Status != "on_shelf" ||
+		sku.ShopStatus != "active" ||
+		!sku.Enabled {
 		return apperr.ErrProductUnavailable
 	}
 
@@ -473,19 +479,20 @@ type catalogSKU struct {
 	PriceCents  int64
 	ShopID      int
 	ShopName    string
+	ShopStatus  string
 	Status      string
 	Enabled     bool
 }
 
 func lockCatalogSKUs(ctx context.Context, db database.DBTX, skuIDs []int64) (map[int]catalogSKU, error) {
 	const query = `SELECT ps.id, p.id, p.name, ps.specs, ps.price_cents,
-       p.shop_id, s.name, p.status::text, ps.is_enabled
+       p.shop_id, s.name, s.status::text, p.status::text, ps.is_enabled
 FROM product_skus ps
 JOIN products p ON p.id = ps.product_id
 JOIN shops s ON s.id = p.shop_id
 WHERE ps.id = ANY($1::bigint[])
 ORDER BY p.id, ps.id
-FOR SHARE OF p, ps`
+FOR SHARE OF p, ps, s`
 
 	rows, err := db.Query(ctx, query, skuIDs)
 	if err != nil {
@@ -504,6 +511,7 @@ FOR SHARE OF p, ps`
 			&sku.PriceCents,
 			&sku.ShopID,
 			&sku.ShopName,
+			&sku.ShopStatus,
 			&sku.Status,
 			&sku.Enabled,
 		); err != nil {

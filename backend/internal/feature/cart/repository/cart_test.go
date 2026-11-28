@@ -108,6 +108,20 @@ func TestCartRepositoryAddAndList(t *testing.T) {
 					return sku.ID
 				},
 			},
+			{
+				name: "banned shop",
+				setup: func(t *testing.T) int {
+					product, sku := insertCatalogSKU(t, productmodel.ProductStatusOnShelf, true, 10)
+					if _, err := testPool.Exec(
+						context.Background(),
+						`UPDATE shops SET status = 'banned' WHERE id = $1`,
+						product.ShopID,
+					); err != nil {
+						t.Fatalf("ban shop: %v", err)
+					}
+					return sku.ID
+				},
+			},
 		}
 
 		for _, tt := range tests {
@@ -158,6 +172,36 @@ func TestCartRepositoryAvailability(t *testing.T) {
 	}
 	if item.AvailableStock == nil || *item.AvailableStock != 2 {
 		t.Fatalf("available stock = %v, want 2", item.AvailableStock)
+	}
+}
+
+func TestCartRepositoryMarksBannedShopItemsUnavailable(t *testing.T) {
+	ctx := context.Background()
+	cartRepository := newTestCartRepository()
+
+	resetDatabase(t)
+	user := insertUser(t, "buyer01")
+	product, sku := insertCatalogSKU(t, productmodel.ProductStatusOnShelf, true, 5)
+	if _, err := cartRepository.AddItem(ctx, user.ID, sku.ID, 1); err != nil {
+		t.Fatalf("add cart item: %v", err)
+	}
+	if _, err := testPool.Exec(
+		ctx,
+		`UPDATE shops SET status = 'banned' WHERE id = $1`,
+		product.ShopID,
+	); err != nil {
+		t.Fatalf("ban shop: %v", err)
+	}
+
+	items, err := cartRepository.ListByUserID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("list cart: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items = %+v, want one item", items)
+	}
+	if got := items[0].Availability(); got != "shop_banned" {
+		t.Fatalf("availability = %q, want shop banned", got)
 	}
 }
 

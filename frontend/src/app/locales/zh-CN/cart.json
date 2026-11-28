@@ -24,6 +24,7 @@
   "availability": {
     "available": "可结算",
     "productDeleted": "商品已删除",
+    "shopBanned": "店铺已停止接单",
     "productOffShelf": "商品已下架",
     "skuDeleted": "该规格已删除",
     "skuDisabled": "该规格已停用",

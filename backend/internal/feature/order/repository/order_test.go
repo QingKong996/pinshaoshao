@@ -504,6 +504,48 @@ func TestOrderRepositoryCreateDirectRejectsUnavailableSKU(t *testing.T) {
 	})
 }
 
+func TestOrderRepositoryRejectsBannedShop(t *testing.T) {
+	t.Run("direct order", func(t *testing.T) {
+		ctx := context.Background()
+		resetDatabase(t)
+		user := insertBuyer(t, "buyer01")
+		shop, _, sku := insertCatalogSKU(t, "shop01", "Shop", productmodel.ProductStatusOnShelf, true, 1999, 10)
+		if _, err := testPool.Exec(ctx, `UPDATE shops SET status = 'banned' WHERE id = $1`, shop.ID); err != nil {
+			t.Fatalf("ban shop: %v", err)
+		}
+
+		_, err := newTestOrderRepository().CreateDirect(
+			ctx,
+			user.ID,
+			testDirectOrderInput(sku.ID, 1, testRequestHash("f")),
+		)
+		requireErrorIs(t, err, apperr.ErrProductUnavailable)
+		requireFrozenStock(t, sku.ID, 0)
+		requireOrderCount(t, user.ID, 0)
+	})
+
+	t.Run("cart order", func(t *testing.T) {
+		ctx := context.Background()
+		resetDatabase(t)
+		user := insertBuyer(t, "buyer01")
+		shop, _, sku := insertCatalogSKU(t, "shop01", "Shop", productmodel.ProductStatusOnShelf, true, 1999, 10)
+		item := addCartItem(t, user.ID, sku.ID, 1)
+		if _, err := testPool.Exec(ctx, `UPDATE shops SET status = 'banned' WHERE id = $1`, shop.ID); err != nil {
+			t.Fatalf("ban shop: %v", err)
+		}
+
+		_, err := newTestOrderRepository().Create(ctx, user.ID, testOrderInput(
+			[]int{item.ID},
+			[]int{1},
+			testRequestHash("f"),
+		))
+		requireErrorIs(t, err, apperr.ErrProductUnavailable)
+		requireFrozenStock(t, sku.ID, 0)
+		requireCartItemCount(t, user.ID, 1)
+		requireOrderCount(t, user.ID, 0)
+	})
+}
+
 func TestOrderServiceCancelReleasesStockOnce(t *testing.T) {
 	ctx := context.Background()
 	resetDatabase(t)

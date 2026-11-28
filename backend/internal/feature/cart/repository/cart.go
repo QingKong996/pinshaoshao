@@ -15,9 +15,10 @@ import (
 
 const cartItemSelect = `SELECT ci.id, ci.user_id, ci.product_id, ci.sku_id, ci.product_name, ci.sku_specs,
        ci.unit_price_cents, ci.quantity, ci.created_at, ci.updated_at,
-       p.status, ps.is_enabled, ii.total_stock - ii.frozen_stock
+       p.status::text, s.status::text, ps.is_enabled, ii.total_stock - ii.frozen_stock
 FROM cart_items ci
 LEFT JOIN products p ON p.id = ci.product_id
+LEFT JOIN shops s ON s.id = p.shop_id
 LEFT JOIN product_skus ps ON ps.id = ci.sku_id
 LEFT JOIN inventory_items ii ON ii.sku_id = ci.sku_id`
 
@@ -61,9 +62,11 @@ WITH candidate AS (
            ps.specs, ps.price_cents
     FROM product_skus ps
     JOIN products p ON p.id = ps.product_id
+    JOIN shops s ON s.id = p.shop_id
     JOIN inventory_items ii ON ii.sku_id = ps.id
     WHERE ps.id = $2
       AND p.status = 'on_shelf'
+      AND s.status = 'active'
       AND ps.is_enabled
       AND ii.total_stock - ii.frozen_stock > 0
 ), upserted AS (
@@ -78,9 +81,10 @@ WITH candidate AS (
 )
 SELECT u.id, u.user_id, u.product_id, u.sku_id, u.product_name, u.sku_specs,
        u.unit_price_cents, u.quantity, u.created_at, u.updated_at,
-       p.status, ps.is_enabled, ii.total_stock - ii.frozen_stock
+       p.status::text, s.status::text, ps.is_enabled, ii.total_stock - ii.frozen_stock
 FROM upserted u
 LEFT JOIN products p ON p.id = u.product_id
+LEFT JOIN shops s ON s.id = p.shop_id
 LEFT JOIN product_skus ps ON ps.id = u.sku_id
 LEFT JOIN inventory_items ii ON ii.sku_id = u.sku_id`
 
@@ -120,9 +124,10 @@ WITH updated AS (
 )
 SELECT u.id, u.user_id, u.product_id, u.sku_id, u.product_name, u.sku_specs,
        u.unit_price_cents, u.quantity, u.created_at, u.updated_at,
-       p.status, ps.is_enabled, ii.total_stock - ii.frozen_stock
+       p.status::text, s.status::text, ps.is_enabled, ii.total_stock - ii.frozen_stock
 FROM updated u
 LEFT JOIN products p ON p.id = u.product_id
+LEFT JOIN shops s ON s.id = p.shop_id
 LEFT JOIN product_skus ps ON ps.id = u.sku_id
 LEFT JOIN inventory_items ii ON ii.sku_id = u.sku_id`
 
@@ -162,6 +167,7 @@ func scanCartItem(row pgx.Row) (*model.CartItem, error) {
 		&item.CreatedAt,
 		&item.UpdatedAt,
 		&item.ProductStatus,
+		&item.ShopStatus,
 		&item.SKUEnabled,
 		&item.AvailableStock,
 	)
