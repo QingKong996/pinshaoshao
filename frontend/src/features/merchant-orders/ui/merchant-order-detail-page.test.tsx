@@ -135,6 +135,26 @@ describe("MerchantOrderDetailPage", () => {
     ).toBeVisible()
   })
 
+  it("shows a refresh error without hiding the loaded order", () => {
+    mocks.useMerchantOrder.mockReturnValue({
+      data: order,
+      error: new Error("failed"),
+      isPending: false,
+      refetch: vi.fn(),
+    })
+
+    renderWithProviders(
+      <MerchantOrderDetailPage
+        token="token"
+        subOrderID={4}
+        backHref="/merchant/orders"
+      />,
+    )
+
+    expect(screen.getByText("T-shirt")).toBeVisible()
+    expect(screen.getByText("Could not load data")).toBeVisible()
+  })
+
   it("shows not found for an invalid sub-order id", () => {
     renderWithProviders(
       <MerchantOrderDetailPage

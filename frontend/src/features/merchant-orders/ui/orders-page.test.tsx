@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react"
+import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import MerchantOrdersPage from "@/features/merchant-orders/ui/orders-page"
@@ -77,6 +77,48 @@ describe("MerchantOrdersPage", () => {
     expect(mocks.useMerchantOrders).toHaveBeenLastCalledWith("token", {
       page: 2,
       page_size: 10,
+    })
+  })
+
+  it("returns to the last valid page when the current page is empty", async () => {
+    const user = userEvent.setup()
+    mocks.useMerchantOrders.mockImplementation(
+      (_token: string, query: { page: number; page_size: number }) =>
+        query.page === 1
+          ? {
+              data: {
+                items: [order],
+                page: 1,
+                page_size: 10,
+                total: 11,
+                total_pages: 2,
+              },
+              error: null,
+              isPending: false,
+              refetch: vi.fn(),
+            }
+          : {
+              data: {
+                items: [],
+                page: 2,
+                page_size: 10,
+                total: 10,
+                total_pages: 1,
+              },
+              error: null,
+              isPending: false,
+              refetch: vi.fn(),
+            },
+    )
+
+    renderWithProviders(<MerchantOrdersPage token="token" />)
+    await user.click(screen.getByRole("button", { name: "Next page" }))
+
+    await waitFor(() => {
+      expect(mocks.useMerchantOrders).toHaveBeenLastCalledWith("token", {
+        page: 1,
+        page_size: 10,
+      })
     })
   })
 

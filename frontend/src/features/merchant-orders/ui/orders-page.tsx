@@ -40,6 +40,15 @@ export default function MerchantOrdersPage({
   const total = ordersQuery.data?.total ?? 0
   const totalPages = ordersQuery.data?.total_pages ?? 0
   const hasFilters = statusFilter !== ALL
+  const lastPage = Math.max(1, totalPages)
+  const pageOutOfRange =
+    ordersQuery.data !== undefined &&
+    ordersQuery.data.page === page &&
+    page > lastPage
+
+  if (pageOutOfRange) {
+    setPage(lastPage)
+  }
 
   function changeStatusFilter(nextStatus: StatusFilter) {
     setStatusFilter(nextStatus)

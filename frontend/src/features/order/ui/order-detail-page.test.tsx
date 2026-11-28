@@ -1,7 +1,8 @@
-import { screen, waitFor } from "@testing-library/react"
+import { act, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { HttpResponse, http } from "msw"
 import { describe, expect, it, vi } from "vitest"
+import { orderQueryKeys } from "@/features/order/model/query-keys"
 import { renderWithProviders } from "@/test/render"
 import { server } from "@/test/server"
 import { order, orderID } from "@/test/commerce-fixtures"
@@ -58,6 +59,7 @@ describe("OrderDetailPage", () => {
     expect(screen.getByText("Shipment footer")).toBeVisible()
     expect(screen.getByText("Cotton T-shirt")).toBeVisible()
     expect(screen.getByText("Size: M")).toBeVisible()
+    expect(screen.getByText("Pay before")).toBeVisible()
     expect(renderSidebar).toHaveBeenCalledWith(order)
     expect(renderSubOrderFooter).toHaveBeenCalledWith(
       order,
@@ -73,6 +75,7 @@ describe("OrderDetailPage", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Cancelled").length).toBeGreaterThan(0)
     })
+    expect(screen.queryByText("Pay before")).not.toBeInTheDocument()
   })
 
   it("shows not-found for an invalid order ID", () => {
@@ -97,5 +100,36 @@ describe("OrderDetailPage", () => {
     expect(
       await screen.findByText("Could not load the order"),
     ).toBeVisible()
+  })
+
+  it("shows a refresh error without hiding the loaded order", async () => {
+    let shouldFail = false
+    server.use(
+      http.get(`*/api/v1/orders/${orderID}`, () =>
+        shouldFail
+          ? HttpResponse.json(
+              { error: "temporarily unavailable" },
+              { status: 500 },
+            )
+          : HttpResponse.json(order),
+      ),
+    )
+    const { queryClient } = renderWithProviders(
+      <OrderDetailPage token="buyer-token" orderID={orderID} />,
+    )
+
+    expect(await screen.findByText("Cotton T-shirt")).toBeVisible()
+    shouldFail = true
+
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: orderQueryKeys.order("buyer-token", orderID),
+      })
+    })
+
+    expect(
+      await screen.findByText("Could not load the order"),
+    ).toBeVisible()
+    expect(screen.getByText("Cotton T-shirt")).toBeVisible()
   })
 })

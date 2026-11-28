@@ -61,6 +61,13 @@ describe("order mutations", () => {
     ).toMatchObject({ id: 3, status: "cancelled" })
     await waitFor(() => {
       expect(
+        queryClient.getQueryState(
+          orderQueryKeys.order("token", pendingOrder.id),
+        )?.isInvalidated,
+      ).toBe(true)
+    })
+    await waitFor(() => {
+      expect(
         queryClient.getQueryState(orderQueryKeys.orders("token"))
           ?.isInvalidated,
       ).toBe(true)
