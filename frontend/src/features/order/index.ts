@@ -1,6 +1,7 @@
 export { CheckoutPage } from "./ui/checkout-page"
 export type { CheckoutMode } from "./ui/checkout-page"
 export {
+  cartCheckoutAttemptKey,
   directCheckoutAttemptKey,
   readDirectCheckoutAttempt,
 } from "./model/direct-checkout-attempt"

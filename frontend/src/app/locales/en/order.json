@@ -30,6 +30,13 @@
       "startNew": "Start a new purchase with these details",
       "viewOrders": "View my orders"
     },
+    "cartAttempt": {
+      "title": "An unfinished cart checkout was found",
+      "description": "Your previous request may have created an order. Check your orders, or retry with the same items and delivery details.",
+      "mismatch": "The cart items or delivery details differ from the previous attempt. Restore the previous details to retry, or start a new checkout with the current details.",
+      "startNew": "Start a new checkout with these details",
+      "viewOrders": "View my orders"
+    },
     "form": {
       "title": "Delivery details",
       "savedAddress": {

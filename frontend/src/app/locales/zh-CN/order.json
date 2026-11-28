@@ -30,6 +30,13 @@
       "startNew": "使用当前信息开始新购买",
       "viewOrders": "查看我的订单"
     },
+    "cartAttempt": {
+      "title": "发现未完成的购物车结账",
+      "description": "上次请求可能已生成订单。请查看订单，或使用相同的商品和收货信息重试。",
+      "mismatch": "购物车商品或收货信息与上次尝试不同。请恢复上次内容后重试，或使用当前信息开始新的结账。",
+      "startNew": "使用当前信息开始新结账",
+      "viewOrders": "查看我的订单"
+    },
     "form": {
       "title": "收货信息",
       "savedAddress": {
