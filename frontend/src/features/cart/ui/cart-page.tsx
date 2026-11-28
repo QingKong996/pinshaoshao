@@ -392,6 +392,8 @@ function availabilityLabel(
   switch (item.availability) {
     case "product_deleted":
       return t("availability.productDeleted")
+    case "shop_banned":
+      return t("availability.shopBanned")
     case "product_off_shelf":
       return t("availability.productOffShelf")
     case "sku_deleted":

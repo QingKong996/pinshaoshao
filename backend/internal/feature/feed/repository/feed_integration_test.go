@@ -214,6 +214,41 @@ func TestFeedRepositoryGetRejectsUnavailableProduct(t *testing.T) {
 	}
 }
 
+func TestFeedRepositoryHidesBannedShopProducts(t *testing.T) {
+	ctx := context.Background()
+	resetDatabase(t)
+	activeShopID := insertShop(t, "active-shop")
+	bannedShopID := insertShop(t, "banned-shop")
+	if _, err := testPool.Exec(
+		ctx,
+		`UPDATE shops SET status = 'banned' WHERE id = $1`,
+		bannedShopID,
+	); err != nil {
+		t.Fatalf("ban shop: %v", err)
+	}
+
+	visibleID := insertProduct(t, activeShopID, "Visible", "on_shelf", []skuFixture{{
+		spec: "default", priceCents: 1000, totalStock: 1, enabled: true,
+	}})
+	hiddenID := insertProduct(t, bannedShopID, "Hidden", "on_shelf", []skuFixture{{
+		spec: "default", priceCents: 1000, totalStock: 1, enabled: true,
+	}})
+	feedRepository := repository.NewFeedRepository(testPool)
+
+	feed, err := feedRepository.List(ctx, 7, 1, 20)
+	if err != nil {
+		t.Fatalf("list feed: %v", err)
+	}
+	if feed.Total != 1 || len(feed.Items) != 1 || feed.Items[0].ID != visibleID {
+		t.Fatalf("feed = %+v, want only product %d", feed, visibleID)
+	}
+
+	_, err = feedRepository.Get(ctx, hiddenID)
+	if !errors.Is(err, apperr.ErrProductNotFound) {
+		t.Fatalf("banned shop detail error = %v, want %v", err, apperr.ErrProductNotFound)
+	}
+}
+
 type skuFixture struct {
 	spec        string
 	priceCents  int64

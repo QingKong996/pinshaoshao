@@ -24,6 +24,7 @@
   "availability": {
     "available": "Available",
     "productDeleted": "Product is no longer available",
+    "shopBanned": "Shop is no longer accepting orders",
     "productOffShelf": "Product is off shelf",
     "skuDeleted": "This option is no longer available",
     "skuDisabled": "This option is disabled",

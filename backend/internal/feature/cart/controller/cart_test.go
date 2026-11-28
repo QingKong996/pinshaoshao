@@ -54,6 +54,7 @@ func newCartRouter(t *testing.T, cartController *controller.CartController, user
 
 func newTestCartItem() model.CartItem {
 	status := "on_shelf"
+	shopStatus := "active"
 	enabled := true
 	stock := 8
 	return model.CartItem{
@@ -66,6 +67,7 @@ func newTestCartItem() model.CartItem {
 		UnitPriceCents: 1999,
 		Quantity:       2,
 		ProductStatus:  &status,
+		ShopStatus:     &shopStatus,
 		SKUEnabled:     &enabled,
 		AvailableStock: &stock,
 	}

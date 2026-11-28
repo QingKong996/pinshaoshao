@@ -9,6 +9,8 @@ import (
 func TestCartItemAvailability(t *testing.T) {
 	onShelf := "on_shelf"
 	offShelf := "off_shelf"
+	activeShop := "active"
+	bannedShop := "banned"
 	enabled := true
 	disabled := false
 	stock := 5
@@ -23,6 +25,7 @@ func TestCartItemAvailability(t *testing.T) {
 			item: model.CartItem{
 				Quantity:       2,
 				ProductStatus:  &onShelf,
+				ShopStatus:     &activeShop,
 				SKUEnabled:     &enabled,
 				AvailableStock: &stock,
 			},
@@ -35,27 +38,32 @@ func TestCartItemAvailability(t *testing.T) {
 		},
 		{
 			name: "off shelf product",
-			item: model.CartItem{ProductStatus: &offShelf, SKUEnabled: &enabled, AvailableStock: &stock},
+			item: model.CartItem{ProductStatus: &offShelf, ShopStatus: &activeShop, SKUEnabled: &enabled, AvailableStock: &stock},
 			want: model.CartItemProductOffShelf,
 		},
 		{
+			name: "banned shop",
+			item: model.CartItem{ProductStatus: &onShelf, ShopStatus: &bannedShop, SKUEnabled: &enabled, AvailableStock: &stock},
+			want: model.CartItemShopBanned,
+		},
+		{
 			name: "deleted sku",
-			item: model.CartItem{ProductStatus: &onShelf, AvailableStock: &stock},
+			item: model.CartItem{ProductStatus: &onShelf, ShopStatus: &activeShop, AvailableStock: &stock},
 			want: model.CartItemSKUDeleted,
 		},
 		{
 			name: "disabled sku",
-			item: model.CartItem{ProductStatus: &onShelf, SKUEnabled: &disabled, AvailableStock: &stock},
+			item: model.CartItem{ProductStatus: &onShelf, ShopStatus: &activeShop, SKUEnabled: &disabled, AvailableStock: &stock},
 			want: model.CartItemSKUDisabled,
 		},
 		{
 			name: "out of stock",
-			item: model.CartItem{Quantity: 1, ProductStatus: &onShelf, SKUEnabled: &enabled, AvailableStock: intPtr(0)},
+			item: model.CartItem{Quantity: 1, ProductStatus: &onShelf, ShopStatus: &activeShop, SKUEnabled: &enabled, AvailableStock: intPtr(0)},
 			want: model.CartItemOutOfStock,
 		},
 		{
 			name: "insufficient stock",
-			item: model.CartItem{Quantity: 3, ProductStatus: &onShelf, SKUEnabled: &enabled, AvailableStock: intPtr(2)},
+			item: model.CartItem{Quantity: 3, ProductStatus: &onShelf, ShopStatus: &activeShop, SKUEnabled: &enabled, AvailableStock: intPtr(2)},
 			want: model.CartItemInsufficientStock,
 		},
 	}

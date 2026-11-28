@@ -20,12 +20,15 @@ JOIN product_skus ps ON ps.product_id = p.id AND ps.is_enabled
 JOIN inventory_items ii ON ii.sku_id = ps.id
 LEFT JOIN product_categories pc ON pc.id = p.category_id
 WHERE p.status = 'on_shelf'
+  AND s.status = 'active'
   AND ii.total_stock - ii.frozen_stock > 0
 GROUP BY p.id, s.name, pc.name`
 
 const feedProductCount = `SELECT COUNT(*)::BIGINT
 FROM products p
+JOIN shops s ON s.id = p.shop_id
 WHERE p.status = 'on_shelf'
+  AND s.status = 'active'
   AND EXISTS (
       SELECT 1
       FROM product_skus ps
@@ -131,7 +134,7 @@ func loadProductDetail(ctx context.Context, db pgx.Tx, productID int) (*model.Pr
 FROM products p
 JOIN shops s ON s.id = p.shop_id
 LEFT JOIN product_categories pc ON pc.id = p.category_id
-WHERE p.id = $1 AND p.status = 'on_shelf'`
+WHERE p.id = $1 AND p.status = 'on_shelf' AND s.status = 'active'`
 
 	var detail model.ProductDetail
 	if err := db.QueryRow(ctx, query, productID).Scan(

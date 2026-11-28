@@ -7,6 +7,7 @@ type CartItemAvailability string
 const (
 	CartItemAvailable         CartItemAvailability = "available"
 	CartItemProductDeleted    CartItemAvailability = "product_deleted"
+	CartItemShopBanned        CartItemAvailability = "shop_banned"
 	CartItemProductOffShelf   CartItemAvailability = "product_off_shelf"
 	CartItemSKUDeleted        CartItemAvailability = "sku_deleted"
 	CartItemSKUDisabled       CartItemAvailability = "sku_disabled"
@@ -27,6 +28,7 @@ type CartItem struct {
 	UpdatedAt      time.Time
 
 	ProductStatus  *string
+	ShopStatus     *string
 	SKUEnabled     *bool
 	AvailableStock *int
 }
@@ -35,6 +37,8 @@ func (i CartItem) Availability() CartItemAvailability {
 	switch {
 	case i.ProductStatus == nil:
 		return CartItemProductDeleted
+	case i.ShopStatus == nil || *i.ShopStatus != "active":
+		return CartItemShopBanned
 	case *i.ProductStatus != "on_shelf":
 		return CartItemProductOffShelf
 	case i.SKUEnabled == nil:

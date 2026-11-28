@@ -1,6 +1,7 @@
 export type CartItemAvailability =
   | "available"
   | "product_deleted"
+  | "shop_banned"
   | "product_off_shelf"
   | "sku_deleted"
   | "sku_disabled"
