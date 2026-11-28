@@ -18,6 +18,7 @@ import {
 } from "@/features/feed"
 import {
   CheckoutPage,
+  cartCheckoutAttemptKey,
   OrderSignedOut,
   directCheckoutAttemptKey,
   readDirectCheckoutAttempt,
@@ -198,6 +199,7 @@ export function CheckoutRoute() {
         item.availability === "available" &&
         (selectedIDs === null || selectedIDs.has(item.id)),
     )
+    const cartAttemptStorageKey = cartCheckoutAttemptKey(session.username)
     const snapshot = cartSelectionSnapshot(cartItems)
     const initiallyChanged =
       (selectedIDs !== null && cartItems.length !== selectedIDs.size) ||
@@ -205,10 +207,11 @@ export function CheckoutRoute() {
 
     content = (
       <CartCheckout
-        key={`${location.key}:${session.token}`}
+        key={`${location.key}:${session.token}:${cartAttemptStorageKey}`}
         token={session.token}
         items={cartItems}
         savedAddresses={addressesQuery.data}
+        cartAttemptStorageKey={cartAttemptStorageKey}
         snapshot={snapshot}
         initiallyChanged={initiallyChanged}
         onCartConflict={async () => {

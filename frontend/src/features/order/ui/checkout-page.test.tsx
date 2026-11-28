@@ -82,6 +82,71 @@ describe("CheckoutPage", () => {
     })
   })
 
+  it("reuses a cart checkout key after an uncertain failure and page reload", async () => {
+    const user = userEvent.setup()
+    const keys: string[] = []
+    let attempts = 0
+    server.use(
+      http.post("*/api/v1/orders", async ({ request }) => {
+        const input = (await request.json()) as CreateOrderInput
+        keys.push(input.checkout_key)
+        attempts++
+        if (attempts === 1) {
+          return HttpResponse.error()
+        }
+        return HttpResponse.json(
+          {
+            id: 8,
+            status: "pending_payment",
+            total_amount_cents: 3998,
+            receiver_name: "Alice",
+            receiver_phone: "1234567890",
+            shipping_address: "Shanghai",
+            expires_at: "2026-11-20T12:30:00Z",
+            paid_at: null,
+            created_at: "2026-11-20T12:00:00Z",
+            updated_at: "2026-11-20T12:00:00Z",
+            sub_orders: [],
+          },
+          { status: 201 },
+        )
+      }),
+    )
+    const props = {
+      token: "token",
+      items,
+      cartAttemptStorageKey: 'cart-checkout-attempt:"alice"',
+    }
+
+    const firstRender = renderWithProviders(<CheckoutPage {...props} />, {
+      initialEntries: ["/checkout"],
+    })
+    await user.type(screen.getByLabelText("Recipient"), "Alice")
+    await user.type(screen.getByLabelText("Phone"), "1234567890")
+    await user.type(screen.getByLabelText("Shipping address"), "Shanghai")
+    await user.click(screen.getByRole("button", { name: "Place order" }))
+    await waitFor(() => expect(attempts).toBe(1))
+    expect(sessionStorage.getItem(props.cartAttemptStorageKey)).not.toBeNull()
+
+    firstRender.unmount()
+    renderWithProviders(<CheckoutPage {...props} />, {
+      initialEntries: ["/checkout"],
+    })
+    await user.type(screen.getByLabelText("Recipient"), "Alice")
+    await user.type(screen.getByLabelText("Phone"), "1234567890")
+    await user.type(screen.getByLabelText("Shipping address"), "Shanghai")
+    await user.click(screen.getByRole("button", { name: "Place order" }))
+
+    await waitFor(() => {
+      expect(sessionStorage.getItem(props.cartAttemptStorageKey)).toBeNull()
+    })
+    expect(keys).toEqual([
+      "4f2614df-f674-4b5e-a9e4-3fc5e7f62013",
+      "4f2614df-f674-4b5e-a9e4-3fc5e7f62013",
+    ])
+    expect(crypto.randomUUID).toHaveBeenCalledOnce()
+  })
+
   it("submits a direct purchase without cart item IDs", async () => {
     const user = userEvent.setup()
     const requestBody = vi.fn<(body: CreateDirectOrderInput) => void>()

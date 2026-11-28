@@ -33,9 +33,11 @@ import { formatPriceCents } from "@/shared/lib/format"
 import { useDocumentTitle } from "@/shared/hooks/use-document-title"
 import { describeCheckoutError, isCheckoutConflict } from "../model/errors"
 import {
+  checkoutSignature,
   directCheckoutSignature,
-  readDirectCheckoutAttempt,
-  saveDirectCheckoutAttempt,
+  readCheckoutAttempt,
+  saveCheckoutAttempt,
+  type CheckoutAttempt,
 } from "../model/direct-checkout-attempt"
 import {
   INITIAL_CHECKOUT_VALUES,
@@ -46,11 +48,6 @@ import {
 import { useCreateDirectOrder, useCreateOrder } from "../model/mutations"
 import type { CheckoutLine, CheckoutSavedAddress } from "../types"
 import { formatOrderSpecs } from "./format-specs"
-
-type CheckoutAttempt = {
-  signature: string
-  key: string
-}
 
 export type CheckoutMode =
   | { type: "cart" }
@@ -69,6 +66,7 @@ export function CheckoutPage({
   items,
   mode = CART_MODE,
   savedAddresses = [],
+  cartAttemptStorageKey,
   backHref,
   cartChangeNeedsConfirmation = false,
   onConfirmCartChanges,
@@ -79,6 +77,7 @@ export function CheckoutPage({
   items: CheckoutLine[]
   mode?: CheckoutMode
   savedAddresses?: CheckoutSavedAddress[]
+  cartAttemptStorageKey?: string
   backHref?: string
   cartChangeNeedsConfirmation?: boolean
   onConfirmCartChanges?: () => void
@@ -94,9 +93,14 @@ export function CheckoutPage({
   const directMode = mode.type === "direct" ? mode : null
   const activeOrder = directMode ? createDirectOrder : createOrder
   const resolvedBackHref = backHref ?? (directMode ? "/" : "/cart")
-  const cartAttempt = useRef<CheckoutAttempt | null>(null)
+  const [cartAttempt, setCartAttempt] = useState<CheckoutAttempt | null>(() =>
+    !directMode && cartAttemptStorageKey
+      ? readCheckoutAttempt(cartAttemptStorageKey)
+      : null,
+  )
+  const [cartAttemptMismatch, setCartAttemptMismatch] = useState(false)
   const [directAttempt, setDirectAttempt] = useState(() =>
-    directMode ? readDirectCheckoutAttempt(directMode.attemptStorageKey) : null,
+    directMode ? readCheckoutAttempt(directMode.attemptStorageKey) : null,
   )
   const [directAttemptMismatch, setDirectAttemptMismatch] = useState(false)
   const submittingDirectOrder = useRef(false)
@@ -142,6 +146,13 @@ export function CheckoutPage({
       await submitDirectOrder(values)
       return
     }
+    await submitCartOrder(values)
+  }
+
+  async function submitCartOrder(
+    values: CheckoutFormValues,
+    startNew = false,
+  ) {
     if (cartChangeNeedsConfirmation || items.length === 0) {
       return
     }
@@ -152,18 +163,38 @@ export function CheckoutPage({
       })),
       ...values,
     }
-    const signature = JSON.stringify(payload)
+    const signature = await checkoutSignature(payload)
+    const pendingAttempt =
+      (cartAttemptStorageKey
+        ? readCheckoutAttempt(cartAttemptStorageKey)
+        : null) ?? cartAttempt
+    if (!startNew && pendingAttempt && pendingAttempt.signature !== signature) {
+      setCartAttempt(pendingAttempt)
+      setCartAttemptMismatch(true)
+      return
+    }
     const checkoutKey =
-      cartAttempt.current?.signature === signature
-        ? cartAttempt.current.key
+      !startNew && pendingAttempt?.signature === signature
+        ? pendingAttempt.key
         : crypto.randomUUID()
-    cartAttempt.current = { signature, key: checkoutKey }
+    const nextAttempt = { signature, key: checkoutKey }
+    setCartAttempt(nextAttempt)
+    setCartAttemptMismatch(false)
+    if (cartAttemptStorageKey) {
+      saveCheckoutAttempt(cartAttemptStorageKey, nextAttempt)
+    }
 
     try {
       const order = await createOrder.mutateAsync({
         checkout_key: checkoutKey,
         ...payload,
       })
+      if (cartAttemptStorageKey) {
+        if (readCheckoutAttempt(cartAttemptStorageKey)?.key === checkoutKey) {
+          saveCheckoutAttempt(cartAttemptStorageKey, null)
+        }
+      }
+      setCartAttempt(null)
       navigate(`/orders/${order.id}`, { replace: true })
     } catch (error) {
       if (isCheckoutConflict(error)) {
@@ -185,7 +216,7 @@ export function CheckoutPage({
       const payload = { sku_id: skuID, quantity, ...values }
       const signature = await directCheckoutSignature(payload)
       const pendingAttempt =
-        readDirectCheckoutAttempt(attemptStorageKey) ?? directAttempt
+        readCheckoutAttempt(attemptStorageKey) ?? directAttempt
       if (!canStartNew && (startNew || !pendingAttempt)) {
         return
       }
@@ -199,7 +230,7 @@ export function CheckoutPage({
         (!startNew && pendingAttempt?.key) || crypto.randomUUID()
       const nextAttempt = { signature, key: checkoutKey }
       setDirectAttemptMismatch(false)
-      saveDirectCheckoutAttempt(attemptStorageKey, nextAttempt)
+      saveCheckoutAttempt(attemptStorageKey, nextAttempt)
       const order = await createDirectOrder
         .mutateAsync({
           checkout_key: checkoutKey,
@@ -210,8 +241,8 @@ export function CheckoutPage({
         setDirectAttempt(nextAttempt)
         return
       }
-      if (readDirectCheckoutAttempt(attemptStorageKey)?.key === checkoutKey) {
-        saveDirectCheckoutAttempt(attemptStorageKey, null)
+      if (readCheckoutAttempt(attemptStorageKey)?.key === checkoutKey) {
+        saveCheckoutAttempt(attemptStorageKey, null)
       }
       navigate(`/orders/${order.id}`, { replace: true })
     } finally {
@@ -272,6 +303,24 @@ export function CheckoutPage({
             </span>
             <Link to="/orders" className="underline">
               {t("checkout.directAttempt.viewOrders")}
+            </Link>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {!directMode && cartAttempt ? (
+        <Alert>
+          <AlertTitle>{t("checkout.cartAttempt.title")}</AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-3">
+            <span>
+              {t(
+                cartAttemptMismatch
+                  ? "checkout.cartAttempt.mismatch"
+                  : "checkout.cartAttempt.description",
+              )}
+            </span>
+            <Link to="/orders" className="underline">
+              {t("checkout.cartAttempt.viewOrders")}
             </Link>
           </AlertDescription>
         </Alert>
@@ -436,6 +485,22 @@ export function CheckoutPage({
                       disabled={isSubmitting || activeOrder.isPending}
                     >
                       {t("checkout.directAttempt.startNew")}
+                    </Button>
+                  ) : null}
+                  {!directMode &&
+                  cartAttemptMismatch &&
+                  !cartChangeNeedsConfirmation ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={(event) =>
+                        handleSubmit((values) => submitCartOrder(values, true))(
+                          event,
+                        )
+                      }
+                      disabled={isSubmitting || activeOrder.isPending}
+                    >
+                      {t("checkout.cartAttempt.startNew")}
                     </Button>
                   ) : null}
                   <Button
